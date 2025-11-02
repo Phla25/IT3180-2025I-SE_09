@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông Báo - Cư Dân - BlueMoon Portal</title>
+    
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* ... Giữ nguyên các style đã có ... */
+        .notification-list {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .notification-item {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .notification-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: #111827;
+            font-size: 16px;
+        }
+
+        .notification-date {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .notification-content {
+            color: #4b5563;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        /* Modal styles */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 24px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .modal-content h3 {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .modal-content p {
+            font-size: 15px;
+            color: #374151;
+            line-height: 1.6;
+        }
+
+        .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            font-size: 20px;
+            color: #6b7280;
+            cursor: pointer;
+        }
+
+        .close-btn:hover {
+            color: #111827;
+        }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-building"></i>
+                <span>BlueMoon Portal</span>
+            </div>
+            <div class="user-profile-desktop" th:if="${user != null}">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen}">Nguyễn Văn Cư Dân</span>
+                    <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a th:href="@{/resident/dashboard}" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a th:href="@{/resident/fees}" class="nav-item">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Hóa Đơn Của Tôi</span>
+            </a>
+            <a th:href="@{/resident/my-services}" class="nav-item">
+                <i class="fas fa-handshake"></i>
+                <span>Dịch Vụ Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/services}" class="nav-item">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Đăng Ký Dịch Vụ</span>
+            </a>
+            
+            <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Báo Cáo Sự Cố</span>
+                <span class="feature-badge">MỚI</span>
+            </a>            
+            <a th:href="@{/resident/notifications}" class="nav-item active">
+                <i class="fas fa-bell"></i>
+                <span>Thông Báo</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1>Thông Báo Cư Dân</h1>
+        </div>
+        <div class="header-right">
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user != null ? user.hoVaTen : 'Cư Dân'}">Nguyễn Văn A</span>
+                    <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
+                </div>
+                <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+                
+                <!-- Dropdown Menu -->
+                <div class="dropdown-menu">
+                    <a th:href="@{/resident/profile}">
+                        <i class="fas fa-user"></i>
+                        Thông Tin Cá Nhân
+                    </a>
+                    <a th:href="@{/resident/change-password}">
+                        <i class="fas fa-lock"></i>
+                        Cài Đặt
+                    </a>
+                    <hr>
+                    <form th:action="@{/logout}" method="post" style="margin: 0;">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Đăng Xuất
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="content-card">
+            <div class="content-card-header">
+                <h2 class="content-card-title">Danh Sách Thông Báo</h2>
+            </div>
+
+            <div class="notification-list">
+                <div th:if="${#lists.isEmpty(thongBaos)}" style="text-align:center; color:gray; padding:24px;">
+                    Hiện tại chưa có thông báo nào.
+                </div>
+
+                <div th:each="tb : ${thongBaos}" 
+     class="notification-item"
+     th:onclick="'showModal(' + '\'' + ${tb.maThongBao} + '\'' + ')'">
+    <div class="notification-header">
+        <span class="notification-title" th:text="${tb.tieuDe}">Thông Báo Mới</span>
+        <span class="notification-date" 
+              th:text="${#temporals.format(tb.thoiGianGui, 'dd/MM/yyyy HH:mm')}">
+              27/10/2025
+        </span>
+    </div>
+    <div class="notification-content" 
+         th:text="${#strings.abbreviate(tb.noiDung, 120)}">
+         Nội dung thông báo ngắn gọn hiển thị ở đây...
+    </div>
+</div>
+
+            </div>
+        </div>
+    </main>
+
+    <div id="notificationModal" class="modal" onclick="closeModal(event)">
+        <div class="modal-content">
+            <button class="close-btn" onclick="closeModal(event)">&times;</button>
+            <h3 id="modalTitle">Tiêu đề thông báo</h3>
+            <p id="modalBody" style="margin-bottom: 20px; font-style: italic; color: #4b5563;"></p>
+            
+            <hr style="margin: 15px 0;">
+            <h4>💬 Phản Hồi Từ Cư Dân</h4>
+            
+            <div id="repliesList" style="max-height: 200px; overflow-y: auto; padding-right: 10px; margin-bottom: 15px; border-bottom: 1px solid #eee;">
+                <p style="color:#6b7280; text-align:center; padding: 10px;">Đang tải phản hồi...</p>
+            </div>
+
+            <form id="replyForm" th:action="@{/resident/notifications/reply}" method="post">
+                <input type="hidden" name="maThongBao" id="replyMaThongBao"> 
+                
+                <div class="form-group">
+                    <textarea name="noiDungPhanHoi" id="noiDungPhanHoi" rows="3" 
+                              placeholder="Viết phản hồi của bạn về thông báo này..." required 
+                              style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; margin-bottom: 8px;"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary" style="background: #4F46E5; color: white; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; float: right;">
+                    <i class="fas fa-paper-plane"></i> Gửi Phản Hồi
+                </button>
+                <div style="clear: both;"></div>
+            </form>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <p>© 2025 BlueMoon Apartment Management System. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // ------------------- UI LOGIC -------------------
+        function toggleSidebar() {
+            document.querySelector('aside.sidebar').classList.toggle('active');
+        }
+
+        function closeModal(e) {
+            // Chỉ đóng khi click vào nền tối hoặc nút đóng
+            if (e.target.classList.contains('modal') || e.target.classList.contains('close-btn')) {
+                document.getElementById('notificationModal').style.display = 'none';
+                // Reset nội dung textarea sau khi đóng
+                document.getElementById('noiDungPhanHoi').value = ''; 
+            }
+        }
+        
+        // ------------------- DATA TRANSFER (THYMELEAF TO JS) -------------------
+        // Truyền dữ liệu sang JS. Dùng maThongBao thay vì id.
+        window.thongBaoData = /*[[${thongBaos}]]*/ [];
+        
+        // ------------------- REPLY LOGIC (AJAX) -------------------
+
+        // Hàm định dạng ngày giờ cho đẹp
+        function formatDateTime(dateTime) {
+            if (!dateTime) return '';
+            // Định dạng từ mảng [year, month, day, hour, minute, second] mà Java LocalDateTime trả về
+            const date = new Date(dateTime[0], dateTime[1] - 1, dateTime[2], dateTime[3], dateTime[4], dateTime[5]);
+            return date.toLocaleString('vi-VN', { 
+                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
+            });
+        }
+
+        // Tải và hiển thị danh sách phản hồi
+        function loadReplies(maThongBao) {
+            const repliesList = document.getElementById('repliesList');
+            repliesList.innerHTML = '<p style="color:#6b7280; text-align:center; padding: 10px;">Đang tải...</p>';
+            
+            // Gọi AJAX (fetch) để lấy phản hồi
+            fetch(`/resident/notifications/${maThongBao}/replies`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Lỗi khi tải phản hồi.');
+                    }
+                    return response.json();
+                })
+                .then(replies => {
+                    repliesList.innerHTML = ''; 
+                    if (replies.length === 0) {
+                        repliesList.innerHTML = '<p style="color:#6b7280; text-align:center; padding: 10px;">Chưa có phản hồi nào.</p>';
+                        return;
+                    }
+
+                    replies.forEach(reply => {
+                        const dateStr = formatDateTime(reply.thoiGianGui);
+                        const userName = reply.nguoiGui ? reply.nguoiGui.hoVaTen : 'Người gửi ẩn danh';
+                        
+                        // Kiểm tra vai trò (giả sử có thuộc tính vaiTro) để hiển thị nổi bật
+                        const isManager = reply.nguoiGui && reply.nguoiGui.vaiTro === 'QUAN_TRI';
+                        const borderStyle = isManager ? 'border-left: 3px solid #F59E0B;' : 'border-left: 3px solid #7C3AED;';
+                        const backgroundColor = isManager ? '#FFFBEB' : '#f9f9f9';
+                        
+                        const replyHtml = `
+                            <div style="${borderStyle} padding: 5px 10px; margin-bottom: 8px; background: ${backgroundColor}; border-radius: 4px;">
+                                <p style="margin: 0; font-size: 14px; color: #374151;">${reply.noiDung}</p>
+                                <small style="display: block; text-align: right; color: #6b7280; font-size: 11px;">
+                                    👤 ${userName} (${isManager ? 'BQT' : 'Cư Dân'}) - 🕒 ${dateStr}
+                                </small>
+                            </div>
+                        `;
+                        repliesList.insertAdjacentHTML('beforeend', replyHtml);
+                    });
+                })
+                .catch(error => {
+                    console.error('Lỗi tải phản hồi:', error);
+                    repliesList.innerHTML = '<p style="color:red; text-align:center; padding: 10px;">Lỗi tải phản hồi.</p>';
+                });
+        }
+
+        // Hiển thị modal thông báo chi tiết
+        function showModal(id) {
+            // Tìm thông báo trong danh sách đã được tải sẵn
+            const tb = window.thongBaoData.find(x => x.maThongBao == id);
+
+            
+            if (tb) {
+                document.getElementById('modalTitle').innerText = tb.tieuDe;
+                // Hiển thị nội dung, thêm khoảng trắng nếu không có
+                document.getElementById('modalBody').innerText = tb.noiDung || "Không có nội dung.";
+                
+                // Đặt maThongBao vào hidden input của form
+                document.getElementById('replyMaThongBao').value = id;
+                
+                // Tải danh sách phản hồi
+                loadReplies(id);
+                
+                document.getElementById('notificationModal').style.display = 'flex';
+            }
+        }
+        
+        // ------------------- ALERT (MESSAGES) -------------------
+        // Sử dụng SweetAlert để hiển thị thông báo thành công/thất bại sau khi redirect
+        const urlParams = new URLSearchParams(window.location.search);
+        const successMessage = '[[${successMessage}]]';
+        const errorMessage = '[[${errorMessage}]]';
+
+        if (successMessage && successMessage.includes('Phản hồi')) {
+             Swal.fire({
+                icon: 'success',
+                title: 'Thành công!',
+                text: successMessage,
+                confirmButtonColor: '#4F46E5'
+            });
+        }
+        
+        if (errorMessage) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi!',
+                text: errorMessage,
+                confirmButtonColor: '#4F46E5'
+            });
+        }
+        
+        // Xử lý các thông báo redirect truyền qua URL (ví dụ: replySuccess)
+        if (urlParams.get('replySuccess') === 'true') {
+             Swal.fire({
+                icon: 'success',
+                title: 'Thành công!',
+                text: 'Phản hồi của bạn đã được gửi.',
+                confirmButtonColor: '#4F46E5'
+            });
+        }
+        
+    </script>
+    <script th:inline="javascript">
+    window.thongBaoData = /*[[${thongBaos}]]*/ [];
+</script>
+    
+</body>
+</html>
