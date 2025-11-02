@@ -8,6 +8,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        .feature-badge {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: auto;
+            animation: pulse 2s infinite;
+        }        
         /* Tái sử dụng CSS chung cho form từ các file trước */
         .form-card { background-color: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); padding: 30px; margin-top: 20px; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
@@ -54,17 +64,21 @@
                 <i class="fas fa-file-invoice-dollar"></i> 
                 <span>Quản Lý Khoản Phí</span> 
             </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-concierge-bell"></i> <span>Quản Lý Dịch Vụ</span>
+            <a th:href="@{/admin/service-list}" class="nav-item">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Quản Lý Dịch Vụ</span>
             </a>
+            <a th:href="@{/admin/service-registrations}" class="nav-item">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Quản Lý Đăng Ký Dịch Vụ</span>
+                <span class="feature-badge">MỚI</span>
+            </a>            
             <a href="#" class="nav-item">
                 <i class="fas fa-exclamation-triangle"></i> <span>Xử Lý Sự Cố</span>
             </a>
-			<a th:href="@{/admin/notifications}" class="nav-item">
-			    <i class="fas fa-bell"></i>
-			    <span>Gửi Thông Báo</span>
-			</a>
-
+            <a th:href="@{/admin/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
+            </a>
             <a href="#" class="nav-item">
                 <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span>
             </a>

@@ -23,6 +23,39 @@
         .highlight-overdue {
             background-color: #FEF2F2;
         }
+        .btn-export {
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-export-excel {
+            background-color: #10B981;
+            color: white;
+        }
+        
+        .btn-export-pdf {
+            background-color: #EF4444;
+            color: white;
+        }
+        
+        .btn-export:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            transition: all 0.2s;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
     </style>
 </head>
 <body>
@@ -49,6 +82,26 @@
                 <i class="fas fa-file-invoice-dollar"></i>
                 <span>Hóa Đơn Của Tôi</span>
             </a>
+            
+            <a th:href="@{/resident/my-services}" class="nav-item">
+                <i class="fas fa-handshake"></i>
+                <span>Dịch Vụ Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/services}" class="nav-item">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Đăng Ký Dịch Vụ</span>
+            </a>
+            
+            <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Báo Cáo Sự Cố</span>
+                <span class="feature-badge">MỚI</span>
+            </a>
+            <a th:href="@{/resident/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i>
+                <span>Thông Báo</span>
+            </a>
         </nav>
         
         <div class="sidebar-footer">
@@ -68,28 +121,31 @@
             <h1>Hóa Đơn Của Tôi</h1>
         </div>
         
-        <div class="header-right">
-            <div class="user-menu">
-                <div class="user-info">
-                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
-                    <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
-                </div>
-                <div class="user-avatar">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <div class="dropdown-menu">
-                    <a th:href="@{/resident/profile}">
-                        <i class="fas fa-user"></i> Thông Tin Cá Nhân
-                    </a>
-                    <hr>
-                    <form th:action="@{/logout}" method="post">
-                        <button type="submit" class="logout-btn">
-                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
+		<div class="header-right">
+		    <div class="user-menu">
+		        <div class="user-info">
+		            <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Phạm Thị D</span>
+		            <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
+		        </div>
+		        <div class="user-avatar">
+		            <i class="fas fa-user-circle"></i>
+		        </div>
+		        <div class="dropdown-menu">
+		            <a href="/resident/profile">
+		                <i class="fas fa-user"></i> Thông Tin Cá Nhân
+		            </a>
+		            <a href="/resident/settings">
+		                <i class="fas fa-cog"></i> Cài Đặt
+		            </a>
+		            <hr>
+		            <form th:action="@{/logout}" method="post">
+		                <button type="submit" class="logout-btn">
+		                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+		                </button>
+		            </form>
+		        </div>
+		    </div>
+		</div>
     </header>
 
     <main class="main-content">
@@ -103,7 +159,14 @@
                 </h2>
                 <p style="opacity: 0.9; margin: 0;">Quản lý và thanh toán các khoản phí của hộ gia đình</p>
             </div>
-
+            <div style="display: flex; gap: 10px;">
+                    <a th:href="@{/resident/export/invoices}" class="btn-export btn-export-excel" title="Xuất Excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </a>
+                    <a th:href="@{/resident/export/invoices/pdf}" class="btn-export btn-export-pdf" title="Xuất PDF">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </a>
+            </div>
             <div class="content-card">
                 <div class="table-container">
                     <table class="data-table">
@@ -111,50 +174,60 @@
                             <tr>
                                 <th>Mã HĐ</th>
                                 <th>Loại Phí</th>
-                                <th>Số Tiền</th>
-                                <th>Hạn Thanh Toán</th>
+                                <th>Người Đứng Tên</th> <th>Số Tiền</th> <th>Hạn Thanh Toán</th>
                                 <th>Trạng Thái</th>
-                                <th>Hành Động</th>
-                            </tr>
+                                <th>Hành Động</th> </tr>
                         </thead>
                         <tbody>
                             <tr th:each="hoaDon : ${hoaDonList}" 
                                 th:classappend="${hoaDon.hanThanhToan != null and hoaDon.hanThanhToan.isBefore(T(java.time.LocalDate).now()) and hoaDon.trangThai?.name() == 'chua_thanh_toan' ? 'highlight-overdue' : ''}">
-                                
+
                                 <td th:text="${hoaDon.maHoaDon}">HD001</td>
-                                
+
                                 <td th:text="${hoaDon.loaiHoaDon?.dbValue}">Phí Quản Lý</td>
-                                
+
+                                <td>
+                                    <span th:if="${hoaDon.nguoiDangKyDichVu != null}" 
+                                          th:text="${hoaDon.nguoiDangKyDichVu?.hoVaTen}">
+                                        Nguyễn Văn B
+                                    </span>
+                                    <span th:unless="${hoaDon.nguoiDangKyDichVu != null}" 
+                                          style="color: #6B7280;">
+                                        (Hộ Gia Đình)
+                                    </span>
+                                </td>
+
                                 <td th:text="${#numbers.formatDecimal(hoaDon.soTien, 0, 'COMMA', 0, 'POINT')} + ' ₫'">2,500,000 ₫</td>
-                                
+
                                 <td th:text="${#temporals.format(hoaDon.hanThanhToan, 'dd/MM/yyyy') ?: 'N/A'}">31/10/2025</td>
                                 
                                 <td>
                                     <span class="status-badge" 
-                                          th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : (hoaDon.trangThai?.name() == 'cho_xac_nhan' ? 'badge-info' : ((hoaDon.hanThanhToan != null and hoaDon.hanThanhToan.isBefore(T(java.time.LocalDate).now()) and hoaDon.trangThai?.name() != 'da_thanh_toan') ? 'badge-danger' : 'badge-warning'))}"
-                                          th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">
-                                        Chưa thanh toán
+                                        th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : 
+                                                        (hoaDon.trangThai?.name() == 'cho_xac_nhan' ? 'badge-info' : 
+                                                        (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning'))}"
+                                        th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán
                                     </span>
                                 </td>
                                 
                                 <td>
-                                    <a th:href="@{/resident/fee-detail(id=${hoaDon.maHoaDon})}" class="btn btn-sm btn-primary">
-                                        <i class="fas fa-eye"></i> Chi tiết
+                                    <a th:href="@{/resident/fee-detail(id=${hoaDon.maHoaDon})}" class="btn btn-sm btn-info" title="Xem chi tiết">
+                                        <i class="fas fa-eye"></i>
                                     </a>
-                                    
-                                    <th:block th:if="${hoaDon.trangThai?.name() == 'chua_thanh_toan' || hoaDon.trangThai?.name() == 'qua_han'}">
-                                        <form th:id="|pay-form-${hoaDon.maHoaDon}|" th:action="@{/resident/fee-pay}" method="post" style="display:inline;">
-                                            <input type="hidden" name="maHoaDon" th:value="${hoaDon.maHoaDon}">
-                                            <button type="submit" class="btn btn-sm btn-success" style="margin-left: 5px;">
-                                                <i class="fas fa-credit-card"></i> Thanh toán
-                                            </button>
-                                        </form>
-                                    </th:block>
-                                    <th:block th:if="${hoaDon.trangThai?.name() == 'cho_xac_nhan'}">
-                                        <a th:href="@{/resident/fee-detail(id=${hoaDon.maHoaDon})}" class="btn btn-sm btn-info" style="margin-left: 5px;">
-                                            <i class="fas fa-hourglass-half"></i> Chờ xác nhận
-                                        </a>
-                                    </th:block>
+                                    <form th:action="@{/resident/fee-pay}" method="post" style="display: inline;"
+                                          th:if="${hoaDon.trangThai?.name() == 'chua_thanh_toan' || hoaDon.trangThai?.name() == 'qua_han'}">
+                                        <input type="hidden" name="maHoaDon" th:value="${hoaDon.maHoaDon}">
+                                        <button type="submit" class="btn btn-sm btn-success" title="Thanh toán"
+                                                th:onclick="|return confirm('Bạn có muốn tạo yêu cầu thanh toán Hóa đơn #' + ${hoaDon.maHoaDon} + ' không?');|">
+                                            <i class="fas fa-credit-card"></i>
+                                        </button>
+                                    </form>
+                                </td>
+
+                            </tr>
+                             <tr th:if="${#lists.isEmpty(hoaDonList)}">
+                                <td colspan="7" style="text-align: center; padding: 24px; color: #6B7280;">
+                                    Không có hóa đơn nào thuộc hộ gia đình của bạn.
                                 </td>
                             </tr>
                         </tbody>

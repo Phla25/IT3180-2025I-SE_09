@@ -1,76 +1,33 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đổi Mật Khẩu - Cư Dân - BlueMoon Portal</title>
-
+    <title>Danh Sách Dịch Vụ - Resident - BlueMoon Portal</title>
+    
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
     <style>
-        /* Tái sử dụng CSS từ profile-resident.html cho header/sidebar/dropdown */
-        /* Thêm CSS cho form */
-        .form-card {
-            background-color: white;
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            padding: 30px;
-            margin-top: 20px;
-            max-width: 600px; /* Giới hạn chiều rộng cho form mật khẩu */
-            margin-left: auto;
-            margin-right: auto;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            font-weight: 500;
-            color: #1F2937;
-            margin-bottom: 8px;
-        }
-
-        .form-control {
-            width: 100%;
-            padding: 10px 15px;
-            border: 1px solid #D1D5DB;
-            border-radius: 8px;
-            box-sizing: border-box;
-            transition: border-color 0.3s;
-        }
-
-        .form-control:focus {
-            outline: none;
-            border-color: #4F46E5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-
-        .btn-submit {
-            background-color: #4F46E5;
-            color: white;
-            padding: 12px 25px;
-            border-radius: 8px;
-            text-decoration: none;
+            font-size: 0.8rem;
             font-weight: 600;
-            transition: background-color 0.3s;
-            border: none;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
         }
-
-        .btn-submit:hover {
-            background-color: #4338CA;
+        .badge-success { background-color: #D1FAE5; color: #065F46; }
+        .badge-warning { background-color: #FEF3C7; color: #B45309; }
+        .badge-danger { background-color: #FEE2E2; color: #991B1B; }
+        .btn-primary {
+             background-color: #4F46E5;
+             color: white;
+             padding: 8px 12px;
+             border-radius: 8px;
+             text-decoration: none;
         }
     </style>
 </head>
-
 <body>
     <aside class="sidebar">
         <div class="sidebar-header">
@@ -92,21 +49,18 @@
                 <i class="fas fa-chart-line"></i>
                 <span>Dashboard</span>
             </a>
-            <a th:href="@{/resident/fees}" class="nav-item active">
+            <a th:href="@{/resident/fees}" class="nav-item">
                 <i class="fas fa-file-invoice-dollar"></i>
                 <span>Hóa Đơn Của Tôi</span>
             </a>
-            
             <a th:href="@{/resident/my-services}" class="nav-item">
                 <i class="fas fa-handshake"></i>
                 <span>Dịch Vụ Của Tôi</span>
             </a>
-            
-            <a th:href="@{/resident/services}" class="nav-item">
+            <a th:href="@{/resident/services}" class="nav-item active">
                 <i class="fas fa-concierge-bell"></i>
                 <span>Đăng Ký Dịch Vụ</span>
             </a>
-            
             <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
                 <i class="fas fa-exclamation-triangle"></i>
                 <span>Báo Cáo Sự Cố</span>
@@ -118,7 +72,7 @@
             </a>
         </nav>
         <div class="sidebar-footer">
-             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+            <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
                 <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
                     <i class="fas fa-sign-out-alt"></i> Đăng Xuất
                 </button>
@@ -131,7 +85,8 @@
             <button class="menu-toggle" onclick="toggleSidebar()">
                 <i class="fas fa-bars"></i>
             </button>
-            <h1>Đổi Mật Khẩu</h1> </div>
+            <h1>Danh Sách Dịch Vụ</h1>
+        </div>
         
         <div class="header-right">
             <div class="user-menu">
@@ -162,64 +117,55 @@
 
     <main class="main-content">
         <div class="container">
+            <h1>Dịch Vụ Có Sẵn</h1>
+
             <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Thông báo thành công</div>
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
 
-            <div class="form-card">
-                <form th:action="@{/resident/change-password}" method="post">
-                    
-                    <div class="form-group">
-                        <label for="matKhauCu" class="form-label">Mật Khẩu Cũ</label>
-                        <input type="password" id="matKhauCu" name="matKhauCu" class="form-control" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="matKhauMoi" class="form-label">Mật Khẩu Mới</label>
-                        <input type="password" id="matKhauMoi" name="matKhauMoi" class="form-control" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="xacNhanMatKhau" class="form-label">Xác Nhận Mật Khẩu Mới</label>
-                        <input type="password" id="xacNhanMatKhau" name="xacNhanMatKhau" class="form-control" required>
-                    </div>
-
-                    <div class="form-group" style="text-align: right;">
-                        <button type="submit" class="btn-submit">
-                            <i class="fas fa-save"></i> Lưu Mật Khẩu Mới
-                        </button>
-                    </div>
-                </form>
+            <div class="content-card">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Mã DV</th>
+                                <th>Tên Dịch Vụ</th>
+                                <th>Loại</th>
+                                <th>Giá/Đơn Vị</th>
+                                <th>Trạng Thái</th>
+                                <th>Hành Động</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="service : ${activeServices}">
+                                <td th:text="${service.maDichVu}">1</td>
+                                <td><strong th:text="${service.tenDichVu}">Phí Gửi Xe Máy</strong></td>
+                                <td th:text="${service.loaiDichVu?.getDbValue()}">Phí Định Kỳ</td>
+                                <td>
+                                    <span th:text="${#numbers.formatInteger(service.giaThanh, 0, 'POINT')}">50,000</span>
+                                    <span th:text="' ₫ / ' + ${service.donVi}">₫ / tháng</span>
+                                </td>
+                                <td>
+                                    <span th:text="${service.trangThai?.name()}">Hoạt Động</span>
+                                </td>
+                                <td>
+                                    <a th:href="@{/resident/service-register-form(id=${service.maDichVu})}" class="btn btn-sm btn-primary" title="Đăng Ký">
+                                        <i class="fas fa-plus"></i> Đăng Ký
+                                    </a>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(activeServices)}">
+                                <td colspan="6" style="text-align: center; padding: 20px;">Không có dịch vụ nào đang hoạt động.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            
-            <p style="text-align: center; margin-top: 20px;">
-                <a th:href="@{/resident/profile}" style="color: #4F46E5; text-decoration: none;">
-                    <i class="fas fa-arrow-left"></i> Quay lại Thông Tin Cá Nhân
-                </a>
-            </p>
-
         </div>
     </main>
-    
-    <script>
-        // Toggle sidebar
-        function toggleSidebar() {
-            document.querySelector('.sidebar').classList.toggle('collapsed');
-        }
-
-        // User menu dropdown
-        document.querySelector('.user-menu').addEventListener('click', function() {
-            this.querySelector('.dropdown-menu').classList.toggle('show'); 
-        });
-
-        // Close dropdown when clicking outside
-        window.addEventListener('click', function(e) {
-            if (!document.querySelector('.user-menu').contains(e.target)) { 
-                document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                    menu.classList.remove('show');
-                });
-            }
-        });
-    </script>
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2025 BlueMoon Apartment Management System. All rights reserved.</p>
+        </div>
+    </footer>
 </body>
-
 </html>

@@ -17,6 +17,33 @@
             align-items: center;
             margin-bottom: 20px;
         }
+        .btn-export {
+            padding: 10px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            border: none;
+            cursor: pointer;
+        }
+        
+        .btn-export-excel {
+            background-color: #10B981;
+            color: white;
+        }
+        
+        .btn-export-pdf {
+            background-color: #EF4444;
+            color: white;
+        }
+        
+        .btn-export:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+            transition: all 0.2s;
+        }
 
         .search-form {
             display: flex;
@@ -218,6 +245,19 @@
                         <button type="submit" class="btn-search"><i class="fas fa-search"></i> Áp Dụng Lọc</button>
                         <a th:href="@{/officer/apartment-list}" class="btn-search" style="background-color: #6B7280; text-decoration: none;">
                             <i class="fas fa-redo"></i> Xóa Lọc
+                        </a>
+                        <a th:href="@{/officer/export/apartments}" class="btn-export btn-export-excel" title="Xuất Excel" style="margin-left: 10px;">
+                            <i class="fas fa-file-excel"></i> Excel
+                        </a>
+                        <a th:href="@{/officer/export/apartments/pdf}" class="btn-export btn-export-pdf" title="Xuất PDF" style="margin-left: 5px;">
+                            <i class="fas fa-file-pdf"></i> PDF
+                        </a>
+                        
+                        <a th:href="@{/officer/export/residents}" class="btn-export btn-export-excel" title="Xuất Danh Sách Cư Dân - Excel" style="margin-left: 15px;">
+                            <i class="fas fa-users"></i> Cư Dân (Excel)
+                        </a>
+                        <a th:href="@{/officer/export/residents/pdf}" class="btn-export btn-export-pdf" title="Xuất Danh Sách Cư Dân - PDF" style="margin-left: 5px;">
+                            <i class="fas fa-users"></i> Cư Dân (PDF)
                         </a>
                     </div>
                 </form>

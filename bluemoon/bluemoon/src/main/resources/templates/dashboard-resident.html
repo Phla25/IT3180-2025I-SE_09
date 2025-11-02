@@ -53,11 +53,26 @@
             color: var(--primary-color, #4F46E5);
         }
 
-        .user-info {
-            text-align: right;
-            line-height: 1.4;
-            display: none;
-        }
+		.user-info {
+		    text-align: right;
+		    line-height: 1.4;
+		    display: block; /* ❗ Chuyển từ flex sang block để xuống 2 dòng */
+		}
+
+		.user-info .user-name {
+		    display: block;
+		    font-weight: 600;
+		    font-size: 14px;
+		    color: #1f2937;
+		}
+
+		.user-info .user-role {
+		    display: block;
+		    font-size: 12px;
+		    color: #7C3AED; /* màu tím giống trang hóa đơn */
+		    text-transform: uppercase;
+		}
+
 
         .user-info .user-name {
             font-weight: 600;
@@ -177,11 +192,26 @@
                 <i class="fas fa-file-invoice-dollar"></i>
                 <span>Hóa Đơn Của Tôi</span>
             </a>
-			<a th:href="@{/resident/notifications}" class="nav-item">
-			        <i class="fas fa-bell"></i>
-			        <span>Thông Báo</span>
-			    </a>
-        <!-- Thêm menu khác nếu cần -->
+            
+            <a th:href="@{/resident/my-services}" class="nav-item">
+                <i class="fas fa-handshake"></i>
+                <span>Dịch Vụ Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/services}" class="nav-item">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Đăng Ký Dịch Vụ</span>
+            </a>
+            
+            <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Báo Cáo Sự Cố</span>
+                <span class="feature-badge">MỚI</span>
+            </a>
+            <a th:href="@{/resident/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i>
+                <span>Thông Báo</span>
+            </a>
         </nav>
             <div class="sidebar-footer">
              <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
@@ -231,14 +261,16 @@
 
     <!-- ==================== MAIN CONTENT ==================== -->
     <main class="main-content">
-        <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 32px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-            <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">
-                Xin chào, <span th:text="${user?.hoVaTen} ?: 'Cư Dân'">Nguyễn Văn Cư Dân</span>!
-            </h1>
-            <p style="font-size: 16px; opacity: 0.9;">
-                Chào mừng bạn đến với BlueMoon Portal - Căn <span th:text="${canHoInfo?.maCanHo} ?: 'N/A'">A-1205</span>
-            </p>
-        </div>
+		<div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+		    <h2 style="font-size: 1.5rem; margin-bottom: 8px;">
+		        <i class="fas fa-home"></i> Dashboard Cư Dân
+		    </h2>
+		    <p style="opacity: 0.9; margin: 0;">
+		        Xin chào, <span th:text="${user?.hoVaTen} ?: 'Cư Dân'">Nguyễn Văn Cư Dân</span> — 
+		        Căn hộ <span th:text="${canHoInfo?.maCanHo} ?: 'N/A'">A-1205</span>
+		    </p>
+		</div>
+
         
         <!-- Stats Grid -->
         <div class="stats-grid">

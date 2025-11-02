@@ -18,6 +18,16 @@
             padding: 30px;
             margin-top: 20px;
         }
+        .feature-badge {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: auto;
+            animation: pulse 2s infinite;
+        }
 
         .detail-section {
             margin-bottom: 30px;
@@ -46,6 +56,35 @@
             font-weight: 600;
             color: #1F2937;
             font-size: 1rem;
+        }
+                .btn-export {
+            padding: 8px 15px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: background-color 0.3s;
+            margin-left: 10px;
+        }
+        
+        .btn-export-excel {
+            background-color: #10B981;
+            color: white;
+        }
+        
+        .btn-export-excel:hover {
+            background-color: #059669;
+        }
+        
+        .btn-export-pdf {
+            background-color: #6366F1;
+            color: white;
+        }
+        
+        .btn-export-pdf:hover {
+            background-color: #4F46E5;
         }
     </style>
 </head>
@@ -118,6 +157,14 @@
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
 
             <div class="detail-card">
+                <div class="toolbar" style="margin-bottom: 20px; display: flex; justify-content: flex-end; gap: 10px; border-bottom: 1px solid #E5E7EB; padding-bottom: 10px;">
+                    <a th:href="@{/officer/export/apartment/{maTaiSan}(maTaiSan=${apartment.maTaiSan})}" class="btn-export btn-export-excel" title="Xuất Excel">
+                        <i class="fas fa-file-excel"></i> Xuất Excel
+                    </a>
+                    <a th:href="@{/officer/export/apartment/{maTaiSan}/pdf(maTaiSan=${apartment.maTaiSan})}" class="btn-export btn-export-pdf" title="Xuất PDF">
+                        <i class="fas fa-file-pdf"></i> Xuất PDF
+                    </a>
+                </div>
                 <div class="detail-section">
                     <h3 style="margin-bottom: 15px;">Thông Tin Tài Sản</h3>
                     <div class="detail-grid">

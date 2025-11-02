@@ -64,6 +64,21 @@ body {
     border-bottom: 1px solid var(--gray-light);
 }
 
+.logout-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0;           /* bỏ padding mặc định */
+    background: none;
+    border: none;
+    color: var(--danger-color);
+    cursor: pointer;
+    text-align: left;
+    font-family: inherit;
+    font-size: 14px;
+}
+
 .logo {
     display: flex;
     align-items: center;
@@ -251,6 +266,8 @@ body {
     z-index: 1001;
 }
 
+
+
 .user-menu:hover .dropdown-menu {
     display: block;
 }
@@ -267,6 +284,9 @@ body {
 
 .dropdown-menu a:hover {
     background: var(--gray-lighter);
+}
+.dropdown-menu.show {
+    display: block !important; /* Đảm bảo nó được hiển thị khi JS kích hoạt */
 }
 
 .dropdown-menu hr {

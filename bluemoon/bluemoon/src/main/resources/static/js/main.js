@@ -225,6 +225,30 @@ function showNotification(message, type = 'info') {
     }, 3000);
 }
 
+// ... (Các hàm khác như toggleSidebar, closeModal, loadReplies)
+
+// ------------------- USER DROPDOWN LOGIC -------------------
+// Toggle User Dropdown
+function toggleUserDropdown() {
+    // Tìm phần tử dropdown bằng ID
+    const dropdown = document.getElementById('userDropdown'); 
+    if (dropdown) {
+        // Thêm/bỏ class 'show'
+        dropdown.classList.toggle('show'); 
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const menu = document.getElementById('userMenu');
+    // Đảm bảo menu tồn tại và click không nằm trong menu
+    if (menu && !menu.contains(e.target)) {
+        const dropdown = document.getElementById('userDropdown');
+        if (dropdown) {
+            dropdown.classList.remove('show');
+        }
+    }
+});
 // Add animation CSS
 const style = document.createElement('style');
 style.textContent = `
