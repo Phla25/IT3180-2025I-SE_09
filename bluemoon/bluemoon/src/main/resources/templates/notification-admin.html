@@ -207,6 +207,21 @@
                     <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
                 </div>
                 <div class="user-avatar"><i class="fas fa-user-circle"></i></div>
+                
+                <!-- Dropdown Menu -->
+                <div class="dropdown-menu">
+                    <a th:href="@{/admin/profile}">
+                        <i class="fas fa-user"></i>
+                        Thông Tin Cá Nhân
+                    </a>
+                    <hr>
+                    <form th:action="@{/logout}" method="post" style="margin: 0;">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i>
+                            Đăng Xuất
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </header>

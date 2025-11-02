@@ -1,0 +1,70 @@
+/* ==================== OFFICER SPECIFIC STYLES ==================== */
+
+/* Feature Badge */
+.feature-badge {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 8px;
+    margin-left: auto;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.nav-item:hover .feature-badge {
+    animation-play-state: paused;
+    transform: scale(1.1);
+}
+
+/* Officer Color Scheme */
+.officer-primary {
+    color: #3B82F6;
+}
+
+.officer-gradient {
+    background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+}
+
+/* Apartment Status */
+.apartment-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.apartment-status.occupied {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.apartment-status.vacant {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+
+.apartment-status.maintenance {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+/* Household Card */
+.household-card {
+    border-left: 4px solid var(--info-color);
+    transition: all 0.3s ease;
+}
+
+.household-card:hover {
+    transform: translateX(4px);
+    box-shadow: var(--shadow-lg);
+}

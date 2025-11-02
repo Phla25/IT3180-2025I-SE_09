@@ -1,0 +1,60 @@
+/* ==================== ACCOUNTANT SPECIFIC STYLES ==================== */
+
+/* Feature Badge */
+.feature-badge {
+    background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 8px;
+    margin-left: auto;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.nav-item:hover .feature-badge {
+    animation-play-state: paused;
+    transform: scale(1.1);
+}
+
+/* Accountant Financial Highlights */
+.accountant-highlight {
+    border-left: 4px solid var(--secondary-color);
+}
+
+.financial-card {
+    background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+    color: white;
+}
+
+/* Invoice Status */
+.invoice-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.invoice-status.paid {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.invoice-status.pending {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.invoice-status.overdue {
+    background: #FEE2E2;
+    color: #991B1B;
+}
