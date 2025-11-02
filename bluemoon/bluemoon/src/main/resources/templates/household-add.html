@@ -181,6 +181,27 @@
                         </div>
                     </div>
                     
+                    <h3 style="margin-top: 30px; margin-bottom: 20px; border-bottom: 1px solid #E5E7EB; padding-bottom: 10px;">Gán Căn Hộ (Tùy chọn)</h3>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="floorSelect" class="form-label">Tầng:</label>
+                            <select id="floorSelect" class="form-select">
+                                <option value="">--- Chọn Tầng ---</option>
+                                <option th:each="floor : ${apartmentFloors}" 
+                                        th:value="${floor}" 
+                                        th:text="${floor}"></option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="apartmentSelect" class="form-label">Căn Hộ Trống:</label>
+                            <select id="apartmentSelect" name="maCanHoLienKet" class="form-select" disabled>
+                                <option value="">--- Chọn Căn Hộ ---</option>
+                                </select>
+                        </div>
+                    </div>
+
                     <h3 style="margin-top: 30px; margin-bottom: 20px; border-bottom: 1px solid #E5E7EB; padding-bottom: 10px;">Thông Tin Chủ Hộ</h3>
                     
                     <div class="form-grid">
@@ -227,6 +248,55 @@
                     menu.classList.remove('show');
                 });
             }
+        });
+
+        // ===============================================
+        // LOGIC AJAX/FETCH CẬP NHẬT CĂN HỘ THEO TẦNG
+        // ===============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const floorSelect = document.getElementById('floorSelect');
+            const apartmentSelect = document.getElementById('apartmentSelect');
+
+            floorSelect.addEventListener('change', function() {
+                const selectedFloor = this.value;
+                
+                // 1. Reset dropdown Căn Hộ
+                apartmentSelect.innerHTML = '<option value="">--- Chọn Căn Hộ ---</option>';
+                apartmentSelect.disabled = true;
+
+                if (selectedFloor) {
+                    // 2. Tải danh sách Căn Hộ trống từ Backend
+                    fetch(`/admin/apartments/empty-by-floor?viTri=${encodeURIComponent(selectedFloor)}`)
+                        .then(response => {
+                            if (!response.ok) {
+                                throw new Error('Lỗi tải dữ liệu căn hộ: ' + response.statusText);
+                            }
+                            return response.json();
+                        })
+                        .then(apartments => {
+                            if (apartments.length > 0) {
+                                apartments.forEach(apartment => {
+                                    const option = document.createElement('option');
+                                    // Giá trị gửi đi là maTaiSan
+                                    option.value = apartment.maTaiSan; 
+                                    // Nội dung hiển thị là Tên Căn Hộ + Chi tiết (tenHienThi)
+                                    option.textContent = apartment.tenHienThi;
+                                    apartmentSelect.appendChild(option);
+                                });
+                                apartmentSelect.disabled = false;
+                            } else {
+                                const option = document.createElement('option');
+                                option.value = '';
+                                option.textContent = 'Không có căn hộ trống trên tầng này.';
+                                apartmentSelect.appendChild(option);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Fetch Error:', error);
+                            alert('Không thể tải danh sách căn hộ trống. Vui lòng kiểm tra console.');
+                        });
+                }
+            });
         });
     </script>
 </body>

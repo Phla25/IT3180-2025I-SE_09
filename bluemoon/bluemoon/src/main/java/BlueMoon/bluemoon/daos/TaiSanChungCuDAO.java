@@ -207,6 +207,53 @@ public class TaiSanChungCuDAO {
         Long count = entityManager.createQuery(jpql, Long.class).getSingleResult();
         return count != null ? count : 0;
     }
+    /**
+     * Tìm tất cả các tầng (ViTri) có căn hộ (loaiTaiSan = CAN_HỌ)
+     */
+    public List<String> findAllApartmentFloors() {
+        String jpql = "SELECT DISTINCT ts.viTri FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai ORDER BY ts.viTri ASC";
+        return entityManager.createQuery(jpql, String.class)
+                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+    /**
+     * Kiểm tra xem Tên Tài Sản đã tồn tại chưa (dùng khi thêm mới)
+     */
+    public boolean existsByTenCanHo(String tenTaiSan) {
+        // Chỉ kiểm tra cho CĂN HỘ (AssetType.can_ho)
+        String jpql = "SELECT COUNT(ts) FROM TaiSanChungCu ts WHERE ts.tenTaiSan = :tenTaiSan AND ts.loaiTaiSan = :loaiCanHo";
+        Long count = entityManager.createQuery(jpql, Long.class)
+                                  .setParameter("tenTaiSan", tenTaiSan)
+                                  .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                                  .getSingleResult();
+        return count > 0;
+    }
+    
+    /**
+     * Kiểm tra xem Tên Tài Sản đã tồn tại chưa (dùng khi cập nhật, loại trừ chính nó)
+     */
+    public boolean existsByTenCanHoExceptId(String tenTaiSan, Integer maTaiSan) {
+        String jpql = "SELECT COUNT(ts) FROM TaiSanChungCu ts WHERE ts.tenTaiSan = :tenTaiSan " +
+                      "AND ts.loaiTaiSan = :loaiCanHo AND ts.maTaiSan != :maTaiSan";
+        Long count = entityManager.createQuery(jpql, Long.class)
+                                  .setParameter("tenTaiSan", tenTaiSan)
+                                  .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                                  .setParameter("maTaiSan", maTaiSan)
+                                  .getSingleResult();
+        return count > 0;
+    }
+    
+    /**
+     * Tìm kiếm các căn hộ đang TRỐNG (HoGiaDinh IS NULL) theo vị trí (tầng).
+     */
+    public List<TaiSanChungCu> findEmptyApartmentsByFloor(String viTri) {
+        String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai " +
+                      "AND ts.hoGiaDinh IS NULL AND ts.viTri = :viTri";
+        return entityManager.createQuery(jpql, TaiSanChungCu.class)
+                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .setParameter("viTri", viTri)
+                            .getResultList();
+    }
     
 }
 

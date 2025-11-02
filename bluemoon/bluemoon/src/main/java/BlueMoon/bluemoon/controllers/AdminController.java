@@ -3,7 +3,9 @@ package BlueMoon.bluemoon.controllers;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -478,6 +480,8 @@ public class AdminController {
         model.addAttribute("user", getCurrentUser(auth));
         model.addAttribute("newHousehold", new HoGiaDinh());
         model.addAttribute("householdStatuses", HouseholdStatus.values());
+        List<String> floors = taiSanChungCuService.getAllApartmentFloors();
+        model.addAttribute("apartmentFloors", floors);
         
         // Thêm DTO hoặc RequestParam để nhập CCCD Chủ hộ
         // Giả định dùng RequestParam: chuHoCccd và quanHe
@@ -492,15 +496,44 @@ public class AdminController {
     public String handleAddHousehold(@ModelAttribute("newHousehold") HoGiaDinh hoGiaDinh,
                                      @RequestParam("chuHoCccd") String chuHoCccd,
                                      @RequestParam(value = "quanHeVoiChuHo", defaultValue = "Chủ hộ") String quanHe,
+                                     @RequestParam(value = "maCanHoLienKet", required = false) Integer maTaiSan, // <-- THAM SỐ MỚI
                                      RedirectAttributes redirectAttributes) {
         try {
-            hoGiaDinhService.themHoGiaDinh(hoGiaDinh, chuHoCccd, quanHe);
-            redirectAttributes.addFlashAttribute("successMessage", "Thêm Hộ gia đình " + hoGiaDinh.getTenHo() + " thành công!");
+            // Cập nhật hàm service: truyền thêm maTaiSan
+            hoGiaDinhService.themHoGiaDinh(hoGiaDinh, chuHoCccd, quanHe, maTaiSan);
+            redirectAttributes.addFlashAttribute("successMessage", "Thêm Hộ gia đình " + hoGiaDinh.getTenHo() + " và gán Căn hộ thành công!");
             return "redirect:/admin/household-list";
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
             return "redirect:/admin/household-add";
         }
+    }
+    /**
+     * XỬ LÝ REST API: Lấy danh sách Căn hộ trống theo Tầng
+     * URL: GET /admin/apartments/empty-by-floor?viTri=T1
+     * TRẢ VỀ: List<Map<String, Object>> {maTaiSan, tenHienThi}
+     */
+    @GetMapping("/apartments/empty-by-floor")
+    public ResponseEntity<List<Map<String, Object>>> getEmptyApartmentsByFloor(@RequestParam("viTri") String viTri) {
+        if (viTri == null || viTri.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        List<TaiSanChungCu> apartments = taiSanChungCuService.getEmptyApartmentsByFloor(viTri);
+        
+        // Chuyển đổi List<TaiSanChungCu> sang List<Map<String, Object>> chỉ chứa MaTaiSan và TenTaiSan
+        List<Map<String, Object>> simpleApartments = apartments.stream()
+            .map(a -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("maTaiSan", a.getMaTaiSan());
+                // Hiển thị Tên Căn Hộ và Diện Tích để dễ nhận biết hơn
+                map.put("tenHienThi", a.getTenTaiSan() + " (DT: " + a.getDienTich() + "m2)");
+                return map;
+            })
+            .toList();
+
+        // Trả về danh sách Căn hộ trống dưới dạng JSON
+        return ResponseEntity.ok(simpleApartments);
     }
 
     /**
@@ -557,12 +590,12 @@ public class AdminController {
             .filter(tvh -> tvh.getNgayKetThuc() == null)
             .map(ThanhVienHo::getDoiTuong)
             .toList();
-        
+        List<String> floors = taiSanChungCuService.getAllApartmentFloors();
         model.addAttribute("user", user);
         model.addAttribute("household", hgdCu);
         model.addAttribute("members", members); // Danh sách thành viên để chọn
         model.addAttribute("newHousehold", new HoGiaDinh()); // DTO cho thông tin Hộ mới
-        
+        model.addAttribute("apartmentFloors", floors);
         return "household-split"; // Tên file Thymeleaf mới
     }
 
@@ -575,6 +608,7 @@ public class AdminController {
                                        @RequestParam("tenHoMoi") String tenHoMoi,
                                        @RequestParam("chuHoMoiCccd") String chuHoMoiCccd,
                                        @RequestParam("cccdDuocTach") List<String> cccdThanhVienDuocTach, // List CCCD được chọn
+                                       @RequestParam(value = "maCanHoLienKet", required = false) Integer maTaiSan, // <-- THAM SỐ MỚI
                                        RedirectAttributes redirectAttributes) {
         try {
             // Kiểm tra số lượng thành viên tối thiểu
@@ -582,12 +616,13 @@ public class AdminController {
                 throw new IllegalArgumentException("Vui lòng chọn ít nhất một thành viên để tách hộ.");
             }
             
-            // Gọi logic Service Tách Hộ
+            // Gọi logic Service Tách Hộ (truyền thêm maTaiSan)
             HoGiaDinh hoGiaDinhMoi = hoGiaDinhService.tachHo(
                 maHoCu, 
                 cccdThanhVienDuocTach, 
                 chuHoMoiCccd, 
-                tenHoMoi
+                tenHoMoi,
+                maTaiSan // <-- TRUYỀN THAM SỐ MỚI
             );
             
             redirectAttributes.addFlashAttribute("successMessage", 

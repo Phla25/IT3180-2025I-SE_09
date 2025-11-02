@@ -50,6 +50,22 @@ public class TaiSanChungCuService {
         return taiSanChungCuDAO.findAllAssets(loaiTaiSan);
     }
     /**
+     * Lấy danh sách tất cả các tầng có căn hộ.
+     * @return List<String> danh sách tầng.
+     */
+    public List<String> getAllApartmentFloors() {
+        return taiSanChungCuDAO.findAllApartmentFloors();
+    }
+
+    /**
+     * Lấy danh sách căn hộ trống theo tầng.
+     * @param viTri Vị trí (Tầng) cần tìm.
+     * @return List<TaiSanChungCu> danh sách căn hộ trống.
+     */
+    public List<TaiSanChungCu> getEmptyApartmentsByFloor(String viTri) {
+        return taiSanChungCuDAO.findEmptyApartmentsByFloor(viTri);
+    }
+    /**
      * Lấy danh sách tất cả các Căn hộ (loaiTaiSan = can_ho).
      * @return List<TaiSanChungCu> là danh sách các căn hộ.
      */
@@ -157,6 +173,10 @@ public class TaiSanChungCuService {
      */
     @Transactional
     public TaiSanChungCu themCanHo(TaiSanChungCu canHoMoi, String maHo) {
+        // KIỂM TRA NGHIỆP VỤ: Tên căn hộ phải là duy nhất (NEW)
+        if (taiSanChungCuDAO.existsByTenCanHo(canHoMoi.getTenTaiSan())) {
+            throw new IllegalArgumentException("Lỗi: Tên Căn hộ '" + canHoMoi.getTenTaiSan() + "' đã tồn tại. Vui lòng chọn tên khác.");
+        }
         // 1. Kiểm tra và thiết lập Hộ gia đình liên kết
         if (maHo != null && !maHo.trim().isEmpty()) {
             HoGiaDinh hgd = hoGiaDinhDAO.findById(maHo)
@@ -190,7 +210,7 @@ public class TaiSanChungCuService {
     public TaiSanChungCu capNhatTaiSanChung(Integer maTaiSan, TaiSanChungCu taiSanCapNhat, String maHo) {
         TaiSanChungCu taiSanHienTai = taiSanChungCuDAO.findByID(maTaiSan)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Tài Sản với Mã Tài Sản: " + maTaiSan));
-    
+
         // 1. Cập nhật thông tin cơ bản
         taiSanHienTai.setTenTaiSan(taiSanCapNhat.getTenTaiSan());
         taiSanHienTai.setLoaiTaiSan(taiSanCapNhat.getLoaiTaiSan()); // Cho phép đổi loại tài sản
@@ -221,7 +241,10 @@ public class TaiSanChungCuService {
     public TaiSanChungCu capNhatCanHo(Integer maTaiSan, TaiSanChungCu canHoCapNhat, String maHo) {
         TaiSanChungCu canHoHienTai = taiSanChungCuDAO.findByID(maTaiSan)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Căn hộ với Mã Tài Sản: " + maTaiSan));
-        
+                // KIỂM TRA NGHIỆP VỤ: Tên căn hộ phải là duy nhất (khi cập nhật) (NEW)
+        if (taiSanChungCuDAO.existsByTenCanHoExceptId(canHoCapNhat.getTenTaiSan(), maTaiSan)) {
+             throw new IllegalArgumentException("Lỗi: Tên Căn hộ '" + canHoCapNhat.getTenTaiSan() + "' đã được sử dụng cho căn hộ khác.");
+        }
         // Đảm bảo không thay đổi loại tài sản
         if (canHoHienTai.getLoaiTaiSan() != AssetType.can_ho) {
              throw new IllegalStateException("Loại tài sản không phải là Căn hộ. Không thể cập nhật qua chức năng này.");

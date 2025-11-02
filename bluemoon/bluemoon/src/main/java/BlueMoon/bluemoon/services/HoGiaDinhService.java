@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Random;
 
-import org.springframework.beans.factory.annotation.Autowired; // Cần cho việc tạo mã hộ tự động
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +18,7 @@ import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.entities.ThanhVienHoID;
+import BlueMoon.bluemoon.utils.AssetStatus;
 import BlueMoon.bluemoon.utils.HouseholdStatus;
 import BlueMoon.bluemoon.utils.TerminationReason;
 
@@ -65,10 +66,11 @@ public class HoGiaDinhService {
      * @param hoGiaDinh Hộ gia đình cần thêm (chưa có mã hộ)
      * @param chuHoCccd CCCD của người sẽ là Chủ hộ
      * @param quanHeVoiChuHo Quan hệ của Chủ hộ với chính họ (thường là "Chủ hộ")
+     * @param maTaiSan Mã Tài Sản của căn hộ muốn liên kết (có thể null) <-- THÊM THAM SỐ NÀY
      * @return HoGiaDinh đã lưu
      */
     @jakarta.transaction.Transactional
-    public HoGiaDinh themHoGiaDinh(HoGiaDinh hoGiaDinh, String chuHoCccd, String quanHeVoiChuHo) {
+    public HoGiaDinh themHoGiaDinh(HoGiaDinh hoGiaDinh, String chuHoCccd, String quanHeVoiChuHo, Integer maTaiSan) { // <-- CẬP NHẬT
         // 1. Tạo Mã Hộ duy nhất
         if (hoGiaDinh.getMaHo() == null || hoGiaDinh.getMaHo().trim().isEmpty()) {
             hoGiaDinh.setMaHo(generateUniqueMaHo());
@@ -82,8 +84,24 @@ public class HoGiaDinhService {
         
         // 3. Lưu Hộ gia đình
         HoGiaDinh savedHo = hoGiaDinhDAO.save(hoGiaDinh);
+        
+        // 4. LOGIC GÁN CĂN HỘ MỚI (NEW)
+        if (maTaiSan != null) {
+            TaiSanChungCu canHo = taiSanChungCuDAO.findByID(maTaiSan)
+                .orElseThrow(() -> new IllegalArgumentException("Mã Tài Sản Căn Hộ không hợp lệ."));
+                
+            if (canHo.getHoGiaDinh() != null) {
+                 throw new IllegalStateException("Căn hộ đã có chủ. Vui lòng chọn căn hộ khác.");
+            }
+            if (canHo.getLoaiTaiSan() != BlueMoon.bluemoon.utils.AssetType.can_ho) {
+                throw new IllegalArgumentException("Tài sản được chọn không phải là Căn Hộ.");
+            }
+            canHo.setTrangThai(AssetStatus.da_duoc_thue);
+            canHo.setHoGiaDinh(savedHo); // Gán hộ mới vào căn hộ
+            taiSanChungCuDAO.save(canHo); // Cập nhật căn hộ
+        }
 
-        // 4. Thêm Chủ hộ vào ThanhVienHo
+        // 5. Thêm Chủ hộ vào ThanhVienHo
         if (chuHoCccd != null && !chuHoCccd.trim().isEmpty()) {
             DoiTuong chuHo = doiTuongDAO.findResidentByCccd(chuHoCccd)
                                      .orElseThrow(() -> new IllegalArgumentException("CCCD Chủ hộ không hợp lệ."));
@@ -93,6 +111,10 @@ public class HoGiaDinhService {
 
         return savedHo;
     }
+    
+    // Hàm themHoGiaDinh cũ (không có maTaiSan) cần được giữ lại hoặc xử lý
+    // Nếu bạn chỉ dùng hàm mới, hãy xóa hàm cũ hoặc thay thế nó:
+    // (Bỏ qua việc xóa/thay thế hàm cũ, chỉ tập trung vào cập nhật hàm mới)
 
     /**
      * Cập nhật thông tin Hộ gia đình
@@ -202,10 +224,11 @@ public class HoGiaDinhService {
      * @param cccdThanhVienDuocTach List CCCD của các thành viên được tách
      * @param chuHoMoiCccd CCCD của Chủ hộ mới (phải nằm trong list cccdThanhVienDuocTach)
      * @param tenHoMoi Tên của Hộ gia đình mới
+     * @param maTaiSan Mã Tài Sản của căn hộ muốn liên kết (có thể null) <-- THÊM THAM SỐ NÀY
      * @return HoGiaDinh mới được tạo
      */
     @Transactional
-    public HoGiaDinh tachHo(String maHoCu, List<String> cccdThanhVienDuocTach, String chuHoMoiCccd, String tenHoMoi) {
+    public HoGiaDinh tachHo(String maHoCu, List<String> cccdThanhVienDuocTach, String chuHoMoiCccd, String tenHoMoi, Integer maTaiSan) { // <-- CẬP NHẬT
         
         // 1. Kiểm tra đầu vào
         if (!cccdThanhVienDuocTach.contains(chuHoMoiCccd)) {
@@ -214,13 +237,13 @@ public class HoGiaDinhService {
         HoGiaDinh hgdCu = hoGiaDinhDAO.findById(maHoCu)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình cũ."));
 
-        // 2. Tạo Hộ gia đình mới
+        // 2. Tạo Hộ gia đình mới và Chủ hộ (Sử dụng hàm themHoGiaDinh mới)
         HoGiaDinh hoMoi = new HoGiaDinh();
         hoMoi.setTenHo(tenHoMoi);
-        // Tái sử dụng logic thêm hộ để tạo mã hộ và lưu
-        HoGiaDinh savedHoMoi = themHoGiaDinh(hoMoi, chuHoMoiCccd, "Chủ hộ"); // Tự động thêm Chủ hộ
+        // Gọi hàm themHoGiaDinh đã cập nhật (có gán căn hộ)
+        HoGiaDinh savedHoMoi = themHoGiaDinh(hoMoi, chuHoMoiCccd, "Chủ hộ", maTaiSan); // <-- GỌI HÀM CẬP NHẬT
 
-        // 3. Xử lý các thành viên được tách
+        // 3. Xử lý các thành viên còn lại được tách
         for (String cccd : cccdThanhVienDuocTach) {
             // Chủ hộ mới đã được xử lý ở bước 2, ta chỉ cần xử lý các thành viên khác
             if (cccd.equals(chuHoMoiCccd)) continue; 
@@ -249,9 +272,6 @@ public class HoGiaDinhService {
         // 4. Kiểm tra và xử lý Chủ hộ cũ (nếu Chủ hộ cũ bị tách)
         Optional<ThanhVienHo> chuHoCuOpt = thanhVienHoDAO.findCurrentChuHoByHo(maHoCu);
         if (chuHoCuOpt.isPresent() && cccdThanhVienDuocTach.contains(chuHoCuOpt.get().getDoiTuong().getCccd())) {
-            // Nếu Chủ hộ cũ bị tách, cần tìm thành viên mới và set làm Chủ hộ
-            // Nếu hộ cũ còn thành viên: logic phức tạp hơn, có thể cần chọn Chủ hộ mới qua form
-            // Tạm thời: nếu Chủ hộ cũ bị tách và hộ cũ còn người, báo lỗi để admin tự chọn Chủ hộ mới
             
             if (hoGiaDinhDAO.countMembersInHousehold(maHoCu) > 0) { // Nếu còn thành viên sau khi tách
                  throw new IllegalStateException("Hộ cũ còn thành viên. Vui lòng chọn Chủ hộ mới cho Hộ cũ (" + maHoCu + ") trước khi tách Chủ hộ cũ.");
