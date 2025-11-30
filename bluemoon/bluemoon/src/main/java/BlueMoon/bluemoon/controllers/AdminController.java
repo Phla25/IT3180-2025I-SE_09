@@ -3,6 +3,7 @@ package BlueMoon.bluemoon.controllers;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import BlueMoon.bluemoon.daos.BaoCaoSuCoDAO;
@@ -93,17 +95,18 @@ public class AdminController {
     @Autowired private DoiTuongDAO doiTuongDAO;
     @Autowired private PhanHoiThongBaoService phanHoiThongBaoService;
 
+    @SuppressWarnings("unchecked")
     @GetMapping("/dashboard")
     public String showAdminDashboard(Model model, Authentication auth) {
         
+        // 1. Xác thực người dùng
         DoiTuong user = getCurrentUser(auth);
         if (user == null) {
             return "redirect:/login?error=notfound";
         }
-        // ⚠️ Đảm bảo user không null (Spring Security thường lo phần này)
         model.addAttribute("user", user);
 
-        // 1. Thống kê chung
+        // 2. Thống kê số liệu tổng quan (Cards)
         model.addAttribute("tongCuDan", cuDanService.layDanhSachCuDan().size());
         model.addAttribute("tongHoGiaDinh", hoGiaDinhDAO.countAll());
         
@@ -111,22 +114,53 @@ public class AdminController {
         long suCoDangXuLy = suCoDAO.countByTrangThai(IncidentStatus.dang_xu_ly);
         model.addAttribute("suCoChuaXuLy", suCoChuaXuLy + suCoDangXuLy);
         
-        // Dùng Optional.orElse để tránh NPE nếu Service trả về null
         BigDecimal tongThu = hoaDonDAO.sumSoTienByTrangThai(InvoiceStatus.da_thanh_toan);
         model.addAttribute("doanhThuThang", tongThu); 
 
-        // 2. Thống kê nhanh (Tỷ lệ)
-        long tongSuCo = suCoDAO.countAll(); // Cần thêm phương thức này
+        // 3. Thống kê tỷ lệ (Progress bars)
+        long tongSuCo = suCoDAO.countAll(); 
         long suCoDaXuLy = suCoDAO.countByTrangThai(IncidentStatus.da_hoan_thanh);
-        
-        // Tính tỷ lệ an toàn, sử dụng BigDecimal để tránh chia cho 0
         int tyLeSuCoDaXuLy = (tongSuCo > 0) ? (int)((suCoDaXuLy * 100) / tongSuCo) : 0;
         model.addAttribute("tyLeSuCoDaXuLy", tyLeSuCoDaXuLy);
-        // ... Các tỷ lệ khác ...
+        
+        // (Giả lập các tỷ lệ khác nếu chưa có logic tính toán)
+        model.addAttribute("tyLeThuPhi", 78); 
+        model.addAttribute("tyLeCanHoDaBan", 92);
 
-        // 3. Danh sách Sự Cố Cần Xử Lý Gấp (Luôn trả về List, có thể rỗng)
+        // 4. Danh sách sự cố cần xử lý gấp
         List<BaoCaoSuCo> suCoCanXuLy = suCoDAO.findByMucDoUuTien(PriorityLevel.cao);
-        model.addAttribute("suCoCanXuLy", suCoCanXuLy); // Dùng List, Thymeleaf sẽ tự xử lý list rỗng
+        model.addAttribute("suCoCanXuLy", suCoCanXuLy);
+
+        // ========================================================
+        // 5. XỬ LÝ DỮ LIỆU BIỂU ĐỒ (LOGIC MỚI)
+        // ========================================================
+        Map<String, Object> chartData = taiSanChungCuService.getChartData();
+        
+        // A. Dữ liệu Tầng
+        Map<Integer, Long> floorMap = (Map<Integer, Long>) chartData.get("floorStats");
+        List<String> floorLabels = new ArrayList<>();
+        List<Long> floorData = new ArrayList<>();
+        
+        for (Map.Entry<Integer, Long> entry : floorMap.entrySet()) {
+            floorLabels.add("Tầng " + entry.getKey());
+            floorData.add(entry.getValue());
+        }
+
+        // B. Dữ liệu Tòa
+        Map<String, Long> buildingMap = (Map<String, Long>) chartData.get("buildingStats");
+        List<String> buildingLabels = new ArrayList<>();
+        List<Long> buildingData = new ArrayList<>();
+
+        for (Map.Entry<String, Long> entry : buildingMap.entrySet()) {
+            buildingLabels.add("Tòa " + entry.getKey());
+            buildingData.add(entry.getValue());
+        }
+
+        model.addAttribute("floorLabels", floorLabels);
+        model.addAttribute("floorData", floorData);
+        model.addAttribute("buildingLabels", buildingLabels);
+        model.addAttribute("buildingData", buildingData);
+        // ========================================================
 
         return "dashboard-admin";
     }
@@ -1086,6 +1120,10 @@ public class AdminController {
     // QUẢN LÝ HÓA ĐƠN (CRUD)
     // =======================================================
     
+    // =======================================================
+    // [CẬP NHẬT] QUẢN LÝ HÓA ĐƠN VỚI CHỨC NĂNG CHỌN THÀNH VIÊN
+    // =======================================================
+    
     /**
      * Admin list: URL: /admin/fees
      */
@@ -1094,11 +1132,11 @@ public class AdminController {
         model.addAttribute("user", getCurrentUser(auth));
         List<HoaDon> hoaDonList = hoaDonService.getAllHoaDon(); 
         model.addAttribute("hoaDonList", hoaDonList);
-        return "fees-admin"; // Tên file Thymeleaf mới
+        return "fees-admin"; 
     }
     
     /**
-     * Admin form: URL: /admin/fee-form (Sử dụng lại logic của Kế toán)
+     * Admin form: URL: /admin/fee-form
      */
     @GetMapping("/fee-form")
     public String showAdminFeeForm(@RequestParam(value = "id", required = false) Integer maHoaDon, 
@@ -1115,40 +1153,40 @@ public class AdminController {
         model.addAttribute("invoiceTypes", InvoiceType.values()); 
         List<HoGiaDinh> allHo = hoGiaDinhService.getAllHouseholds(); 
         model.addAttribute("allHo", allHo);
-        // model.addAttribute("allHo", hoGiaDinhService.getAllHouseholds()); // Cần Autowired HoGiaDinhService
         
-        // Vẫn trỏ đến file form chung
         return "invoice-add-edit-admin"; 
     }
     
     /**
-     * Admin save: URL: /admin/fee-save (Tái sử dụng logic Service)
+     * API JSON: Trả về danh sách thành viên của một hộ cụ thể.
+     * Giao diện sẽ gọi cái này khi người dùng chọn Hộ.
      */
-    @PostMapping("/fee-save")
-    public String handleAdminFeeSave(@ModelAttribute("hoaDon") HoaDon hoaDon, 
-                                @RequestParam("maHo") String maHo,
-                                Authentication auth,
-                                RedirectAttributes redirectAttributes) {
-        DoiTuong currentUser = getCurrentUser(auth);
-        
-        try {
-            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, currentUser);
-            
-            String message = (hoaDon.getMaHoaDon() == null) 
-                             ? "Tạo mới Hóa đơn thành công (Admin)!" 
-                             : "Cập nhật Hóa đơn #" + hoaDon.getMaHoaDon() + " thành công (Admin)!";
-            
-            redirectAttributes.addFlashAttribute("successMessage", message);
-            return "redirect:/admin/fees";
-        } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            return "redirect:/admin/fee-form?id=" + (hoaDon.getMaHoaDon() != null ? hoaDon.getMaHoaDon() : "");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
-            return "redirect:/admin/fees";
+    @GetMapping("/api/households/{maHo}/members")
+    public ResponseEntity<List<Map<String, String>>> getHouseholdMembers(@PathVariable String maHo) {
+        // 1. Tìm hộ gia đình
+        HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo).orElse(null);
+    
+        if (hgd == null) {
+            return ResponseEntity.notFound().build();
         }
-    }
 
+        // 2. Lấy danh sách thành viên ĐANG Ở (ngayKetThuc == null)
+        List<Map<String, String>> members = hgd.getThanhVienHoList().stream()
+            .filter(tvh -> tvh.getNgayKetThuc() == null) 
+            .map(tvh -> {
+                Map<String, String> map = new HashMap<>();
+                map.put("cccd", tvh.getDoiTuong().getCccd());
+            
+                // Đánh dấu ai là Chủ hộ để dễ nhìn
+                String role = tvh.getLaChuHo() ? " (Chủ hộ)" : "";
+                map.put("hoVaTen", tvh.getDoiTuong().getHoVaTen() + role);
+            
+                return map;
+            })
+            .toList();
+
+        return ResponseEntity.ok(members);
+    }
     /**
      * Admin delete: URL: /admin/fee-delete (Tái sử dụng logic Service)
      */
@@ -1368,6 +1406,57 @@ public class AdminController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    // =======================================================
+    // IMPORT EXCEL (MỚI)
+    // =======================================================
+
+    /**
+     * 1. Hiển thị trang Import Excel
+     * URL: /admin/fees/import
+     */
+    @GetMapping("/fees/import")
+    public String showImportFeesPage(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        return "fees-import-admin"; // Trỏ đến file HTML sắp tạo
+    }
+
+    /**
+     * 2. Xử lý Upload File Excel
+     * URL: /admin/fees/import
+     */
+    @PostMapping("/fees/import")
+    @SuppressWarnings({"CallToPrintStackTrace", "UseSpecificCatch"})
+    public String handleImportFees(@RequestParam("file") MultipartFile file,
+                                   Authentication auth,
+                                   RedirectAttributes redirectAttributes) {
+        DoiTuong user = getCurrentUser(auth);
+        
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file Excel.");
+            return "redirect:/admin/fees/import";
+        }
+
+        try {
+            // Gọi Service xử lý đọc file và lưu DB
+            String result = hoaDonService.importHoaDonFromExcel(file, user);
+            
+            // Kiểm tra kết quả để hiển thị màu thông báo phù hợp
+            if (result.contains("Thất bại") || result.contains("Lỗi")) {
+                // Nếu có lỗi dòng nào đó, hiện thông báo dạng cảnh báo/lỗi
+                redirectAttributes.addFlashAttribute("errorMessage", result); 
+            } else {
+                redirectAttributes.addFlashAttribute("successMessage", result);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+            return "redirect:/admin/fees/import";
+        }
+        
+        // Thành công thì quay về danh sách hóa đơn
+        return "redirect:/admin/fees";
     }
     
     /**
@@ -1727,5 +1816,49 @@ public class AdminController {
         // 2. Trả về JSON
         // Nếu không có phản hồi, trả về List rỗng (status 200)
         return ResponseEntity.ok(replies);
+    }
+    /**
+     * Hiển thị trang báo cáo thống kê tổng hợp
+     * URL: /admin/reports
+     */
+    @GetMapping("/reports") // Endpoint chung cho trang báo cáo
+    public String showUnifiedReport(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+
+        // === PHẦN 1: DỮ LIỆU TÀI SẢN CHUNG ===
+        Map<String, Object> assetStats = taiSanChungCuService.getGeneralAssetStatistics();
+        model.addAttribute("assetTypeLabels", assetStats.get("typeLabels"));
+        model.addAttribute("assetTypeData", assetStats.get("typeData"));
+        model.addAttribute("assetStatusLabels", assetStats.get("statusLabels"));
+        model.addAttribute("assetStatusData", assetStats.get("statusData"));
+        model.addAttribute("assetLocationLabels", assetStats.get("locationLabels"));
+        model.addAttribute("assetLocationData", assetStats.get("locationData"));
+        
+        // Danh sách bảng tài sản
+        model.addAttribute("assetList", taiSanChungCuService.getGeneralAssetListReport());
+
+        // === PHẦN 2: DỮ LIỆU CƯ DÂN ===
+        // A. Thống kê theo Tòa/Tầng (Lấy từ TaiSanChungCuService cũ)
+        Map<String, Object> buildingStats = taiSanChungCuService.getChartData(); // Hàm cũ bạn đã viết
+        
+        // Xử lý dữ liệu Tầng
+        Map<Integer, Long> floorMap = (Map<Integer, Long>) buildingStats.get("floorStats");
+        List<String> floorLabels = new ArrayList<>();
+        List<Long> floorData = new ArrayList<>();
+        for (Map.Entry<Integer, Long> e : floorMap.entrySet()) {
+            floorLabels.add("Tầng " + e.getKey());
+            floorData.add(e.getValue());
+        }
+        model.addAttribute("floorLabels", floorLabels);
+        model.addAttribute("floorData", floorData);
+
+        // B. Thống kê Giới tính & Trạng thái (Lấy từ CuDanService mới)
+        Map<String, Object> residentStats = cuDanService.getResidentStatistics();
+        model.addAttribute("genderLabels", residentStats.get("genderLabels"));
+        model.addAttribute("genderData", residentStats.get("genderData"));
+        model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
+        model.addAttribute("resStatusData", residentStats.get("resStatusData"));
+
+        return "reports-dashboard"; // Tên file HTML mới
     }
 }

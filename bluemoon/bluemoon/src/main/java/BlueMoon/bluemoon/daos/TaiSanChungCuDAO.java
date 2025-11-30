@@ -254,6 +254,77 @@ public class TaiSanChungCuDAO {
                             .setParameter("viTri", viTri)
                             .getResultList();
     }
-    
+    /**
+     * Lấy danh sách: [Tên Căn Hộ, Số lượng cư dân đang ở]
+     * Ví dụ: ["A-1001", 3], ["B-0502", 2]
+     * Chúng ta sẽ xử lý logic tách Tòa/Tầng ở Service.
+     */
+    public List<Object[]> getRawResidentCounts() {
+        String jpql = "SELECT t.tenTaiSan, COUNT(tv) " +
+                      "FROM TaiSanChungCu t " +
+                      "JOIN t.hoGiaDinh h " +
+                      "JOIN h.thanhVienHoList tv " +
+                      "WHERE t.loaiTaiSan = :loai " +
+                      "AND tv.ngayKetThuc IS NULL " +
+                      "GROUP BY t.tenTaiSan";
+        
+        return entityManager.createQuery(jpql, Object[].class)
+                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+    // =======================================================
+    // THỐNG KÊ TÀI SẢN CHUNG (KHÔNG BAO GỒM CĂN HỘ)
+    // =======================================================
+
+    /**
+     * Lấy danh sách chi tiết các tài sản chung (Không phải căn hộ)
+     */
+    public List<TaiSanChungCu> findAllGeneralAssets() {
+        String jpql = "SELECT t FROM TaiSanChungCu t WHERE t.loaiTaiSan != :loaiCanHo ORDER BY t.tenTaiSan ASC";
+        return entityManager.createQuery(jpql, TaiSanChungCu.class)
+                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+
+    /**
+     * Thống kê số lượng theo Loại Tài Sản (VD: Thiết bị, Tiện ích...)
+     * Trả về: List<[AssetType, Long]>
+     */
+    public List<Object[]> countGeneralAssetsByType() {
+        String jpql = "SELECT t.loaiTaiSan, COUNT(t) FROM TaiSanChungCu t " +
+                      "WHERE t.loaiTaiSan != :loaiCanHo " +
+                      "GROUP BY t.loaiTaiSan";
+        return entityManager.createQuery(jpql, Object[].class)
+                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+
+    /**
+     * Thống kê số lượng theo Trạng Thái (VD: Hoạt động, Bảo trì...)
+     * Trả về: List<[AssetStatus, Long]>
+     */
+    public List<Object[]> countGeneralAssetsByStatus() {
+        String jpql = "SELECT t.trangThai, COUNT(t) FROM TaiSanChungCu t " +
+                      "WHERE t.loaiTaiSan != :loaiCanHo " +
+                      "GROUP BY t.trangThai";
+        return entityManager.createQuery(jpql, Object[].class)
+                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+
+    /**
+     * Thống kê số lượng theo Vị Trí (Tầng/Khu vực)
+     * Trả về: List<[String, Long]>
+     */
+    public List<Object[]> countGeneralAssetsByLocation() {
+        // Group by chuỗi vị trí.
+        // Lưu ý: Dữ liệu vị trí cần nhập chuẩn hóa (VD: "Tầng 1", "Sảnh A") để biểu đồ đẹp.
+        String jpql = "SELECT t.viTri, COUNT(t) FROM TaiSanChungCu t " +
+                      "WHERE t.loaiTaiSan != :loaiCanHo " +
+                      "GROUP BY t.viTri";
+        return entityManager.createQuery(jpql, Object[].class)
+                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
 }
 
