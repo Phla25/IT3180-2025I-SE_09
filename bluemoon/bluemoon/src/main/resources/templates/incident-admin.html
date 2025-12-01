@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xử Lý Sự Cố - BlueMoon Portal</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+          rel="stylesheet">
+
+    <!-- CSRF token để JS gửi kèm (nếu Spring Security bật CSRF) -->
+    <meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}"/>
+    <meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}"/>
+
+    <style>
+        /* ==================== FEATURE TOGGLE STYLES ==================== */
+        .feature-badge {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: auto;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .nav-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-item:hover .feature-badge {
+            animation-play-state: paused;
+            transform: scale(1.1);
+        }
+
+        .detail-row {
+            padding: 5px 0;
+            border-bottom: 1px dotted #ccc;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .detail-row strong {
+            font-weight: 600;
+            color: #444;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        /* Basic modal look */
+        .modal {
+            position: fixed;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.4);
+            z-index: 9999;
+        }
+
+        .modal-content {
+            background: white;
+            width: 760px;
+            max-width: calc(100% - 32px);
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+        }
+
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 13px; }
+        .badge-danger { background:#FF6B6B; color:white; }
+        .badge-primary { background:#2563EB; color:white; }
+        .badge-info { background:#06B6D4; color:white; }
+        .badge-success { background:#10B981; color:white; }
+        .badge-secondary { background:#6B7280; color:white; }
+        .badge-default { background:#E5E7EB; color:#374151; }
+
+        .btn { padding: 8px 12px; border-radius: 6px; cursor: pointer; }
+        .btn-primary { background:#2563EB; color:white; border:none; }
+        .btn-success { background:#10B981; color:white; border:none; }
+        .btn-outline { background:transparent; border:1px solid #e5e7eb; }
+        .btn-sm { padding:6px 8px; font-size:13px; }
+
+        .input { width:100%; padding:8px; border-radius:6px; border:1px solid #e5e7eb; }
+        .table { width:100%; border-collapse: collapse; }
+        .table th, .table td { padding:10px 8px; border-bottom:1px solid #f3f4f6; text-align:left; }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-building"></i>
+                <span>BlueMoon Portal</span>
+            </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <!-- Sử dụng ternary expression thay vì ?. hoặc ?: -->
+                    <span class="user-name"
+                          th:text="${user != null ? user.hoVaTen : 'Tên Người Dùng'}">Tên Người Dùng</span>
+                    <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a th:href="@{/admin/dashboard}" class="nav-item"> <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a th:href="@{/admin/resident-list}" class="nav-item">
+                <i class="fas fa-users"></i>
+                <span>Quản Lý Cư Dân</span>
+            </a>
+            <a th:href="@{/admin/apartment-list}" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Quản Lý Căn Hộ</span>
+            </a>
+            <a th:href="@{/admin/household-list}" class="nav-item">
+                <i class="fas fa-users-cog"></i>
+                <span>Quản Lý Hộ Gia Đình</span>
+            </a>
+            <a th:href="@{/admin/general-asset-list}" class="nav-item">
+                <i class="fas fa-building"></i>
+                <span>Quản Lý Tài Sản</span>
+            </a>
+            <a th:href="@{/admin/fees}" class="nav-item">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Quản Lý Khoản Phí</span>
+            </a>
+            <a th:href="@{/admin/service-list}" class="nav-item">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Quản Lý Dịch Vụ</span>
+            </a>
+            <a th:href="@{/admin/service-registrations}" class="nav-item">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Quản Lý Đăng Ký Dịch Vụ</span>
+                <span class="feature-badge">MỚI</span>
+            </a>
+            <a th:href="@{/admin/incidents}" class="nav-item active">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Xử Lý Sự Cố</span>
+            </a>
+
+            <a th:href="@{/admin/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-chart-bar"></i>
+                <span>Báo Cáo Thống Kê</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1>Xử Lý Sự Cố</h1>
+        </div>
+
+        <div class="header-right">
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user != null ? user.hoVaTen : 'N/A'}">Nguyễn Văn Thanh</span>
+                    <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                </div>
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="dropdown-menu">
+                    <a href="/admin/profile"><i class="fas fa-user"></i> Thông Tin Cá Nhân</a>
+                    <a href="/admin/settings"><i class="fas fa-cog"></i> Cài Đặt</a>
+                    <hr>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div style="background: linear-gradient(135deg, #FF6B6B 0%, #D8334A 100%); color: white; padding: 32px; border-radius: 12px; margin-bottom: 30px;">
+            <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">🚨 Quản Lý Xử Lý Sự Cố</h1>
+            <p style="font-size: 16px; opacity: 0.9;">Theo dõi, phân loại và cập nhật trạng thái các sự cố đã báo cáo.</p>
+        </div>
+
+        <div class="content-card" style="margin-bottom: 24px;">
+            <div class="content-card-header">
+                <h2 class="content-card-title"><i class="fas fa-exclamation-triangle"></i> Danh sách Sự Cố</h2>
+            </div>
+
+            <form method="get" th:action="@{/admin/incidents}" style="margin-bottom: 20px;">
+                <div style="display: flex; gap: 16px;">
+                    <select name="trangThai" class="input" style="flex: 1;">
+                        <option value="">-- Lọc theo trạng thái --</option>
+                        <option value="moi_tiep_nhan" th:selected="${trangThai == 'moi_tiep_nhan'}">Mới tiếp nhận</option>
+                        <option value="dang_xu_ly" th:selected="${trangThai == 'dang_xu_ly'}">Đang xử lý</option>
+                        <option value="cho_phe_duyet" th:selected="${trangThai == 'cho_phe_duyet'}">Chờ phê duyệt</option>
+                        <option value="da_hoan_thanh" th:selected="${trangThai == 'da_hoan_thanh'}">Đã hoàn thành</option>
+                        <option value="da_huy" th:selected="${trangThai == 'da_huy'}">Đã hủy</option>
+                    </select>
+
+                    <select name="mucDo" class="input" style="flex: 1;">
+                        <option value="">-- Lọc theo mức độ ưu tiên --</option>
+                        <option value="thap" th:selected="${mucDo == 'thap'}">Thấp</option>
+                        <option value="binh_thuong" th:selected="${mucDo == 'binh_thuong'}">Bình thường</option>
+                        <option value="cao" th:selected="${mucDo == 'cao'}">Cao</option>
+                        <option value="khan_cap" th:selected="${mucDo == 'khan_cap'}">Khẩn cấp</option>
+                    </select>
+
+                    <button class="btn btn-primary" type="submit">Lọc</button>
+                </div>
+            </form>
+
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Mã</th>
+                        <th>Tiêu đề</th>
+                        <th>Người báo cáo</th>
+                        <th>Tài sản</th>
+                        <th>Mức độ</th>
+                        <th>Trạng thái</th>
+                        <th>Thời gian</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="sc : ${danhSachSuCo}">
+                        <td th:text="${sc.maBaoCao}"></td>
+                        <td style="font-weight: 600;" th:text="${sc.tieuDe}"></td>
+                        <td th:text="${sc.nguoiBaoCao != null ? sc.nguoiBaoCao.hoVaTen : 'N/A'}"></td>
+                        <td th:text="${sc.taiSan != null ? sc.taiSan.tenTaiSan : 'N/A'}"></td>
+                        <td>
+                            <span th:switch="${sc.mucDoUuTien.name()}">
+                                <span th:case="'cao'" class="badge badge-danger">Cao</span>
+                                <span th:case="'khan_cap'" class="badge badge-danger">Khẩn cấp</span>
+                                <span th:case="'binh_thuong'" class="badge badge-info">Bình thường</span>
+                                <span th:case="'thap'" class="badge badge-secondary">Thấp</span>
+                                <span th:case="*" class="badge badge-default">Không rõ</span>
+                            </span>
+                        </td>
+                        <td>
+                            <span th:switch="${sc.trangThai.name()}">
+                                <span th:case="'moi_tiep_nhan'" class="badge badge-warning">Mới tiếp nhận</span>
+                                <span th:case="'dang_xu_ly'" class="badge badge-primary">Đang xử lý</span>
+                                <span th:case="'cho_phe_duyet'" class="badge badge-info">Chờ phê duyệt</span>
+                                <span th:case="'da_hoan_thanh'" class="badge badge-success">Đã hoàn thành</span>
+                                <span th:case="'da_huy'" class="badge badge-secondary">Đã hủy</span>
+                                <span th:case="*" class="badge badge-default">Không rõ</span>
+                            </span>
+                        </td>
+                        <td th:text="${#temporals.format(sc.thoiGianBaoCao, 'dd/MM/yyyy HH:mm')}"></td>
+                        <td>
+                            <!-- Gọi hàm JS mở modal, dùng giá trị maBaoCao -->
+                            <button class="btn btn-sm btn-primary" type="button"
+                                    th:onclick="|openIncidentDetail(${sc.maBaoCao})|">
+                                <i class="fas fa-edit"></i> Cập nhật
+                            </button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- Modal hiển thị chi tiết (nội dung sẽ được load từ fragment) -->
+    <div id="incidentModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-content">
+            <h3>Chi tiết sự cố và Cập nhật Trạng thái</h3>
+
+            <!-- Nội dung fragment sẽ được inject vào đây -->
+            <div id="incidentDetailContent"></div>
+
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn btn-outline" type="button" onclick="closeModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fragment dùng để trả về từ controller: "admin-incident :: detailContent" -->
+    <div th:fragment="detailContent" id="incidentDetailContentFragment" style="display: none;">
+        <div th:if="${suCo}">
+            <h4 class="text-primary" th:text="${suCo.tieuDe}">Tiêu đề sự cố</h4>
+            <hr>
+
+            <div class="detail-row">
+                <strong>Mã sự cố:</strong> <span th:text="${suCo.maBaoCao}"></span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Người báo cáo:</strong>
+                <span th:text="${suCo.nguoiBaoCao != null ? suCo.nguoiBaoCao.hoVaTen : 'N/A (Đã xóa)'}"></span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Tài sản liên quan:</strong>
+                <span th:text="${suCo.taiSan != null ? suCo.taiSan.tenTaiSan : 'N/A (Tài sản chung)'}"></span>
+            </div>
+
+            <div class="detail-row">
+                <strong>Thời gian báo cáo:</strong>
+                <span th:text="${#temporals.format(suCo.thoiGianBaoCao, 'dd/MM/yyyy HH:mm')}"></span>
+            </div>
+
+            <p style="margin-top: 15px;"><strong>Mô tả chi tiết:</strong></p>
+            <blockquote th:text="${suCo.moTaSuCo}"
+                        style="border-left: 5px solid #7C3AED; padding-left: 10px; margin-left: 0; background: #f9f9f9; border-radius: 4px;">
+                Mô tả chi tiết sự cố...
+            </blockquote>
+
+            <h5 style="margin-top: 20px; border-bottom: 1px solid #ddd; padding-bottom: 5px;">Cập nhật Trạng thái & Mức độ</h5>
+
+            <form id="updateIncidentForm" onsubmit="return updateIncidentStatus(event)">
+                <!-- hidden id (giá trị sẽ được render bởi server khi trả fragment) -->
+                <input type="hidden" id="incidentId" th:value="${suCo.maBaoCao}">
+
+                <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                    <div style="flex: 1;">
+                        <label for="newStatus" class="form-label">Trạng thái mới:</label>
+                        <select id="newStatus" name="trangThai" class="input">
+                            <option value="moi_tiep_nhan" th:selected="${suCo.trangThai.name() == 'moi_tiep_nhan'}">Mới tiếp nhận</option>
+                            <option value="dang_xu_ly" th:selected="${suCo.trangThai.name() == 'dang_xu_ly'}">Đang xử lý</option>
+                            <option value="cho_phe_duyet" th:selected="${suCo.trangThai.name() == 'cho_phe_duyet'}">Chờ phê duyệt</option>
+                            <option value="da_hoan_thanh" th:selected="${suCo.trangThai.name() == 'da_hoan_thanh'}">Đã hoàn thành</option>
+                            <option value="da_huy" th:selected="${suCo.trangThai.name() == 'da_huy'}">Đã hủy</option>
+                        </select>
+                    </div>
+
+                    <div style="flex: 1;">
+                        <label for="newPriority" class="form-label">Mức độ ưu tiên:</label>
+                        <select id="newPriority" name="mucDo" class="input">
+                            <option value="thap" th:selected="${suCo.mucDoUuTien.name() == 'thap'}">Thấp</option>
+                            <option value="binh_thuong" th:selected="${suCo.mucDoUuTien.name() == 'binh_thuong'}">Bình thường</option>
+                            <option value="cao" th:selected="${suCo.mucDoUuTien.name() == 'cao'}">Cao</option>
+                            <option value="khan_cap" th:selected="${suCo.mucDoUuTien.name() == 'khan_cap'}">Khẩn cấp</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="text-align: right;">
+                    <button type="submit" class="btn btn-success"><i class="fas fa-save"></i> Cập nhật</button>
+                </div>
+            </form>
+        </div>
+
+        <div th:unless="${suCo}">
+            <p class="text-danger">Không tìm thấy chi tiết sự cố này.</p>
+        </div>
+    </div>
+
+    <script src="/js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        // Mở modal và load fragment chi tiết (tương thích controller trả "admin-incident :: detailContent")
+        function openIncidentDetail(id) {
+            // Clear nội dung cũ
+            document.getElementById("incidentDetailContent").innerHTML = '';
+
+            // Sử dụng endpoint có tiền tố /admin để khớp controller nếu controller mapping là dưới /admin
+            fetch(`/admin/incidents/detail/${id}`)
+                .then(res => {
+                    if (!res.ok) {
+                        throw new Error('Lỗi khi tải chi tiết sự cố: ' + res.status);
+                    }
+                    return res.text();
+                })
+                .then(html => {
+                    // HTML là fragment trả về (chỉ phần fragment), inject vào modal
+                    document.getElementById("incidentDetailContent").innerHTML = html;
+                    document.getElementById("incidentModal").classList.remove("hidden");
+                    document.getElementById("incidentModal").setAttribute("aria-hidden", "false");
+                })
+                .catch(error => {
+                    console.error('Fetch Error:', error);
+                    const errorMessage = error.message.includes('500') 
+                        ? 'Lỗi máy chủ khi tải dữ liệu. Vui lòng kiểm tra logs Backend.' 
+                        : 'Không thể tải chi tiết sự cố. Vui lòng kiểm tra console.';
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Lỗi!',
+                        text: errorMessage,
+                    });
+                });
+        }
+
+        function closeModal() {
+            document.getElementById("incidentModal").classList.add("hidden");
+            document.getElementById("incidentModal").setAttribute("aria-hidden", "true");
+        }
+
+        // Hàm cập nhật: lấy incidentId từ hidden input (sau khi fragment được inject)
+        function updateIncidentStatus(event) {
+            event.preventDefault();
+
+            const idElem = document.getElementById('incidentId');
+            if (!idElem) {
+                Swal.fire({ icon: 'error', title: 'Lỗi', text: 'Không tìm thấy ID sự cố.' });
+                return false;
+            }
+
+            const id = idElem.value;
+            const newStatus = document.getElementById('newStatus').value;
+            const newPriority = document.getElementById('newPriority').value;
+
+            // Lấy CSRF header/token nếu có (thẻ meta trên head)
+            const csrfTokenMeta = document.querySelector('meta[name="_csrf"]');
+            const csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrfTokenMeta && csrfHeaderMeta) {
+                headers[csrfHeaderMeta.getAttribute('content')] = csrfTokenMeta.getAttribute('content');
+            }
+
+            fetch(`/admin/incidents/update/${id}`, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify({
+                    trangThai: newStatus,
+                    mucDo: newPriority
+                })
+            })
+            .then(async res => {
+                if (!res.ok) {
+                    // cố gắng parse message từ backend
+                    let errMsg = 'Cập nhật thất bại, mã lỗi: ' + res.status;
+                    try {
+                        const body = await res.json();
+                        if (body && body.error) errMsg = body.error;
+                    } catch (e) { /* ignore parse error */ }
+                    throw new Error(errMsg);
+                }
+                return res.json();
+            })
+            .then(response => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: 'Trạng thái sự cố đã được cập nhật.',
+                    timer: 1400,
+                    showConfirmButton: false
+                }).then(() => {
+                    closeModal();
+                    // reload trang để cập nhật danh sách (hoặc cập nhật DOM tường minh nếu muốn)
+                    window.location.reload();
+                });
+            })
+            .catch(error => {
+                console.error('Lỗi cập nhật:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    text: error.message || 'Không thể cập nhật trạng thái sự cố.',
+                });
+            });
+
+            return false;
+        }
+    </script>
+</body>
+</html>
