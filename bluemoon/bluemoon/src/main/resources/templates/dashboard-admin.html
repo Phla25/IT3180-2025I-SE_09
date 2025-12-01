@@ -119,7 +119,7 @@
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
-            <a href="#" class="nav-item">
+            <a th:href="@{/admin/reports}" class="nav-item">
                 <i class="fas fa-chart-bar"></i>
                 <span>Báo Cáo Thống Kê</span>
             </a>
@@ -219,6 +219,116 @@
                 <div class="stat-value" th:text="${#numbers.formatDecimal(doanhThuThang, 0, 'DEFAULT', 0, 'POINT')} ?: '0 ₫'">425M</div>
             </div>
         </div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 30px;">
+    
+        <div class="content-card">
+            <div class="content-card-header">
+                <h2 class="content-card-title">📊 Phân Bố Cư Dân Theo Tầng</h2>
+            </div>
+            <div style="height: 350px; position: relative;">
+                <canvas id="floorChart"></canvas>
+            </div>
+        </div>
+
+        <div class="content-card">
+            <div class="content-card-header">
+                <h2 class="content-card-title">🏢 Tỷ Lệ Theo Tòa Nhà</h2>
+            </div>
+            <div style="height: 350px; position: relative; display: flex; justify-content: center;">
+                <canvas id="buildingChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script th:inline="javascript">
+        // Lấy dữ liệu từ Controller
+        const fLabels = /*[[${floorLabels}]]*/ [];
+        const fData = /*[[${floorData}]]*/ [];
+    
+        const bLabels = /*[[${buildingLabels}]]*/ [];
+        const bData = /*[[${buildingData}]]*/ [];
+
+        // --- Biểu đồ Tầng (Bar Chart) ---
+        if (document.getElementById('floorChart')) {
+            const ctxF = document.getElementById('floorChart').getContext('2d');
+            new Chart(ctxF, {
+                type: 'bar',
+                data: {
+                    labels: fLabels,
+                    datasets: [{
+                        label: 'Số cư dân',
+                        data: fData,
+                        backgroundColor: 'rgba(79, 70, 229, 0.7)', // Màu tím (#4F46E5)
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        borderWidth: 1,
+                        borderRadius: 4,
+                        barPercentage: 0.6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.raw + ' cư dân';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Số lượng người' },
+                            ticks: { stepSize: 1 } // Chỉ hiện số nguyên
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Biểu đồ Tòa (Doughnut Chart) ---
+        if (document.getElementById('buildingChart')) {
+            const ctxB = document.getElementById('buildingChart').getContext('2d');
+            new Chart(ctxB, {
+                type: 'doughnut',
+                data: {
+                    labels: bLabels,
+                    datasets: [{
+                        data: bData,
+                        backgroundColor: [
+                            '#3B82F6', // Xanh dương
+                            '#10B981', // Xanh lá
+                            '#F59E0B', // Vàng cam
+                            '#EF4444', // Đỏ
+                            '#8B5CF6', // Tím nhạt
+                            '#EC4899'  // Hồng
+                        ],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%', // Độ rỗng giữa biểu đồ
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { padding: 20, usePointStyle: true }
+                        }
+                    }
+                }
+            });
+        }
+    </script>
 
         <div class="content-card" style="margin-bottom: 24px;">
             <div class="content-card-header">

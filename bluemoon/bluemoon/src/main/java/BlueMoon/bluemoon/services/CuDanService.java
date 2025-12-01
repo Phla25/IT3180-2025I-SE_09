@@ -1,6 +1,9 @@
 package BlueMoon.bluemoon.services;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -197,5 +200,65 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
             return doiTuongDAO.searchResidentsAndFilter(keyword, trangThaiDanCu, accountStatus);
         }
         return doiTuongDAO.findResidentsInComplex(ResidentStatus.o_chung_cu);
+    }
+    /**
+     * Lấy dữ liệu thống kê cư dân cho biểu đồ
+     */
+    /**
+     * Lấy dữ liệu thống kê cư dân (Đã Việt hóa nhãn hiển thị)
+     */
+    public Map<String, Object> getResidentStatistics() {
+        Map<String, Object> stats = new HashMap<>();
+
+        // 1. Thống kê theo Giới tính (Việt hóa)
+        List<Object[]> genderRaw = doiTuongDAO.countResidentsByGender();
+        List<String> genderLabels = new ArrayList<>();
+        List<Long> genderData = new ArrayList<>();
+        
+        for (Object[] row : genderRaw) {
+            BlueMoon.bluemoon.utils.Gender g = (BlueMoon.bluemoon.utils.Gender) row[0];
+            String label = "Nữ";
+            
+            if (g != null) {
+                // Kiểm tra theo Enum Name hoặc giá trị
+                if (g.name().equalsIgnoreCase("nam")) label = "Nam";
+            }
+            
+            genderLabels.add(label);
+            genderData.add((Long) row[1]);
+        }
+        stats.put("genderLabels", genderLabels);
+        stats.put("genderData", genderData);
+
+        // 2. Thống kê theo Trạng thái cư trú (Việt hóa)
+        List<Object[]> statusRaw = doiTuongDAO.countResidentsByStatus();
+        List<String> statusLabels = new ArrayList<>();
+        List<Long> statusData = new ArrayList<>();
+        
+        for (Object[] row : statusRaw) {
+            BlueMoon.bluemoon.utils.ResidentStatus s = (BlueMoon.bluemoon.utils.ResidentStatus) row[0];
+            String label = "Đã rời đi";
+
+            if (s != null) {
+                switch (s) {
+                    case o_chung_cu:
+                        label = "Đang sinh sống";
+                        break;
+                    case roi_di:
+                        label = "Đã rời đi";
+                        break;
+                    case da_chet:
+                        label = "Đã mất";
+                        break;
+                }
+            }
+            
+            statusLabels.add(label);
+            statusData.add((Long) row[1]);
+        }
+        stats.put("resStatusLabels", statusLabels);
+        stats.put("resStatusData", statusData);
+
+        return stats;
     }
 }

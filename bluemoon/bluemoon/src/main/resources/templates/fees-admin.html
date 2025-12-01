@@ -9,82 +9,22 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .feature-badge {
-            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-            color: white;
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 8px;
-            margin-left: auto;
-            animation: pulse 2s infinite;
-        }        
-        .btn-add {
-            background-color: #10B981;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-add {
-            background-color: #10B981;
-            color: white;
-            padding: 10px 15px;
-        }
-        
-        .btn-export {
-            padding: 10px 15px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            border: none;
-            cursor: pointer;
-        }
-        
-        .btn-export-excel {
-            background-color: #10B981;
-            color: white;
-        }
-        
-        .btn-export-pdf {
-            background-color: #EF4444;
-            color: white;
-        }
-        
-        .btn-export:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-            transition: all 0.2s;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }        
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
+        /* (Giữ nguyên style cũ) */
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .feature-badge { background: linear-gradient(45deg, #FF6B6B, #4ECDC4); color: white; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 8px; margin-left: auto; animation: pulse 2s infinite; }        
+        .btn-add { background-color: #10B981; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-export { padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; border: none; cursor: pointer; }
+        .btn-export-excel { background-color: #10B981; color: white; }
+        .btn-export-pdf { background-color: #EF4444; color: white; }
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
         .badge-success { background-color: #D1FAE5; color: #065F46; }
         .badge-warning { background-color: #FEF3C7; color: #B45309; }
         .badge-danger { background-color: #FEE2E2; color: #991B1B; }
+        /* Style cho nút Import */
+        .btn-import {
+            background-color: #2563EB; /* Màu xanh dương */
+            color: white;
+        }
     </style>
 </head>
 <body>
@@ -119,7 +59,7 @@
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
-            <a href="#" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
+            <a th:href="@{/admin/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
         </nav>
 
         <div class="sidebar-footer">
@@ -132,53 +72,24 @@
     </aside>
 
     <header class="header">
-        <div class="header-left">
-            <button class="menu-toggle" onclick="toggleSidebar()">
-                <i class="fas fa-bars"></i>
-            </button>
-            <h1>Quản Lý Hóa Đơn</h1>
-        </div>
-
+        <div class="header-left"><button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button><h1>Quản Lý Hóa Đơn</h1></div>
         <div class="header-right">
-            <div class="user-menu">
-                <div class="user-info">
-                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
-                    <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
-                </div>
-                <div class="user-avatar">
-                    <i class="fas fa-user-circle"></i>
-                </div>
-                <div class="dropdown-menu">
-                    <a th:href="@{/admin/profile}">
-                        <i class="fas fa-user"></i> Thông Tin Cá Nhân
-                    </a>
-                    <hr>
-                    <form th:action="@{/logout}" method="post">
-                        <button type="submit" class="logout-btn">
-                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
-                        </button>
-                    </form>
-                </div>
             </div>
-        </div>
     </header>
 
     <main class="main-content">
         <div class="container">
-            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Thông báo thành công</div>
-            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
             <div class="toolbar">
                 <h2 style="margin: 0;">Danh Sách Hóa Đơn</h2>
-                <a th:href="@{/admin/fee-form}" class="btn-add">
-                    <i class="fas fa-plus"></i> Tạo Hóa Đơn Mới
+                <a th:href="@{/admin/fee-form}" class="btn-add"> <i class="fas fa-plus"></i> Tạo Hóa Đơn Mới </a>
+                <a th:href="@{/admin/fees/import}" class="btn-export btn-import">
+                        <i class="fas fa-file-import"></i> Import Excel
                 </a>
-                <a th:href="@{/admin/export/invoices}" class="btn-export btn-export-excel" title="Xuất Excel">
-                    <i class="fas fa-file-excel"></i> Excel
-                </a>
-                <a th:href="@{/admin/export/invoices/pdf}" class="btn-export btn-export-pdf" title="Xuất PDF">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </a>                
+                <a th:href="@{/admin/export/invoices}" class="btn-export btn-export-excel"><i class="fas fa-file-excel"></i> Excel</a>
+                <a th:href="@{/admin/export/invoices/pdf}" class="btn-export btn-export-pdf"><i class="fas fa-file-pdf"></i> PDF</a>                
             </div>
 
             <div class="content-card">
@@ -188,8 +99,8 @@
                             <tr>
                                 <th>Mã HĐ</th>
                                 <th>Hộ Gia Đình</th>
-                                <th>Người Gốc</th> 
-                                <th>Người TT</th> <th>Loại Phí</th>
+                                <th>Người Đứng Tên</th> <th>Người TT</th> 
+                                <th>Loại Phí</th>
                                 <th>Số Tiền</th>
                                 <th>Hạn Thanh Toán</th>
                                 <th>Trạng Thái</th>
@@ -201,9 +112,14 @@
                                 <td><strong th:text="'#' + ${hoaDon.maHoaDon}">#HD001</strong></td>
                                 <td th:text="${hoaDon.hoGiaDinh?.tenHo} ?: 'N/A'">Hộ Nguyễn Văn A</td>
                                 
-                                <td th:text="${hoaDon.nguoiDangKyDichVu?.hoVaTen} ?: 'BQT/Hộ Gốc'">Admin/Người đăng ký</td>
+                                <td style="font-weight: 600; color: #4B5563;">
+                                    <span th:if="${hoaDon.nguoiDangKyDichVu != null}">
+                                        <i class="fas fa-user"></i> <span th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen}">Nguyễn Văn B</span>
+                                    </span>
+                                    <span th:unless="${hoaDon.nguoiDangKyDichVu != null}" style="color: #999;">(Chưa gán)</span>
+                                </td>
                                 
-                                <td th:text="${hoaDon.nguoiThanhToan?.hoVaTen} ?: 'N/A'">Cư dân/Kế toán</td>
+                                <td th:text="${hoaDon.nguoiThanhToan?.hoVaTen} ?: '---'">Cư dân/Kế toán</td>
 
                                 <td th:text="${hoaDon.loaiHoaDon?.dbValue} ?: 'N/A'">Phí Quản Lý</td>
                                 <td th:text="${#numbers.formatInteger(hoaDon.soTien, 0, 'POINT')} + ' ₫'">2,500,000 ₫</td>
@@ -214,20 +130,11 @@
                                           th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán</span>
                                 </td>
                                 <td>
-                                    <a th:href="@{/admin/fee-form(id=${hoaDon.maHoaDon})}" class="btn-action" title="Chỉnh Sửa">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
+                                    <a th:href="@{/admin/fee-form(id=${hoaDon.maHoaDon})}" class="btn-action" title="Chỉnh Sửa"><i class="fas fa-edit"></i></a>
                                     <form th:action="@{/admin/fee-delete}" method="post" style="display: inline;">
                                         <input type="hidden" name="id" th:value="${hoaDon.maHoaDon}">
-                                        <button type="submit" onclick="return confirm('Xóa hóa đơn này?')" class="btn-action text-danger" title="Xóa" style="border: none; background: none; cursor: pointer;">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
+                                        <button type="submit" onclick="return confirm('Xóa hóa đơn này?')" class="btn-action text-danger" title="Xóa" style="border: none; background: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
                                     </form>
-                                </td>
-                            </tr>
-                            <tr th:if="${#lists.isEmpty(hoaDonList)}">
-                                <td colspan="7" style="text-align: center; padding: 24px; color: #6B7280;">
-                                    Không có hóa đơn nào.
                                 </td>
                             </tr>
                         </tbody>
@@ -236,13 +143,6 @@
             </div>
         </div>
     </main>
-
-    <footer class="footer">
-        <div class="footer-content">
-            <p>&copy; 2025 BlueMoon Apartment Management System. All rights reserved.</p>
-        </div>
-    </footer>
-
     <script src="/js/main.js"></script>
     <script>
         function toggleSidebar() {
@@ -250,9 +150,6 @@
             document.querySelector('.main-content').classList.toggle('shifted');
             document.querySelector('.header').classList.toggle('shifted');
         }
-        document.querySelector('.user-menu').addEventListener('click', function() {
-            this.querySelector('.dropdown-menu').classList.toggle('show');
-        });
     </script>
 </body>
 </html>

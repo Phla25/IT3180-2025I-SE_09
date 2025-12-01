@@ -36,6 +36,11 @@
         .badge-success { background-color: #D1FAE5; color: #065F46; }
         .badge-warning { background-color: #FEF3C7; color: #B45309; }
         .badge-danger { background-color: #FEE2E2; color: #991B1B; }
+        /* Style cho nút Import */
+        .btn-import {
+            background-color: #2563EB; /* Màu xanh dương */
+            color: white;
+        }
         .btn-export {
             padding: 10px 15px;
             border-radius: 8px;
@@ -156,7 +161,10 @@
                 <a th:href="@{/accountant/fee-form}" class="btn-add">
                     <i class="fas fa-plus"></i> Tạo Hóa Đơn Mới
                 </a>
-                    <a th:href="@{/accountant/export/invoices}" class="btn-export btn-export-excel" title="Xuất Excel">
+                <a th:href="@{/accountant/fees/import}" class="btn-export btn-import">
+                        <i class="fas fa-file-import"></i> Import Excel
+                </a>
+                <a th:href="@{/accountant/export/invoices}" class="btn-export btn-export-excel" title="Xuất Excel">
                     <i class="fas fa-file-excel"></i> Excel
                 </a>
                 <a th:href="@{/accountant/export/invoices/pdf}" class="btn-export btn-export-pdf" title="Xuất PDF">

@@ -4,145 +4,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Danh Sách Hộ Gia Đình - Ban Quản Trị - BlueMoon Portal</title>
+    <title>Danh Sách Hộ Gia Đình - BlueMoon Portal</title>
 
     <link rel="stylesheet" href="/css/main.css"> 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* CSS cho bảng và tìm kiếm */
-        .feature-badge {
-            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-            color: white;
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 8px;
-            margin-left: auto;
-            animation: pulse 2s infinite;
-        }        
-        .toolbar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-
-        .search-form {
-            display: flex;
-            gap: 10px;
-        }
-
-        .search-input {
-            padding: 10px;
-            border: 1px solid #D1D5DB;
-            border-radius: 8px;
-            width: 300px;
-        }
-
-        .btn-search {
-            background-color: #4F46E5;
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            border: none;
-            cursor: pointer;
-        }
-        
-        .btn-add {
-            background-color: #10B981; /* Green color for Add button */
-            color: white;
-            padding: 10px 15px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-export {
-            padding: 10px 15px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            border: none;
-            cursor: pointer;
-        }
-        
-        .btn-export-excel {
-            background-color: #10B981;
-            color: white;
-        }
-        
-        .btn-export-pdf {
-            background-color: #EF4444;
-            color: white;
-        }
-        
-        .btn-export:hover {
-            opacity: 0.9;
-            transform: translateY(-1px);
-            transition: all 0.2s;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }        
-        .data-table {
-            width: 100%;
-            border-collapse: collapse;
-            background-color: white;
-            border-radius: 12px;
-            overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-        }
-
-        .data-table th, .data-table td {
-            padding: 15px;
-            text-align: left;
-            border-bottom: 1px solid #E5E7EB;
-        }
-
-        .data-table th {
-            background-color: #F9FAFB;
-            font-weight: 600;
-            color: #4B5563;
-            text-transform: uppercase;
-            font-size: 0.85rem;
-        }
-        
-        .data-table tr:hover {
-            background-color: #F3F4F6;
-        }
-
-        .btn-action {
-            color: #4F46E5;
-            text-decoration: none;
-            margin-right: 10px;
-        }
-        
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
-        }
-        
-        .status-active {
-            background-color: #D1FAE5;
-            color: #065F46;
-        }
-        .status-inactive, .status-dissolved {
-            background-color: #FEE2E2;
-            color: #991B1B;
-        }
-        /* Kế thừa các CSS khác từ profile-admin.html (Không cần chèn lại) */
+        /* (Giữ nguyên CSS cũ) */
+        .feature-badge { background: linear-gradient(45deg, #FF6B6B, #4ECDC4); color: white; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 8px; margin-left: auto; animation: pulse 2s infinite; }        
+        .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .search-form { display: flex; gap: 10px; }
+        .search-input { padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; width: 300px; }
+        .btn-search { background-color: #4F46E5; color: white; padding: 10px 15px; border-radius: 8px; border: none; cursor: pointer; }
+        .btn-add { background-color: #10B981; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-export { padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; border: none; cursor: pointer; }
+        .btn-export-excel { background-color: #10B981; color: white; }
+        .btn-export-pdf { background-color: #EF4444; color: white; }
+        .data-table { width: 100%; border-collapse: collapse; background-color: white; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); }
+        .data-table th, .data-table td { padding: 15px; text-align: left; border-bottom: 1px solid #E5E7EB; }
+        .data-table th { background-color: #F9FAFB; font-weight: 600; color: #4B5563; text-transform: uppercase; font-size: 0.85rem; }
+        .data-table tr:hover { background-color: #F3F4F6; }
+        .btn-action { color: #4F46E5; text-decoration: none; margin-right: 10px; }
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+        .status-active { background-color: #D1FAE5; color: #065F46; }
+        .status-inactive { background-color: #FEE2E2; color: #991B1B; }
     </style>
 </head>
 
@@ -152,8 +37,9 @@
             <div class="logo"> <i class="fas fa-building"></i> <span>BlueMoon Portal</span> </div>
             <div class="user-profile">
                 <div class="user-info">
-                    <span class="user-name" th:text="${user?.hoVaTen} ?: 'Tên Người Dùng'">Tên Người Dùng</span>
-                    <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                    <span class="user-name" th:text="${user?.hoVaTen} ?: 'Người Dùng'">Tên Người Dùng</span>
+                    <span class="user-role" th:if="${user?.vaiTro?.name() == 'ban_quan_tri'}" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                    <span class="user-role" th:if="${user?.vaiTro?.name() == 'ke_toan'}" style="color: #F59E0B;">KẾ TOÁN</span>
                 </div>
             </div>
         </div>
@@ -174,12 +60,10 @@
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
-            <a href="#" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
-        </nav>
+            <a th:href="@{/admin/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
+            </nav>
         <div class="sidebar-footer">
-             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
-                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;"> <i class="fas fa-sign-out-alt"></i> Đăng Xuất </button>
-            </form>
+             <form th:action="@{/logout}" method="post"><button type="submit" class="logout-btn"> <i class="fas fa-sign-out-alt"></i> Đăng Xuất </button></form>
         </div>
     </aside>
 
@@ -189,40 +73,22 @@
             <h1>Quản Lý Hộ Gia Đình</h1>
         </div>
         <div class="header-right">
-            <div class="user-menu">
-                <div class="user-info">
-                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
-                    <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
-                </div>
-                <div class="user-avatar"> <i class="fas fa-user-circle"></i> </div>
-                <div class="dropdown-menu">
-                    <a th:href="@{/admin/profile}"> <i class="fas fa-user"></i> Thông Tin Cá Nhân </a>
-                    <a th:href="@{/admin/settings}"> <i class="fas fa-cog"></i> Cài Đặt </a> <hr>
-                    <form th:action="@{/logout}" method="post"> <button type="submit" class="logout-btn"> <i class="fas fa-sign-out-alt"></i> Đăng Xuất </button> </form>
-                </div>
             </div>
-        </div>
     </header>
 
     <main class="main-content">
         <div class="container">
-            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Thông báo thành công</div>
-            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
             <div class="toolbar">
                 <form th:action="@{/admin/household-list}" method="get" class="search-form">
                     <input type="text" name="keyword" th:value="${keyword}" placeholder="Tìm theo Mã Hộ, Tên Hộ..." class="search-input">
                     <button type="submit" class="btn-search"><i class="fas fa-search"></i> Tìm Kiếm</button>
                 </form>
-                <a th:href="@{/admin/household-add}" class="btn-add">
-                    <i class="fas fa-plus"></i> Thêm Hộ Mới
-                </a>
-                <a th:href="@{/admin/export/households}" class="btn-export btn-export-excel" title="Xuất Excel">
-                    <i class="fas fa-file-excel"></i> Excel
-                </a>
-                <a th:href="@{/admin/export/households/pdf}" class="btn-export btn-export-pdf" title="Xuất PDF">
-                    <i class="fas fa-file-pdf"></i> PDF
-                </a>
+                <a th:href="@{/admin/household-add}" class="btn-add"> <i class="fas fa-plus"></i> Thêm Hộ Mới </a>
+                <a th:href="@{/admin/export/households}" class="btn-export btn-export-excel"><i class="fas fa-file-excel"></i> Excel</a>
+                <a th:href="@{/admin/export/households/pdf}" class="btn-export btn-export-pdf"><i class="fas fa-file-pdf"></i> PDF</a>
             </div>
 
             <table class="data-table">
@@ -230,6 +96,7 @@
                     <tr>
                         <th>Mã Hộ</th>
                         <th>Tên Hộ</th>
+                        <th>Chủ Hộ</th>
                         <th>Ngày Thành Lập</th>
                         <th>Trạng Thái</th>
                         <th>Ghi Chú</th>
@@ -240,6 +107,15 @@
                     <tr th:each="hgd : ${households}">
                         <td th:text="${hgd.maHo}">HGD-001</td>
                         <td th:text="${hgd.tenHo}">Hộ gia đình Nguyễn Văn A</td>
+                        
+                        <td style="font-weight: 600; color: #4B5563;">
+                            <span th:if="${hgd.chuHo != null}">
+                                <i class="fas fa-user-tie" style="color: #4F46E5; margin-right: 5px;"></i>
+                                <span th:text="${hgd.chuHo.hoVaTen}">Nguyễn Văn A</span>
+                            </span>
+                            <span th:unless="${hgd.chuHo != null}" style="color: #9CA3AF; font-style: italic;">(Chưa xác định)</span>
+                        </td>
+
                         <td th:text="${hgd.ngayThanhLap} ? ${#temporals.format(hgd.ngayThanhLap, 'dd/MM/yyyy')} : 'N/A'">01/01/2023</td>
                         <td>
                             <span class="status-badge" 
@@ -248,37 +124,23 @@
                         </td>
                         <td th:text="${hgd.ghiChu} ?: 'Không có'">Ghi chú...</td>
                         <td>
-                            <a th:href="@{/admin/household-detail(maHo=${hgd.maHo})}" class="btn-action" title="Xem Chi Tiết">
-                                <i class="fas fa-eye"></i>
-                            </a>
-                            </td>
+                            <a th:href="@{/admin/household-detail(maHo=${hgd.maHo})}" class="btn-action" title="Xem Chi Tiết"><i class="fas fa-eye"></i></a>
+                        </td>
                     </tr>
                 </tbody>
             </table>
             
-            <div th:if="${households.isEmpty()}" class="alert alert-info" style="margin-top: 20px;">
-                Không tìm thấy hộ gia đình nào.
-            </div>
-
+            <div th:if="${households.isEmpty()}" class="alert alert-info" style="margin-top: 20px;">Không tìm thấy hộ gia đình nào.</div>
         </div>
     </main>
 
+    <script src="/js/main.js"></script>
     <script>
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('collapsed');
             document.querySelector('.main-content').classList.toggle('shifted');
             document.querySelector('.header').classList.toggle('shifted');
         }
-        document.querySelector('.user-menu').addEventListener('click', function() {
-            this.querySelector('.dropdown-menu').classList.toggle('show');
-        });
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.user-menu')) {
-                document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                    menu.classList.remove('show');
-                });
-            }
-        });
     </script>
 </body>
 </html>

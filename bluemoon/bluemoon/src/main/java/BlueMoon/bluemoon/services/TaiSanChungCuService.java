@@ -1,6 +1,9 @@
 package BlueMoon.bluemoon.services;
 
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -298,5 +301,119 @@ public class TaiSanChungCuService {
         // ... (Logic kiểm tra) ...
         
         taiSanChungCuDAO.delete(canHo);
+    }
+    public Map<String, Object> getChartData() {
+        // 1. Lấy dữ liệu thô từ DB
+        List<Object[]> rawData = taiSanChungCuDAO.getRawResidentCounts();
+
+        // Map lưu trữ kết quả cộng dồn
+        // Dùng TreeMap để tự động sắp xếp (Tầng 1, 2... Tòa A, B...)
+        Map<Integer, Long> floorStats = new java.util.TreeMap<>();
+        Map<String, Long> buildingStats = new java.util.TreeMap<>();
+
+        for (Object[] row : rawData) {
+            String tenCanHo = (String) row[0]; // VD: "A-1001"
+            Long soLuong = (Long) row[1];      // VD: 3 người
+
+            if (tenCanHo == null || soLuong == 0) continue;
+
+            // --- LOGIC XỬ LÝ CHUỖI ---
+            try {
+                // Giả định định dạng: [Tòa]-[Số] (VD: A-1001) hoặc [Tòa][Số] (VD: A1001)
+                
+                // 1. Tách Tòa: Lấy ký tự đầu tiên hoặc phần trước dấu "-"
+                String toa = "";
+                String phanSo = "";
+
+                if (tenCanHo.contains("-")) {
+                    String[] parts = tenCanHo.split("-");
+                    toa = parts[0].trim(); // "A"
+                    if (parts.length > 1) phanSo = parts[1].trim(); // "1001"
+                } else {
+                    // Trường hợp viết liền A1001 -> Tách chữ cái đầu
+                    toa = tenCanHo.substring(0, 1);
+                    phanSo = tenCanHo.substring(1);
+                }
+
+                // 2. Tính Tầng: Lấy phần số chia cho 100
+                // VD: 1001 / 100 = 10 (Tầng 10)
+                // VD: 502 / 100 = 5 (Tầng 5)
+                if (!phanSo.isEmpty() && phanSo.matches("\\d+")) {
+                    int soPhong = Integer.parseInt(phanSo);
+                    int tang = soPhong / 100; 
+                    
+                    // Cộng dồn vào Map Tầng
+                    floorStats.put(tang, floorStats.getOrDefault(tang, 0L) + soLuong);
+                }
+
+                // 3. Cộng dồn vào Map Tòa
+                buildingStats.put(toa, buildingStats.getOrDefault(toa, 0L) + soLuong);
+
+            } catch (NumberFormatException e) {
+                System.err.println("Lỗi parse tên căn hộ: " + tenCanHo);
+                // Có thể log lại hoặc bỏ qua căn hộ đặt tên sai quy tắc
+            }
+        }
+
+        // Đóng gói kết quả trả về
+        Map<String, Object> result = new java.util.HashMap<>();
+        result.put("floorStats", floorStats);
+        result.put("buildingStats", buildingStats);
+        return result;
+    }
+    // =======================================================
+    // LOGIC BÁO CÁO THỐNG KÊ
+    // =======================================================
+
+    /**
+     * Lấy dữ liệu cho các biểu đồ thống kê tài sản chung
+     */
+    public Map<String, Object> getGeneralAssetStatistics() {
+        Map<String, Object> stats = new HashMap<>();
+
+        // 1. Thống kê theo Loại
+        List<Object[]> typeRaw = taiSanChungCuDAO.countGeneralAssetsByType();
+        List<String> typeLabels = new ArrayList<>();
+        List<Long> typeData = new ArrayList<>();
+        for (Object[] row : typeRaw) {
+            BlueMoon.bluemoon.utils.AssetType type = (BlueMoon.bluemoon.utils.AssetType) row[0];
+            typeLabels.add(type.getDbValue()); // Lấy tên hiển thị của Enum
+            typeData.add((Long) row[1]);
+        }
+        stats.put("typeLabels", typeLabels);
+        stats.put("typeData", typeData);
+
+        // 2. Thống kê theo Trạng Thái
+        List<Object[]> statusRaw = taiSanChungCuDAO.countGeneralAssetsByStatus();
+        List<String> statusLabels = new ArrayList<>();
+        List<Long> statusData = new ArrayList<>();
+        for (Object[] row : statusRaw) {
+            BlueMoon.bluemoon.utils.AssetStatus status = (BlueMoon.bluemoon.utils.AssetStatus) row[0];
+            statusLabels.add(status.getDbValue());
+            statusData.add((Long) row[1]);
+        }
+        stats.put("statusLabels", statusLabels);
+        stats.put("statusData", statusData);
+
+        // 3. Thống kê theo Vị Trí
+        List<Object[]> locationRaw = taiSanChungCuDAO.countGeneralAssetsByLocation();
+        List<String> locationLabels = new ArrayList<>();
+        List<Long> locationData = new ArrayList<>();
+        for (Object[] row : locationRaw) {
+            String loc = (String) row[0];
+            locationLabels.add(loc);
+            locationData.add((Long) row[1]);
+        }
+        stats.put("locationLabels", locationLabels);
+        stats.put("locationData", locationData);
+
+        return stats;
+    }
+
+    /**
+     * Lấy danh sách chi tiết để hiển thị bảng
+     */
+    public List<TaiSanChungCu> getGeneralAssetListReport() {
+        return taiSanChungCuDAO.findAllGeneralAssets();
     }
 }

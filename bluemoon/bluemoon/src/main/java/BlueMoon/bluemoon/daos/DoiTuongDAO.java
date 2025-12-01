@@ -273,4 +273,19 @@ public class DoiTuongDAO {
 			return Optional.empty();
 		}
 	}
+    /**
+     * Thống kê cư dân theo Giới tính
+     */
+    public List<Object[]> countResidentsByGender() {
+        String jpql = "SELECT d.gioiTinh, COUNT(d) FROM DoiTuong d WHERE d.laCuDan = true GROUP BY d.gioiTinh";
+        return entityManager.createQuery(jpql, Object[].class).getResultList();
+    }
+
+    /**
+     * Thống kê cư dân theo Trạng thái cư trú (Thường trú/Tạm trú...)
+     */
+    public List<Object[]> countResidentsByStatus() {
+        String jpql = "SELECT d.trangThaiDanCu, COUNT(d) FROM DoiTuong d WHERE d.laCuDan = true GROUP BY d.trangThaiDanCu";
+        return entityManager.createQuery(jpql, Object[].class).getResultList();
+    }
 }

@@ -24,37 +24,37 @@
             background-color: #FEF2F2;
         }
         .btn-export {
-            padding: 10px 15px;
-            border-radius: 8px;
+            padding: 8px 12px;
+            border-radius: 6px;
             text-decoration: none;
             font-weight: 600;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
             border: none;
             cursor: pointer;
+            font-size: 13px;
         }
         
-        .btn-export-excel {
-            background-color: #10B981;
-            color: white;
-        }
-        
-        .btn-export-pdf {
-            background-color: #EF4444;
-            color: white;
-        }
+        .btn-export-excel { background-color: #10B981; color: white; }
+        .btn-export-pdf { background-color: #EF4444; color: white; }
         
         .btn-export:hover {
             opacity: 0.9;
             transform: translateY(-1px);
             transition: all 0.2s;
+        }
+
+        /* Thanh công cụ chọn hàng loạt */
+        .bulk-actions-bar {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            padding: 12px 20px;
             border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            display: inline-flex;
+            margin-bottom: 20px;
+            display: flex;
             align-items: center;
-            gap: 8px;
+            justify-content: space-between;
         }
     </style>
 </head>
@@ -150,87 +150,120 @@
             <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Thông báo thành công</div>
             <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
 
-            <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
-                <h2 style="font-size: 1.5rem; margin-bottom: 8px;">
-                    <i class="fas fa-file-invoice"></i> Danh Sách Hóa Đơn
-                </h2>
-                <p style="opacity: 0.9; margin: 0;">Quản lý và thanh toán các khoản phí của hộ gia đình</p>
-            </div>
-            <div style="display: flex; gap: 10px;">
+            <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h2 style="font-size: 1.5rem; margin-bottom: 8px;">
+                        <i class="fas fa-file-invoice"></i> Danh Sách Hóa Đơn
+                    </h2>
+                    <p style="opacity: 0.9; margin: 0;">Quản lý và thanh toán các khoản phí của hộ gia đình</p>
+                </div>
+                <div style="display: flex; gap: 10px;">
                     <a th:href="@{/resident/export/invoices}" class="btn-export btn-export-excel" title="Xuất Excel">
                         <i class="fas fa-file-excel"></i> Excel
                     </a>
                     <a th:href="@{/resident/export/invoices/pdf}" class="btn-export btn-export-pdf" title="Xuất PDF">
                         <i class="fas fa-file-pdf"></i> PDF
                     </a>
-            </div>
-            <div class="content-card">
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Mã HĐ</th>
-                                <th>Loại Phí</th>
-                                <th>Người Đứng Tên</th> <th>Số Tiền</th> <th>Hạn Thanh Toán</th>
-                                <th>Trạng Thái</th>
-                                <th>Hành Động</th> </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="hoaDon : ${hoaDonList}" 
-                                th:classappend="${hoaDon.hanThanhToan != null and hoaDon.hanThanhToan.isBefore(T(java.time.LocalDate).now()) and hoaDon.trangThai?.name() == 'chua_thanh_toan' ? 'highlight-overdue' : ''}">
-
-                                <td th:text="${hoaDon.maHoaDon}">HD001</td>
-
-                                <td th:text="${hoaDon.loaiHoaDon?.dbValue}">Phí Quản Lý</td>
-
-                                <td>
-                                    <span th:if="${hoaDon.nguoiDangKyDichVu != null}" 
-                                          th:text="${hoaDon.nguoiDangKyDichVu?.hoVaTen}">
-                                        Nguyễn Văn B
-                                    </span>
-                                    <span th:unless="${hoaDon.nguoiDangKyDichVu != null}" 
-                                          style="color: #6B7280;">
-                                        (Hộ Gia Đình)
-                                    </span>
-                                </td>
-
-                                <td th:text="${#numbers.formatDecimal(hoaDon.soTien, 0, 'COMMA', 0, 'POINT')} + ' ₫'">2,500,000 ₫</td>
-
-                                <td th:text="${#temporals.format(hoaDon.hanThanhToan, 'dd/MM/yyyy') ?: 'N/A'}">31/10/2025</td>
-                                
-                                <td>
-                                    <span class="status-badge" 
-                                        th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : 
-                                                        (hoaDon.trangThai?.name() == 'cho_xac_nhan' ? 'badge-info' : 
-                                                        (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning'))}"
-                                        th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán
-                                    </span>
-                                </td>
-                                
-                                <td>
-                                    <a th:href="@{/resident/fee-detail(id=${hoaDon.maHoaDon})}" class="btn btn-sm btn-info" title="Xem chi tiết">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <form th:action="@{/resident/fee-pay}" method="post" style="display: inline;"
-                                          th:if="${hoaDon.trangThai?.name() == 'chua_thanh_toan' || hoaDon.trangThai?.name() == 'qua_han'}">
-                                        <input type="hidden" name="maHoaDon" th:value="${hoaDon.maHoaDon}">
-                                        <button type="submit" class="btn btn-sm btn-success" title="Thanh toán"
-                                                th:onclick="|return confirm('Bạn có muốn tạo yêu cầu thanh toán Hóa đơn #' + ${hoaDon.maHoaDon} + ' không?');|">
-                                            <i class="fas fa-credit-card"></i>
-                                        </button>
-                                    </form>
-                                </td>
-
-                            </tr>
-                             <tr th:if="${#lists.isEmpty(hoaDonList)}">
-                                <td colspan="7" style="text-align: center; padding: 24px; color: #6B7280;">
-                                    Không có hóa đơn nào thuộc hộ gia đình của bạn.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </div>
             </div>
+
+            <form id="paymentForm" th:action="@{/resident/payment/pay-all}" method="post">
+                
+                <div class="bulk-actions-bar">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #1e3a8a;">
+                        <input type="checkbox" id="selectAll" style="width: 18px; height: 18px; cursor: pointer;"> 
+                        Chọn tất cả hóa đơn
+                    </label>
+                    
+                    <button type="submit" id="payAllBtn" class="btn btn-primary" style="background-color: #005BAA; display: none; padding: 10px 20px; font-size: 15px;">
+                        <i class="fas fa-money-check-alt"></i> Thanh toán (<span id="countSelected">0</span>) mục đã chọn
+                    </button>
+                    
+                    <span id="noSelectionText" style="color: #64748b; font-size: 14px;">(Chưa chọn hóa đơn nào)</span>
+                </div>
+
+                <div class="content-card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th width="50" style="text-align: center;">#</th> <th>Mã HĐ</th>
+                                    <th>Loại Phí</th>
+                                    <th>Người Đứng Tên</th> 
+                                    <th>Số Tiền</th> 
+                                    <th>Hạn Thanh Toán</th>
+                                    <th>Trạng Thái</th>
+                                    <th>Hành Động</th> 
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="hoaDon : ${hoaDonList}" 
+                                    th:classappend="${hoaDon.hanThanhToan != null and hoaDon.hanThanhToan.isBefore(T(java.time.LocalDate).now()) and hoaDon.trangThai?.name() == 'chua_thanh_toan' ? 'highlight-overdue' : ''}">
+
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" name="selectedIds" 
+                                               th:if="${hoaDon.trangThai?.name() == 'chua_thanh_toan' || hoaDon.trangThai?.name() == 'qua_han'}"
+                                               th:value="${hoaDon.maHoaDon}"
+                                               class="invoice-checkbox"
+                                               style="width: 18px; height: 18px; cursor: pointer;">
+                                    </td>
+
+                                    <td th:text="${hoaDon.maHoaDon}">HD001</td>
+
+                                    <td th:text="${hoaDon.loaiHoaDon?.dbValue}">Phí Quản Lý</td>
+
+                                    <td>
+                                        <span th:if="${hoaDon.nguoiDangKyDichVu != null}" 
+                                              th:text="${hoaDon.nguoiDangKyDichVu?.hoVaTen}">
+                                            Nguyễn Văn B
+                                        </span>
+                                        <span th:unless="${hoaDon.nguoiDangKyDichVu != null}" 
+                                              style="color: #6B7280;">
+                                            (Hộ Gia Đình)
+                                        </span>
+                                    </td>
+
+                                    <td style="font-weight: bold; color: #005BAA;" 
+                                        th:text="${#numbers.formatDecimal(hoaDon.soTien, 0, 'COMMA', 0, 'POINT')} + ' ₫'">
+                                        2,500,000 ₫
+                                    </td>
+
+                                    <td th:text="${#temporals.format(hoaDon.hanThanhToan, 'dd/MM/yyyy') ?: 'N/A'}">31/10/2025</td>
+                                    
+                                    <td>
+                                        <span class="status-badge" 
+                                            th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : 
+                                                            (hoaDon.trangThai?.name() == 'cho_xac_nhan' ? 'badge-info' : 
+                                                            (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning'))}"
+                                            th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán
+                                        </span>
+                                    </td>
+                                    
+                                    <td style="white-space: nowrap;">
+                                        <a th:href="@{/resident/fee-detail(id=${hoaDon.maHoaDon})}" class="btn btn-sm btn-info" title="Xem chi tiết">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        
+                                        <a th:if="${hoaDon.trangThai?.name() == 'chua_thanh_toan' || hoaDon.trangThai?.name() == 'qua_han'}"
+                                           th:href="@{/resident/payment/create-vnpay(id=${hoaDon.maHoaDon})}" 
+                                           class="btn btn-sm" 
+                                           title="Thanh toán VNPay"
+                                           style="background-color: #005BAA; color: white; border: none; margin-left: 5px;">
+                                            <i class="fas fa-wallet"></i>
+                                        </a>
+                                    </td>
+
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(hoaDonList)}">
+                                    <td colspan="8" style="text-align: center; padding: 24px; color: #6B7280;">
+                                        Không có hóa đơn nào thuộc hộ gia đình của bạn.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </form>
         </div>
     </main>
 
@@ -242,14 +275,63 @@
 
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="/js/main.js"></script>
+    
     <script>
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('collapsed');
             document.querySelector('.main-content').classList.toggle('shifted');
             document.querySelector('.header').classList.toggle('shifted');
         }
+        
+        // Feature Toggle (Giữ nguyên hàm này vì bạn dùng nó trong sidebar)
+        function featureToggle(featureName, message) {
+            Swal.fire({
+                icon: 'info',
+                title: `${featureName} - Coming Soon`,
+                text: message,
+                confirmButtonColor: '#4F46E5'
+            });
+        }
+
         document.querySelector('.user-menu').addEventListener('click', function() {
             this.querySelector('.dropdown-menu').classList.toggle('show');
+        });
+
+        // --- XỬ LÝ CHỌN HÀNG LOẠT ---
+        $(document).ready(function() {
+            // 1. Xử lý "Chọn tất cả"
+            $('#selectAll').change(function() {
+                var isChecked = $(this).prop('checked');
+                $('.invoice-checkbox').prop('checked', isChecked);
+                updateToolbar();
+            });
+
+            // 2. Xử lý khi bấm vào từng checkbox lẻ
+            $('.invoice-checkbox').change(function() {
+                updateToolbar();
+                // Nếu bỏ chọn 1 cái thì bỏ chọn luôn nút 'All'
+                if (!$(this).prop('checked')) {
+                    $('#selectAll').prop('checked', false);
+                }
+                // Nếu chọn hết thì tích nút 'All'
+                if ($('.invoice-checkbox:checked').length === $('.invoice-checkbox').length && $('.invoice-checkbox').length > 0) {
+                    $('#selectAll').prop('checked', true);
+                }
+            });
+
+            // 3. Hàm cập nhật giao diện Toolbar
+            function updateToolbar() {
+                var count = $('.invoice-checkbox:checked').length;
+                $('#countSelected').text(count);
+                
+                if (count > 0) {
+                    $('#payAllBtn').fadeIn(200); // Hiện nút thanh toán
+                    $('#noSelectionText').hide();
+                } else {
+                    $('#payAllBtn').hide();     // Ẩn nút thanh toán
+                    $('#noSelectionText').show();
+                }
+            }
         });
     </script>
 </body>
