@@ -29,9 +29,6 @@
             if (doiTuongDAO.timNguoiDungThuongTheoCCCD(doiTuong.getCccd()).isPresent()) {
                 throw new IllegalArgumentException("Người dùng đã tồn tại.");
             }
-            if (doiTuongDAO.findByEmail(doiTuong.getEmail()).isPresent()) {
-                throw new IllegalArgumentException("Email đã tồn tại.");
-            }
 
             // 2. Mã hóa mật khẩu
             BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();

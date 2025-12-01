@@ -1,9 +1,13 @@
 package BlueMoon.bluemoon.controllers;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,18 +23,15 @@ import BlueMoon.bluemoon.entities.BaoCaoSuCo;
 import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.TaiSanChungCu; // Import TaiSanChungCu
 import BlueMoon.bluemoon.entities.ThanhVienHo;
-import BlueMoon.bluemoon.services.BaoCaoSuCoService;
-import BlueMoon.bluemoon.services.NguoiDungService;
-import BlueMoon.bluemoon.services.TaiSanChungCuService; // Import TaiSanChungCuService
-import BlueMoon.bluemoon.services.ReportService;
-import BlueMoon.bluemoon.services.ExportService;
 import BlueMoon.bluemoon.models.ApartmentReportDTO;
 import BlueMoon.bluemoon.models.ResidentReportDTO;
+import BlueMoon.bluemoon.services.BaoCaoSuCoService;
+import BlueMoon.bluemoon.services.ExportService;
+import BlueMoon.bluemoon.services.NguoiDungService;
+import BlueMoon.bluemoon.services.ReportService;
+import BlueMoon.bluemoon.services.TaiSanChungCuService; // Import TaiSanChungCuService
 import BlueMoon.bluemoon.utils.Gender; // Cần thiết nếu dùng Enum trực tiếp
 import BlueMoon.bluemoon.utils.PriorityLevel;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 
 @Controller
 @RequestMapping("/officer")
@@ -44,8 +45,7 @@ public class OfficerController {
     
     // THÊM INJECT SERVICE CĂN HỘ
     @Autowired
-    private TaiSanChungCuService taiSanChungCuService;
-    
+    private TaiSanChungCuService taiSanChungCuService; 
     @Autowired
     private ReportService reportService;
     
@@ -283,7 +283,6 @@ public class OfficerController {
             return "redirect:/officer/profile/edit";
         }
     }
-    
     // ========== EXPORT REPORTS ==========
     
     /**
@@ -302,7 +301,7 @@ public class OfficerController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -323,7 +322,7 @@ public class OfficerController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -344,7 +343,7 @@ public class OfficerController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -365,7 +364,7 @@ public class OfficerController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -391,7 +390,7 @@ public class OfficerController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -415,9 +414,8 @@ public class OfficerController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
-
 }

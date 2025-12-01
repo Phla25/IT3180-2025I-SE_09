@@ -5,6 +5,7 @@ import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
@@ -41,6 +42,17 @@ public class ThanhVienHoDAO {
                                             .setParameter("maHo", maHo)
                                             .getSingleResult());
         } catch (NoResultException e) {
+            return Optional.empty();
+        }
+    }
+    public Optional<DoiTuong> findChuHoByHo(String maHo){
+        String jpql = "SELECT tvh.doiTuong FROM ThanhVienHo tvh " +
+                    "WHERE tvh.hoGiaDinh.maHo = :maHo AND tvh.laChuHo = true AND tvh.ngayKetThuc IS NULL";
+        try {
+            return Optional.of(entityManager.createQuery(jpql, DoiTuong.class)
+                                            .setParameter("maHo", maHo)
+                                            .getSingleResult());
+        } catch (NoResultException e){
             return Optional.empty();
         }
     }

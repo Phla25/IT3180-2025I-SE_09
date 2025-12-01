@@ -45,8 +45,6 @@
         .badge-success { background-color: #D1FAE5; color: #065F46; }
         .badge-warning { background-color: #FEF3C7; color: #B45309; }
         .badge-danger { background-color: #FEE2E2; color: #991B1B; }
-        
-        /* CSS cho nút xuất file */
         .btn-export {
             padding: 10px 20px;
             border-radius: 8px;
@@ -109,6 +107,26 @@
                 <i class="fas fa-file-invoice-dollar"></i>
                 <span>Hóa Đơn Của Tôi</span>
             </a>
+            
+            <a th:href="@{/resident/my-services}" class="nav-item">
+                <i class="fas fa-handshake"></i>
+                <span>Dịch Vụ Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/services}" class="nav-item">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Đăng Ký Dịch Vụ</span>
+            </a>
+            
+            <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Báo Cáo Sự Cố</span>
+                <span class="feature-badge">MỚI</span>
+            </a>
+            <a th:href="@{/resident/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i>
+                <span>Thông Báo</span>
+            </a>
         </nav>
         
         <div class="sidebar-footer">
@@ -153,6 +171,26 @@
     </header>
 
 <main class="main-content">
+    <div class="container">
+        <div class="detail-item">
+                <span class="detail-label">Người Đăng Ký/Phát Sinh</span>
+                <span class="detail-value" th:if="${hoaDon.nguoiDangKyDichVu != null}" th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen + ' (' + hoaDon.nguoiDangKyDichVu.cccd + ')'}">
+                    Nguyễn Văn B (CCCD: 001...)
+                </span>
+                <span class="detail-value" th:unless="${hoaDon.nguoiDangKyDichVu != null}">
+                    Hộ Gia Đình/Ban Quản Trị
+                </span>
+            </div>
+            
+            <div class="detail-item" th:if="${hoaDon.nguoiThanhToan != null}">
+                <span class="detail-label">Người Thực Hiện Thanh Toán</span>
+                <span class="detail-value" th:text="${hoaDon.nguoiThanhToan.hoVaTen + ' (' + hoaDon.nguoiThanhToan.cccd + ')'}">
+                    Trần Văn C (CCCD: 002...)
+                </span>
+            </div>
+        </div>
+        
+        </div>
         <div class="content-card" style="background-color: #F9FAFB;">
                 <div class="content-card-header">
                     <h2 class="content-card-title" style="color: #4F46E5;"><i class="fas fa-receipt"></i> Thanh Toán</h2>
@@ -192,7 +230,6 @@
                 <div th:unless="${hoaDon.trangThai?.name() == 'chua_thanh_toan' || hoaDon.trangThai?.name() == 'qua_han' || hoaDon.trangThai?.name() == 'cho_xac_nhan'}" style="text-align: center; padding: 20px;">
                     <p style="color: #059669; font-weight: 700;"><i class="fas fa-check-circle"></i> Hóa đơn này đã được <span th:text="${hoaDon.trangThai?.dbValue}">thanh toán</span>.</p>
                 </div>
-                
                 <div class="export-buttons">
                     <h4 style="color: #4F46E5; margin-bottom: 15px;"><i class="fas fa-download"></i> Xuất Thông Tin Hóa Đơn</h4>
                     <a th:href="@{/resident/export/invoice/{maHoaDon}(maHoaDon=${hoaDon.maHoaDon})}" class="btn-export btn-export-excel">

@@ -151,4 +151,3 @@ public class ApartmentReportDTO {
         this.trangThaiHo = trangThaiHo;
     }
 }
-

@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="'Đăng Ký Dịch Vụ: ' + ${dichVu.tenDichVu}">Đăng Ký Dịch Vụ - BlueMoon Portal</title>
+    
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #374151; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 14px;
+        }
+        .form-actions { display: flex; gap: 12px; margin-top: 24px; }
+        .btn-save { background-color: #10B981; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-cancel { background-color: #6B7280; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-block; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-building"></i>
+                <span>BlueMoon Portal</span>
+            </div>
+        
+            <div class="user-profile-desktop" th:if="${user != null}">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen}">Nguyễn Văn Cư Dân</span>
+                    <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
+            </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a th:href="@{/resident/dashboard}" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a th:href="@{/resident/fees}" class="nav-item">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Hóa Đơn Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/my-services}" class="nav-item">
+                <i class="fas fa-handshake"></i>
+                <span>Dịch Vụ Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/services}" class="nav-item active">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Đăng Ký Dịch Vụ</span>
+            </a>
+            
+            <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Báo Cáo Sự Cố</span>
+                <span class="feature-badge">MỚI</span>
+            </a>
+            <a th:href="@{/resident/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i>
+                <span>Thông Báo</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1>Thông Tin Cá Nhân</h1>
+        </div>
+        
+        <div class="header-right">
+
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
+                    <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
+                </div>
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="dropdown-menu"> 
+                    <a th:href="@{/resident/profile}">
+                        <i class="fas fa-user"></i> Thông Tin Cá Nhân
+                    </a>
+                    <a th:href="@{/resident/settings}">
+                        <i class="fas fa-cog"></i> Cài Đặt
+                    </a>
+                    <hr>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+    <main class="main-content">
+        <div class="container">
+            <h1>Đăng Ký Dịch Vụ: <span th:text="${dichVu.tenDichVu}"></span></h1>
+            
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
+
+            <div class="content-card">
+                <form th:action="@{/resident/service-register-save}" method="post" th:object="${dangKyYeuCau}">
+                    <input type="hidden" name="maDichVu" th:value="${dichVu.maDichVu}">
+
+                    <div class="form-group">
+                        <label>Thông tin Dịch vụ:</label>
+                        <p><strong>Loại phí:</strong> <span th:text="${dichVu.loaiDichVu?.dbValue}"></span></p>
+                        <p><strong>Chi phí đăng ký:</strong> 
+                            <span th:if="${dichVu.giaThanh.signum() > 0}">
+                                <span th:text="${#numbers.formatInteger(dichVu.giaThanh, 0, 'POINT')}"></span>
+                                <span th:text="' ₫ / ' + ${dichVu.donVi}">₫ / lần</span>
+                            </span>
+                            <span th:unless="${dichVu.giaThanh.signum() > 0}" style="color: #10B981; font-weight: 600;">Miễn phí (0 ₫)</span>
+                        </p>
+                        <p style="margin-top: 10px;">
+                            <i class="fas fa-info-circle"></i> 
+                            <span th:text="${dichVu.moTa}">Mô tả dịch vụ chi tiết...</span>
+                        </p>
+                    </div>
+                    
+                    <hr>
+
+                    <div class="form-group">
+                        <label for="moTaYeuCau"><i class="fas fa-comment-alt"></i> Mô Tả Yêu Cầu/Lưu ý (Tùy chọn)</label>
+                        <textarea id="moTaYeuCau" th:field="*{moTaYeuCau}" placeholder="Ví dụ: Đăng ký cho xe máy biển số 59-X1 123.45"></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="ngayBatDauSuDung"><i class="fas fa-calendar-alt"></i> Ngày Bắt Đầu Dự Kiến</label>
+                        <input type="date" id="ngayBatDauSuDung" th:field="*{ngayBatDauSuDung}">
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-paper-plane"></i> Gửi Yêu Cầu Đăng Ký
+                        </button>
+                        <a th:href="@{/resident/services}" class="btn-cancel">
+                            <i class="fas fa-times"></i> Hủy
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

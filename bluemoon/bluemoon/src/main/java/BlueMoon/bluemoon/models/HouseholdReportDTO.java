@@ -127,4 +127,3 @@ public class HouseholdReportDTO {
         this.ghiChu = ghiChu;
     }
 }
-

@@ -20,136 +20,140 @@ import jakarta.transaction.Transactional;
 @Repository
 public class DoiTuongDAO {
 
-	// Tiêm EntityManager để truy vấn thủ công
-	@Autowired
-	@PersistenceContext
-	private EntityManager entityManager;
+    // Tiêm EntityManager để truy vấn thủ công
+    @Autowired
+    @PersistenceContext
+    private EntityManager entityManager;
 
-	// =======================================================
-	// 1. CÁC PHƯƠNG THỨC CRUD CƠ BẢN (Sử dụng EntityManager)
-	// =======================================================
+    // =======================================================
+    // 1. CÁC PHƯƠNG THỨC CRUD CƠ BẢN (Sử dụng EntityManager)
+    // =======================================================
 
-	/**
-	 * Lưu (hoặc cập nhật) một Entity.
-	 * 
-	 * @param doiTuong Entity cần lưu.
-	 * @return Entity đã được quản lý (managed).
-	 */
-	@Transactional
-	public DoiTuong save(DoiTuong doiTuong) {
-		return entityManager.merge(doiTuong);
-	}
+    /**
+     * Lưu (hoặc cập nhật) một Entity.
+     * @param doiTuong Entity cần lưu.
+     * @return Entity đã được quản lý (managed).
+     */
+    @Transactional
+    public DoiTuong save(DoiTuong doiTuong) {
+        return entityManager.merge(doiTuong);
+    }
 
-	/**
-	 * Tìm Entity bằng Khóa chính (CCCD).
-	 */
-	public Optional<DoiTuong> findByCccd(String cccd) {
-		DoiTuong doiTuong = entityManager.find(DoiTuong.class, cccd);
-		return Optional.ofNullable(doiTuong);
-	}
+    /**
+     * Tìm Entity bằng Khóa chính (CCCD).
+     */
+    public Optional<DoiTuong> findByCccd(String cccd) {
+        DoiTuong doiTuong = entityManager.find(DoiTuong.class, cccd);
+        return Optional.ofNullable(doiTuong);
+    }
+    public DoiTuong timCuDanBangCccd(String cccd) {
+        DoiTuong doiTuong = entityManager.find(DoiTuong.class, cccd);
+        return doiTuong;
+    }
+    /**
+     * Tìm tất cả các Entity.
+     */
+    public List<DoiTuong> findAll() {
+        // Sử dụng JPQL để truy vấn tất cả
+        return entityManager.createQuery("SELECT d FROM DoiTuong d", DoiTuong.class).getResultList();
+    }
+    
+    /**
+     * Xóa Entity.
+     */
+    @Transactional
+    public void delete(DoiTuong doiTuong) {
+        // Cần đảm bảo Entity đang ở trạng thái Managed trước khi remove
+        if (entityManager.contains(doiTuong)) {
+            entityManager.remove(doiTuong);
+        } else {
+            entityManager.remove(entityManager.merge(doiTuong));
+        }
+    }
 
-	public DoiTuong timCuDanBangCccd(String cccd) {
-		DoiTuong doiTuong = entityManager.find(DoiTuong.class, cccd);
-		return doiTuong;
-	}
+    // =======================================================
+    // 2. CÁC PHƯƠNG THỨC TRUY VẤN TÙY CHỈNH (Sử dụng JPQL)
+    // =======================================================
 
-	/**
-	 * Tìm tất cả các Entity.
-	 */
-	public List<DoiTuong> findAll() {
-		// Sử dụng JPQL để truy vấn tất cả
-		return entityManager.createQuery("SELECT d FROM DoiTuong d", DoiTuong.class).getResultList();
-	}
+    /**
+     * Tìm Entity bằng Email.
+     */
+    public Optional<DoiTuong> findByEmail(String email) {
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.email = :email";
+        try {
+            return Optional.of(
+                entityManager.createQuery(jpql, DoiTuong.class)
+                    .setParameter("email", email)
+                    .getSingleResult()
+            );
+        } catch (NoResultException e) {
+            return Optional.empty();
+        }
+    }
 
-	/**
-	 * Xóa Entity.
-	 */
-	@Transactional
-	public void delete(DoiTuong doiTuong) {
-		// Cần đảm bảo Entity đang ở trạng thái Managed trước khi remove
-		if (entityManager.contains(doiTuong)) {
-			entityManager.remove(doiTuong);
-		} else {
-			entityManager.remove(entityManager.merge(doiTuong));
-		}
-	}
+    /**
+     * Tìm tất cả người dùng với vai trò cụ thể.
+     */
+    public List<DoiTuong> findByVaiTro(UserRole vaiTro) {
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.vaiTro = :vaiTro";
+        return entityManager.createQuery(jpql, DoiTuong.class)
+            .setParameter("vaiTro", vaiTro)
+            .getResultList();
+    }
 
-	// =======================================================
-	// 2. CÁC PHƯƠNG THỨC TRUY VẤN TÙY CHỈNH (Sử dụng JPQL)
-	// =======================================================
+    /**
+     * Tìm Dân cư đang ở chung cư.
+     */
+    public List<DoiTuong> findResidentsInComplex(ResidentStatus trangThaiDanCu) {
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.laCuDan = true AND d.trangThaiDanCu = :trangThai";
+        return entityManager.createQuery(jpql, DoiTuong.class)
+            .setParameter("trangThai", trangThaiDanCu)
+            .getResultList();
+    }
+    /**
+     * Tìm kiếm tài khoản cư dân theo CCCD
+     */
+    public Optional<DoiTuong> timNguoiDungThuongTheoCCCD(String cccd){
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.vaiTro = :vaiTro";
+        try {
+            DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class)
+                    .setParameter("cccd", cccd)
+                    .setParameter("vaiTro", UserRole.nguoi_dung_thuong)
+                    .getSingleResult();
+            return Optional.of(doiTuong);
+        } catch (NoResultException e) {
+            return Optional.empty();
+        }
+    }
+    /** 
+     * Tìm cư dân theo CCCD 
+    */
+    public Optional<DoiTuong> findResidentByCccd(String cccd) {
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.laCuDan = true";
+        try {
+            DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class)
+                    .setParameter("cccd", cccd)
+                    .getSingleResult();
+            return Optional.of(doiTuong);
+        } catch (NoResultException e) {
+            return Optional.empty();
+        }
+    }
 
-	/**
-	 * Tìm Entity bằng Email.
-	 */
-	public Optional<DoiTuong> findByEmail(String email) {
-		String jpql = "SELECT d FROM DoiTuong d WHERE d.email = :email";
-		try {
-			return Optional
-					.of(entityManager.createQuery(jpql, DoiTuong.class).setParameter("email", email).getSingleResult());
-		} catch (NoResultException e) {
-			return Optional.empty();
-		}
-	}
-
-	/**
-	 * Tìm tất cả người dùng với vai trò cụ thể.
-	 */
-	public List<DoiTuong> findByVaiTro(UserRole vaiTro) {
-		String jpql = "SELECT d FROM DoiTuong d WHERE d.vaiTro = :vaiTro";
-		return entityManager.createQuery(jpql, DoiTuong.class).setParameter("vaiTro", vaiTro).getResultList();
-	}
-
-	/**
-	 * Tìm Dân cư đang ở chung cư.
-	 */
-	public List<DoiTuong> findResidentsInComplex(ResidentStatus trangThaiDanCu) {
-		String jpql = "SELECT d FROM DoiTuong d WHERE d.laCuDan = true AND d.trangThaiDanCu = :trangThai";
-		return entityManager.createQuery(jpql, DoiTuong.class).setParameter("trangThai", trangThaiDanCu)
-				.getResultList();
-	}
-
-	/**
-	 * Tìm kiếm tài khoản cư dân theo CCCD
-	 */
-	public Optional<DoiTuong> timNguoiDungThuongTheoCCCD(String cccd) {
-		String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.vaiTro = :vaiTro";
-		try {
-			DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class).setParameter("cccd", cccd)
-					.setParameter("vaiTro", UserRole.nguoi_dung_thuong).getSingleResult();
-			return Optional.of(doiTuong);
-		} catch (NoResultException e) {
-			return Optional.empty();
-		}
-	}
-
-	/**
-	 * Tìm cư dân theo CCCD
-	 */
-	public Optional<DoiTuong> findResidentByCccd(String cccd) {
-		String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.laCuDan = true";
-		try {
-			DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class).setParameter("cccd", cccd)
-					.getSingleResult();
-			return Optional.of(doiTuong);
-		} catch (NoResultException e) {
-			return Optional.empty();
-		}
-	}
-
-	/**
-	 * Tìm người dùng bằng reset token
-	 */
-	public Optional<DoiTuong> findByResetToken(String token) {
-		String jpql = "SELECT d FROM DoiTuong d WHERE d.resetToken = :token";
-		try {
-			DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class).setParameter("token", token)
-					.getSingleResult();
-			return Optional.of(doiTuong);
-		} catch (NoResultException e) {
-			return Optional.empty();
-		}
-	}
-
+    /**
+     * Tìm người dùng bằng reset token
+     */
+    public Optional<DoiTuong> findByResetToken(String token) {
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.resetToken = :token";
+        try {
+            DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class)
+                    .setParameter("token", token)
+                    .getSingleResult();
+            return Optional.of(doiTuong);
+        } catch (NoResultException e) {
+            return Optional.empty();
+        }
+    }
 	/**
 	 * Tìm kiếm cư dân theo cccd, họ tên, tuổi, địa chỉ, giới tính, sđt, chủ hộ
 	 */
@@ -269,4 +273,19 @@ public class DoiTuongDAO {
 			return Optional.empty();
 		}
 	}
+    /**
+     * Thống kê cư dân theo Giới tính
+     */
+    public List<Object[]> countResidentsByGender() {
+        String jpql = "SELECT d.gioiTinh, COUNT(d) FROM DoiTuong d WHERE d.laCuDan = true GROUP BY d.gioiTinh";
+        return entityManager.createQuery(jpql, Object[].class).getResultList();
+    }
+
+    /**
+     * Thống kê cư dân theo Trạng thái cư trú (Thường trú/Tạm trú...)
+     */
+    public List<Object[]> countResidentsByStatus() {
+        String jpql = "SELECT d.trangThaiDanCu, COUNT(d) FROM DoiTuong d WHERE d.laCuDan = true GROUP BY d.trangThaiDanCu";
+        return entityManager.createQuery(jpql, Object[].class).getResultList();
+    }
 }

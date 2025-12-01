@@ -1,27 +1,38 @@
 package BlueMoon.bluemoon.services;
 
-import BlueMoon.bluemoon.models.ApartmentReportDTO;
-import BlueMoon.bluemoon.models.HouseholdReportDTO;
-import BlueMoon.bluemoon.models.InvoiceReportDTO;
-import BlueMoon.bluemoon.models.ResidentReportDTO;
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.stereotype.Service;
-
-import com.itextpdf.kernel.pdf.PdfWriter;
-import com.itextpdf.kernel.pdf.PdfDocument;
-import com.itextpdf.layout.Document;
-import com.itextpdf.layout.element.Paragraph;
-import com.itextpdf.layout.element.Table;
-import com.itextpdf.layout.properties.TextAlignment;
-import com.itextpdf.layout.properties.UnitValue;
-
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+
+import org.apache.poi.ss.usermodel.BorderStyle;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.FillPatternType;
+import org.apache.poi.ss.usermodel.Font;
+import org.apache.poi.ss.usermodel.HorizontalAlignment;
+import org.apache.poi.ss.usermodel.IndexedColors;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.VerticalAlignment;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.stereotype.Service;
+
+import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Paragraph;
+import com.itextpdf.layout.element.Table;
+import com.itextpdf.layout.properties.TextAlignment;
+import com.itextpdf.layout.properties.UnitValue;
+
+import BlueMoon.bluemoon.models.ApartmentReportDTO;
+import BlueMoon.bluemoon.models.HouseholdReportDTO;
+import BlueMoon.bluemoon.models.InvoiceReportDTO;
+import BlueMoon.bluemoon.models.ResidentReportDTO;
 
 /**
  * Service để xuất dữ liệu ra file Excel
@@ -102,7 +113,7 @@ public class ExportService {
             // Tạo header row
             Row headerRow = sheet.createRow(0);
             String[] columns = {
-                "Mã Hóa Đơn", "Mã Hộ", "Tên Hộ", "Chủ Hộ", "Loại Hóa Đơn",
+                "Mã Hóa Đơn", "Mã Hộ", "Tên Hộ", "Người Đăng Ký", "Loại Hóa Đơn",
                 "Số Tiền (VNĐ)", "Trạng Thái", "Ngày Tạo", "Hạn Thanh Toán",
                 "Ngày Thanh Toán", "Người Thanh Toán", "Ghi Chú"
             };
@@ -229,16 +240,16 @@ public class ExportService {
         
         if (value == null) {
             cell.setCellValue("");
-        } else if (value instanceof String) {
-            cell.setCellValue((String) value);
-        } else if (value instanceof Integer) {
-            cell.setCellValue((Integer) value);
-        } else if (value instanceof Long) {
-            cell.setCellValue((Long) value);
-        } else if (value instanceof Double) {
-            cell.setCellValue((Double) value);
-        } else if (value instanceof java.math.BigDecimal) {
-            cell.setCellValue(((java.math.BigDecimal) value).doubleValue());
+        } else if (value instanceof String string) {
+            cell.setCellValue(string);
+        } else if (value instanceof Integer integer) {
+            cell.setCellValue(integer);
+        } else if (value instanceof Long aLong) {
+            cell.setCellValue(aLong);
+        } else if (value instanceof Double aDouble) {
+            cell.setCellValue(aDouble);
+        } else if (value instanceof java.math.BigDecimal bigDecimal ) {
+            cell.setCellValue(bigDecimal.doubleValue());
         } else {
             cell.setCellValue(value.toString());
         }
@@ -314,6 +325,7 @@ public class ExportService {
     /**
      * Xuất danh sách căn hộ ra file PDF
      */
+    @SuppressWarnings("ConvertToTryWithResources")
     public byte[] exportApartmentsToPdf(List<ApartmentReportDTO> apartments) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         
@@ -369,6 +381,7 @@ public class ExportService {
     /**
      * Xuất danh sách hóa đơn ra file PDF
      */
+    @SuppressWarnings("ConvertToTryWithResources")
     public byte[] exportInvoicesToPdf(List<InvoiceReportDTO> invoices) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         
@@ -422,6 +435,7 @@ public class ExportService {
     /**
      * Xuất danh sách hộ gia đình ra file PDF
      */
+    @SuppressWarnings("ConvertToTryWithResources")
     public byte[] exportHouseholdsToPdf(List<HouseholdReportDTO> households) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         
@@ -475,6 +489,7 @@ public class ExportService {
     /**
      * Xuất danh sách cư dân ra file PDF
      */
+    @SuppressWarnings("ConvertToTryWithResources")
     public byte[] exportResidentsToPdf(List<ResidentReportDTO> residents) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         
@@ -525,4 +540,3 @@ public class ExportService {
         }
     }
 }
-

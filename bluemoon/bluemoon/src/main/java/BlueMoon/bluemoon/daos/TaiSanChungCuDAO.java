@@ -207,6 +207,124 @@ public class TaiSanChungCuDAO {
         Long count = entityManager.createQuery(jpql, Long.class).getSingleResult();
         return count != null ? count : 0;
     }
+    /**
+     * Tìm tất cả các tầng (ViTri) có căn hộ (loaiTaiSan = CAN_HỌ)
+     */
+    public List<String> findAllApartmentFloors() {
+        String jpql = "SELECT DISTINCT ts.viTri FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai ORDER BY ts.viTri ASC";
+        return entityManager.createQuery(jpql, String.class)
+                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+    /**
+     * Kiểm tra xem Tên Tài Sản đã tồn tại chưa (dùng khi thêm mới)
+     */
+    public boolean existsByTenCanHo(String tenTaiSan) {
+        // Chỉ kiểm tra cho CĂN HỘ (AssetType.can_ho)
+        String jpql = "SELECT COUNT(ts) FROM TaiSanChungCu ts WHERE ts.tenTaiSan = :tenTaiSan AND ts.loaiTaiSan = :loaiCanHo";
+        Long count = entityManager.createQuery(jpql, Long.class)
+                                  .setParameter("tenTaiSan", tenTaiSan)
+                                  .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                                  .getSingleResult();
+        return count > 0;
+    }
     
+    /**
+     * Kiểm tra xem Tên Tài Sản đã tồn tại chưa (dùng khi cập nhật, loại trừ chính nó)
+     */
+    public boolean existsByTenCanHoExceptId(String tenTaiSan, Integer maTaiSan) {
+        String jpql = "SELECT COUNT(ts) FROM TaiSanChungCu ts WHERE ts.tenTaiSan = :tenTaiSan " +
+                      "AND ts.loaiTaiSan = :loaiCanHo AND ts.maTaiSan != :maTaiSan";
+        Long count = entityManager.createQuery(jpql, Long.class)
+                                  .setParameter("tenTaiSan", tenTaiSan)
+                                  .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                                  .setParameter("maTaiSan", maTaiSan)
+                                  .getSingleResult();
+        return count > 0;
+    }
+    
+    /**
+     * Tìm kiếm các căn hộ đang TRỐNG (HoGiaDinh IS NULL) theo vị trí (tầng).
+     */
+    public List<TaiSanChungCu> findEmptyApartmentsByFloor(String viTri) {
+        String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai " +
+                      "AND ts.hoGiaDinh IS NULL AND ts.viTri = :viTri";
+        return entityManager.createQuery(jpql, TaiSanChungCu.class)
+                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .setParameter("viTri", viTri)
+                            .getResultList();
+    }
+    /**
+     * Lấy danh sách: [Tên Căn Hộ, Số lượng cư dân đang ở]
+     * Ví dụ: ["A-1001", 3], ["B-0502", 2]
+     * Chúng ta sẽ xử lý logic tách Tòa/Tầng ở Service.
+     */
+    public List<Object[]> getRawResidentCounts() {
+        String jpql = "SELECT t.tenTaiSan, COUNT(tv) " +
+                      "FROM TaiSanChungCu t " +
+                      "JOIN t.hoGiaDinh h " +
+                      "JOIN h.thanhVienHoList tv " +
+                      "WHERE t.loaiTaiSan = :loai " +
+                      "AND tv.ngayKetThuc IS NULL " +
+                      "GROUP BY t.tenTaiSan";
+        
+        return entityManager.createQuery(jpql, Object[].class)
+                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+    // =======================================================
+    // THỐNG KÊ TÀI SẢN CHUNG (KHÔNG BAO GỒM CĂN HỘ)
+    // =======================================================
+
+    /**
+     * Lấy danh sách chi tiết các tài sản chung (Không phải căn hộ)
+     */
+    public List<TaiSanChungCu> findAllGeneralAssets() {
+        String jpql = "SELECT t FROM TaiSanChungCu t WHERE t.loaiTaiSan != :loaiCanHo ORDER BY t.tenTaiSan ASC";
+        return entityManager.createQuery(jpql, TaiSanChungCu.class)
+                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+
+    /**
+     * Thống kê số lượng theo Loại Tài Sản (VD: Thiết bị, Tiện ích...)
+     * Trả về: List<[AssetType, Long]>
+     */
+    public List<Object[]> countGeneralAssetsByType() {
+        String jpql = "SELECT t.loaiTaiSan, COUNT(t) FROM TaiSanChungCu t " +
+                      "WHERE t.loaiTaiSan != :loaiCanHo " +
+                      "GROUP BY t.loaiTaiSan";
+        return entityManager.createQuery(jpql, Object[].class)
+                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+
+    /**
+     * Thống kê số lượng theo Trạng Thái (VD: Hoạt động, Bảo trì...)
+     * Trả về: List<[AssetStatus, Long]>
+     */
+    public List<Object[]> countGeneralAssetsByStatus() {
+        String jpql = "SELECT t.trangThai, COUNT(t) FROM TaiSanChungCu t " +
+                      "WHERE t.loaiTaiSan != :loaiCanHo " +
+                      "GROUP BY t.trangThai";
+        return entityManager.createQuery(jpql, Object[].class)
+                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
+
+    /**
+     * Thống kê số lượng theo Vị Trí (Tầng/Khu vực)
+     * Trả về: List<[String, Long]>
+     */
+    public List<Object[]> countGeneralAssetsByLocation() {
+        // Group by chuỗi vị trí.
+        // Lưu ý: Dữ liệu vị trí cần nhập chuẩn hóa (VD: "Tầng 1", "Sảnh A") để biểu đồ đẹp.
+        String jpql = "SELECT t.viTri, COUNT(t) FROM TaiSanChungCu t " +
+                      "WHERE t.loaiTaiSan != :loaiCanHo " +
+                      "GROUP BY t.viTri";
+        return entityManager.createQuery(jpql, Object[].class)
+                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                            .getResultList();
+    }
 }
 

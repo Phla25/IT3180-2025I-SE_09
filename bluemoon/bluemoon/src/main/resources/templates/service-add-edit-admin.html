@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle} ?: 'Tạo Dịch Vụ Mới'">Quản Lý Dịch Vụ - BlueMoon Portal</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ==================== GLOBAL & VARIABLES (Trích từ main.css) ==================== */
+        .feature-badge {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: auto;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .nav-item {
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-item:hover .feature-badge {
+            animation-play-state: paused;
+            transform: scale(1.1);
+        }
+
+        /* ==================== ENHANCED CARDS ==================== */
+        .stat-card {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .stat-card:hover::before {
+            left: 100%;
+        }
+        :root {
+            --primary-color: #4F46E5;
+            --primary-dark: #4338CA;
+            --secondary-color: #10B981;
+            --danger-color: #EF4444;
+            --warning-color: #F59E0B;
+            --info-color: #3B82F6;
+            --dark: #1F2937;
+            --gray-dark: #374151;
+            --gray: #6B7280;
+            --gray-light: #D1D5DB;
+            --gray-lighter: #F3F4F6;
+            --white: #FFFFFF;
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--gray-lighter);
+            color: var(--dark);
+        }
+
+        /* ==================== CONTENT CARD ==================== */
+        .content-card {
+            background: var(--white);
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: var(--shadow-md);
+            margin-bottom: 24px;
+        }
+
+        .content-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--gray-light);
+        }
+
+        .content-card-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--dark);
+        }
+
+        /* ==================== FORMS (Lưới và Nhóm) ==================== */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px; /* Khoảng cách giữa các cột và hàng */
+        }
+        
+        /* Cho phép phần tử mở rộng 2 cột */
+        .span-2 {
+            grid-column: span 2;
+        }
+
+        .form-group {
+            margin-bottom: 0; /* Đã có gap 20px, không cần margin-bottom */
+        }
+
+        .form-label, label { /* Dùng chung cho label của Thymeleaf */
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--gray-dark);
+            font-size: 14px;
+        }
+
+        .form-control, input[type="text"], input[type="number"], select, textarea {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid var(--gray-light);
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border 0.2s, box-shadow 0.2s;
+            font-family: inherit;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .required {
+            color: var(--danger-color);
+        }
+
+        /* ==================== BUTTONS ==================== */
+        .form-actions {
+            display: flex;
+            gap: 16px;
+            padding-top: 20px;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .btn-primary {
+            background: var(--primary-color);
+            color: var(--white);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-secondary {
+            background: var(--gray);
+            color: var(--white);
+        }
+        
+        .btn-secondary:hover {
+            background: var(--gray-dark);
+        }
+
+        /* ==================== ALERTS ==================== */
+        .alert {
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            border-width: 1px;
+            border-style: solid;
+        }
+
+        .alert-success {
+            background-color: #D1FAE5; /* green-100 */
+            color: #065F46; /* green-800 */
+            border-color: #A7F3D0; /* green-300 */
+        }
+
+        .alert-danger {
+            background-color: #FEE2E2; /* red-100 */
+            color: #991B1B; /* red-800 */
+            border-color: #FCA5A5; /* red-300 */
+        }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-building"></i>
+                <span>BlueMoon Portal</span>
+            </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user?.hoVaTen} ?: 'Tên Người Dùng'">Tên Người Dùng</span>
+                    <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a th:href="@{/admin/dashboard}" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a th:href="@{/admin/resident-list}" class="nav-item">
+                <i class="fas fa-users"></i>
+                <span>Quản Lý Cư Dân</span>
+            </a>
+            <a th:href="@{/admin/apartment-list}" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Quản Lý Căn Hộ</span>
+            </a>
+            <a th:href="@{/admin/household-list}" class="nav-item">
+                <i class="fas fa-users-cog"></i>
+                <span>Quản Lý Hộ Gia Đình</span>
+            </a>
+            <a th:href="@{/admin/general-asset-list}" class="nav-item">
+                <i class="fas fa-building"></i>
+                <span>Quản Lý Tài Sản</span>
+            </a>
+            <a th:href="@{/admin/fees}" class="nav-item"> 
+                <i class="fas fa-file-invoice-dollar"></i> 
+                <span>Quản Lý Khoản Phí</span>
+            </a>
+            <a th:href="@{/admin/service-list}" class="nav-item active">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Quản Lý Dịch Vụ</span>
+            </a>
+            <a th:href="@{/admin/service-registrations}" class="nav-item">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Quản Lý Đăng Ký Dịch Vụ</span>
+                <span class="feature-badge">MỚI</span>
+            </a>
+            <a href="#" class="nav-item" onclick="showFeatureToggle('Xử Lý Sự Cố', 'Quản lý và theo dõi tiến độ các sự cố đã báo cáo.')">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Xử Lý Sự Cố</span>
+            </a>
+            <a th:href="@{/admin/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
+            </a>
+            <a th:href="@{/admin/reports}" class="nav-item" onclick="showFeatureToggle('Báo Cáo Thống Kê', 'Xem các báo cáo chi tiết về tài chính, cư dân và dịch vụ.')">
+                <i class="fas fa-chart-bar"></i>
+                <span>Báo Cáo Thống Kê</span>
+            </a>
+        </nav>
+
+        <div class="sidebar-footer">
+             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1 th:text="${pageTitle}">Tạo Dịch Vụ Mới</h1>
+        </div>
+
+        <div class="header-right">
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
+                    <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                </div>
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="dropdown-menu">
+                    <a th:href="@{/admin/profile}">
+                        <i class="fas fa-user"></i> Thông Tin Cá Nhân
+                    </a>
+                    <a th:href="@{/admin/settings}">
+                        <i class="fas fa-cog"></i> Cài Đặt
+                    </a>
+                    <hr>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+    <main class="main-content" style="padding: 30px; margin-left: 260px; margin-top: 70px;">
+        <div class="content-card" style="max-width: 800px; margin: 0 auto 24px;">
+            <div class="content-card-header">
+                <h1 class="content-card-title" th:text="${pageTitle}">Tạo Dịch Vụ Mới</h1>
+            </div>
+
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Thông báo thành công.</div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi.</div>
+
+            <form th:action="@{/admin/service-save}" th:object="${dichVu}" method="post" class="form-grid">
+                
+                <input type="hidden" th:field="*{maDichVu}" />
+                <input type="hidden" th:field="*{ngayTao}" />
+                
+                <div class="form-group span-2">
+                    <label for="tenDichVu">Tên Dịch Vụ <span class="required">*</span></label>
+                    <input type="text" id="tenDichVu" th:field="*{tenDichVu}" required maxlength="100" class="form-control">
+                </div>
+                
+                <div class="form-group">
+                    <label for="giaThanh">Giá Thành (₫) <span class="required">*</span></label>
+                    <input type="number" id="giaThanh" th:field="*{giaThanh}" step="1" min="0" required class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="donVi">Đơn Vị Tính</label>
+                    <input type="text" id="donVi" th:field="*{donVi}" maxlength="20" placeholder="VD: Tháng, Lần, kWh, m3" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="loaiDichVu">Loại Dịch Vụ <span class="required">*</span></label>
+                    <select id="loaiDichVu" th:field="*{loaiDichVu}" required class="form-control">
+                        <option value="">-- Chọn loại dịch vụ --</option>
+                        <option th:each="type : ${serviceTypes}" 
+                                th:value="${type}" 
+                                th:text="${type.dbValue}"></option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="trangThai">Trạng Thái <span class="required">*</span></label>
+                    <select id="trangThai" th:field="*{trangThai}" required class="form-control">
+                        <option th:each="status : ${assetStatuses}" 
+                                th:value="${status}" 
+                                th:text="${status.dbValue}"></option>
+                    </select>
+                </div>
+
+                <div class="form-group span-2">
+                    <label for="moTa">Mô Tả Chi Tiết</label>
+                    <textarea id="moTa" th:field="*{moTa}" rows="4" class="form-control"></textarea>
+                </div>
+                
+                <div class="form-actions span-2">
+                    <button type="submit" class="btn btn-primary" style="min-width: 150px;">
+                        <i class="fas fa-save"></i> 
+                        <span th:text="*{maDichVu} == null ? 'Tạo Dịch Vụ' : 'Cập Nhật'">Tạo Dịch Vụ</span>
+                    </button>
+                    <a th:href="@{/admin/service-list}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Hủy và Quay lại
+                    </a>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</body>
+
+</html>

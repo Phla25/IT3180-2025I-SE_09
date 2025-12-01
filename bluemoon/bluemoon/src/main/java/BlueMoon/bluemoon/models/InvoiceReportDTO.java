@@ -140,4 +140,3 @@ public class InvoiceReportDTO {
         this.ghiChu = ghiChu;
     }
 }
-

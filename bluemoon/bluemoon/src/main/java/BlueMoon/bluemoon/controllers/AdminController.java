@@ -1,10 +1,18 @@
 package BlueMoon.bluemoon.controllers;
 
+import java.io.IOException;
 import java.math.BigDecimal;
+import java.security.Principal;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -14,31 +22,38 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import BlueMoon.bluemoon.daos.BaoCaoSuCoDAO;
+import BlueMoon.bluemoon.daos.DoiTuongDAO;
 import BlueMoon.bluemoon.daos.HoGiaDinhDAO;
 import BlueMoon.bluemoon.daos.HoaDonDAO;
 import BlueMoon.bluemoon.entities.BaoCaoSuCo;
+import BlueMoon.bluemoon.entities.DangKyDichVu;
+import BlueMoon.bluemoon.entities.DichVu;
 import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.HoaDon;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
+import BlueMoon.bluemoon.entities.ThongBao;
+import BlueMoon.bluemoon.models.ApartmentReportDTO;
+import BlueMoon.bluemoon.models.HouseholdReportDTO;
+import BlueMoon.bluemoon.models.InvoiceReportDTO;
+import BlueMoon.bluemoon.models.PhanHoiThongBaoDTO;
+import BlueMoon.bluemoon.models.ResidentReportDTO;
 import BlueMoon.bluemoon.services.CuDanService;
+import BlueMoon.bluemoon.services.DangKyDichVuService;
+import BlueMoon.bluemoon.services.DichVuService;
+import BlueMoon.bluemoon.services.ExportService;
 import BlueMoon.bluemoon.services.HoGiaDinhService;
 import BlueMoon.bluemoon.services.HoaDonService;
 import BlueMoon.bluemoon.services.NguoiDungService;
-import BlueMoon.bluemoon.services.TaiSanChungCuService;
+import BlueMoon.bluemoon.services.PhanHoiThongBaoService;
 import BlueMoon.bluemoon.services.ReportService;
-import BlueMoon.bluemoon.services.ExportService;
-import BlueMoon.bluemoon.models.ApartmentReportDTO;
-import BlueMoon.bluemoon.models.InvoiceReportDTO;
-import BlueMoon.bluemoon.models.HouseholdReportDTO;
-import BlueMoon.bluemoon.models.ResidentReportDTO;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
+import BlueMoon.bluemoon.services.TaiSanChungCuService;
+import BlueMoon.bluemoon.services.ThongBaoService;
 import BlueMoon.bluemoon.utils.AccountStatus;
 import BlueMoon.bluemoon.utils.Gender;
 import BlueMoon.bluemoon.utils.HouseholdStatus;
@@ -59,6 +74,7 @@ public class AdminController {
     private NguoiDungService nguoiDungService;
 
     @Autowired private HoGiaDinhService hoGiaDinhService;
+    @Autowired private DichVuService dichVuService;
 
     private DoiTuong getCurrentUser(Authentication auth) {
         String id = auth.getName();
@@ -72,20 +88,25 @@ public class AdminController {
     @Autowired private HoaDonDAO hoaDonDAO;
     @Autowired private TaiSanChungCuService taiSanChungCuService;
     @Autowired private HoaDonService hoaDonService;
+    @Autowired private DangKyDichVuService dangKyDichVuService;
     @Autowired private ReportService reportService;
     @Autowired private ExportService exportService;
+    @Autowired private ThongBaoService thongBaoService;
+    @Autowired private DoiTuongDAO doiTuongDAO;
+    @Autowired private PhanHoiThongBaoService phanHoiThongBaoService;
 
+    @SuppressWarnings("unchecked")
     @GetMapping("/dashboard")
     public String showAdminDashboard(Model model, Authentication auth) {
         
+        // 1. Xác thực người dùng
         DoiTuong user = getCurrentUser(auth);
         if (user == null) {
             return "redirect:/login?error=notfound";
         }
-        // ⚠️ Đảm bảo user không null (Spring Security thường lo phần này)
         model.addAttribute("user", user);
 
-        // 1. Thống kê chung
+        // 2. Thống kê số liệu tổng quan (Cards)
         model.addAttribute("tongCuDan", cuDanService.layDanhSachCuDan().size());
         model.addAttribute("tongHoGiaDinh", hoGiaDinhDAO.countAll());
         
@@ -93,22 +114,53 @@ public class AdminController {
         long suCoDangXuLy = suCoDAO.countByTrangThai(IncidentStatus.dang_xu_ly);
         model.addAttribute("suCoChuaXuLy", suCoChuaXuLy + suCoDangXuLy);
         
-        // Dùng Optional.orElse để tránh NPE nếu Service trả về null
         BigDecimal tongThu = hoaDonDAO.sumSoTienByTrangThai(InvoiceStatus.da_thanh_toan);
         model.addAttribute("doanhThuThang", tongThu); 
 
-        // 2. Thống kê nhanh (Tỷ lệ)
-        long tongSuCo = suCoDAO.countAll(); // Cần thêm phương thức này
+        // 3. Thống kê tỷ lệ (Progress bars)
+        long tongSuCo = suCoDAO.countAll(); 
         long suCoDaXuLy = suCoDAO.countByTrangThai(IncidentStatus.da_hoan_thanh);
-        
-        // Tính tỷ lệ an toàn, sử dụng BigDecimal để tránh chia cho 0
         int tyLeSuCoDaXuLy = (tongSuCo > 0) ? (int)((suCoDaXuLy * 100) / tongSuCo) : 0;
         model.addAttribute("tyLeSuCoDaXuLy", tyLeSuCoDaXuLy);
-        // ... Các tỷ lệ khác ...
+        
+        // (Giả lập các tỷ lệ khác nếu chưa có logic tính toán)
+        model.addAttribute("tyLeThuPhi", 78); 
+        model.addAttribute("tyLeCanHoDaBan", 92);
 
-        // 3. Danh sách Sự Cố Cần Xử Lý Gấp (Luôn trả về List, có thể rỗng)
+        // 4. Danh sách sự cố cần xử lý gấp
         List<BaoCaoSuCo> suCoCanXuLy = suCoDAO.findByMucDoUuTien(PriorityLevel.cao);
-        model.addAttribute("suCoCanXuLy", suCoCanXuLy); // Dùng List, Thymeleaf sẽ tự xử lý list rỗng
+        model.addAttribute("suCoCanXuLy", suCoCanXuLy);
+
+        // ========================================================
+        // 5. XỬ LÝ DỮ LIỆU BIỂU ĐỒ (LOGIC MỚI)
+        // ========================================================
+        Map<String, Object> chartData = taiSanChungCuService.getChartData();
+        
+        // A. Dữ liệu Tầng
+        Map<Integer, Long> floorMap = (Map<Integer, Long>) chartData.get("floorStats");
+        List<String> floorLabels = new ArrayList<>();
+        List<Long> floorData = new ArrayList<>();
+        
+        for (Map.Entry<Integer, Long> entry : floorMap.entrySet()) {
+            floorLabels.add("Tầng " + entry.getKey());
+            floorData.add(entry.getValue());
+        }
+
+        // B. Dữ liệu Tòa
+        Map<String, Long> buildingMap = (Map<String, Long>) chartData.get("buildingStats");
+        List<String> buildingLabels = new ArrayList<>();
+        List<Long> buildingData = new ArrayList<>();
+
+        for (Map.Entry<String, Long> entry : buildingMap.entrySet()) {
+            buildingLabels.add("Tòa " + entry.getKey());
+            buildingData.add(entry.getValue());
+        }
+
+        model.addAttribute("floorLabels", floorLabels);
+        model.addAttribute("floorData", floorData);
+        model.addAttribute("buildingLabels", buildingLabels);
+        model.addAttribute("buildingData", buildingData);
+        // ========================================================
 
         return "dashboard-admin";
     }
@@ -462,6 +514,8 @@ public class AdminController {
         model.addAttribute("user", getCurrentUser(auth));
         model.addAttribute("newHousehold", new HoGiaDinh());
         model.addAttribute("householdStatuses", HouseholdStatus.values());
+        List<String> floors = taiSanChungCuService.getAllApartmentFloors();
+        model.addAttribute("apartmentFloors", floors);
         
         // Thêm DTO hoặc RequestParam để nhập CCCD Chủ hộ
         // Giả định dùng RequestParam: chuHoCccd và quanHe
@@ -476,15 +530,44 @@ public class AdminController {
     public String handleAddHousehold(@ModelAttribute("newHousehold") HoGiaDinh hoGiaDinh,
                                      @RequestParam("chuHoCccd") String chuHoCccd,
                                      @RequestParam(value = "quanHeVoiChuHo", defaultValue = "Chủ hộ") String quanHe,
+                                     @RequestParam(value = "maCanHoLienKet", required = false) Integer maTaiSan, // <-- THAM SỐ MỚI
                                      RedirectAttributes redirectAttributes) {
         try {
-            hoGiaDinhService.themHoGiaDinh(hoGiaDinh, chuHoCccd, quanHe);
-            redirectAttributes.addFlashAttribute("successMessage", "Thêm Hộ gia đình " + hoGiaDinh.getTenHo() + " thành công!");
+            // Cập nhật hàm service: truyền thêm maTaiSan
+            hoGiaDinhService.themHoGiaDinh(hoGiaDinh, chuHoCccd, quanHe, maTaiSan);
+            redirectAttributes.addFlashAttribute("successMessage", "Thêm Hộ gia đình " + hoGiaDinh.getTenHo() + " và gán Căn hộ thành công!");
             return "redirect:/admin/household-list";
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
             return "redirect:/admin/household-add";
         }
+    }
+    /**
+     * XỬ LÝ REST API: Lấy danh sách Căn hộ trống theo Tầng
+     * URL: GET /admin/apartments/empty-by-floor?viTri=T1
+     * TRẢ VỀ: List<Map<String, Object>> {maTaiSan, tenHienThi}
+     */
+    @GetMapping("/apartments/empty-by-floor")
+    public ResponseEntity<List<Map<String, Object>>> getEmptyApartmentsByFloor(@RequestParam("viTri") String viTri) {
+        if (viTri == null || viTri.trim().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+        
+        List<TaiSanChungCu> apartments = taiSanChungCuService.getEmptyApartmentsByFloor(viTri);
+        
+        // Chuyển đổi List<TaiSanChungCu> sang List<Map<String, Object>> chỉ chứa MaTaiSan và TenTaiSan
+        List<Map<String, Object>> simpleApartments = apartments.stream()
+            .map(a -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("maTaiSan", a.getMaTaiSan());
+                // Hiển thị Tên Căn Hộ và Diện Tích để dễ nhận biết hơn
+                map.put("tenHienThi", a.getTenTaiSan() + " (DT: " + a.getDienTich() + "m2)");
+                return map;
+            })
+            .toList();
+
+        // Trả về danh sách Căn hộ trống dưới dạng JSON
+        return ResponseEntity.ok(simpleApartments);
     }
 
     /**
@@ -541,12 +624,12 @@ public class AdminController {
             .filter(tvh -> tvh.getNgayKetThuc() == null)
             .map(ThanhVienHo::getDoiTuong)
             .toList();
-        
+        List<String> floors = taiSanChungCuService.getAllApartmentFloors();
         model.addAttribute("user", user);
         model.addAttribute("household", hgdCu);
         model.addAttribute("members", members); // Danh sách thành viên để chọn
         model.addAttribute("newHousehold", new HoGiaDinh()); // DTO cho thông tin Hộ mới
-        
+        model.addAttribute("apartmentFloors", floors);
         return "household-split"; // Tên file Thymeleaf mới
     }
 
@@ -559,6 +642,7 @@ public class AdminController {
                                        @RequestParam("tenHoMoi") String tenHoMoi,
                                        @RequestParam("chuHoMoiCccd") String chuHoMoiCccd,
                                        @RequestParam("cccdDuocTach") List<String> cccdThanhVienDuocTach, // List CCCD được chọn
+                                       @RequestParam(value = "maCanHoLienKet", required = false) Integer maTaiSan, // <-- THAM SỐ MỚI
                                        RedirectAttributes redirectAttributes) {
         try {
             // Kiểm tra số lượng thành viên tối thiểu
@@ -566,12 +650,13 @@ public class AdminController {
                 throw new IllegalArgumentException("Vui lòng chọn ít nhất một thành viên để tách hộ.");
             }
             
-            // Gọi logic Service Tách Hộ
+            // Gọi logic Service Tách Hộ (truyền thêm maTaiSan)
             HoGiaDinh hoGiaDinhMoi = hoGiaDinhService.tachHo(
                 maHoCu, 
                 cccdThanhVienDuocTach, 
                 chuHoMoiCccd, 
-                tenHoMoi
+                tenHoMoi,
+                maTaiSan // <-- TRUYỀN THAM SỐ MỚI
             );
             
             redirectAttributes.addFlashAttribute("successMessage", 
@@ -1035,6 +1120,10 @@ public class AdminController {
     // QUẢN LÝ HÓA ĐƠN (CRUD)
     // =======================================================
     
+    // =======================================================
+    // [CẬP NHẬT] QUẢN LÝ HÓA ĐƠN VỚI CHỨC NĂNG CHỌN THÀNH VIÊN
+    // =======================================================
+    
     /**
      * Admin list: URL: /admin/fees
      */
@@ -1043,11 +1132,11 @@ public class AdminController {
         model.addAttribute("user", getCurrentUser(auth));
         List<HoaDon> hoaDonList = hoaDonService.getAllHoaDon(); 
         model.addAttribute("hoaDonList", hoaDonList);
-        return "fees-admin"; // Tên file Thymeleaf mới
+        return "fees-admin"; 
     }
     
     /**
-     * Admin form: URL: /admin/fee-form (Sử dụng lại logic của Kế toán)
+     * Admin form: URL: /admin/fee-form
      */
     @GetMapping("/fee-form")
     public String showAdminFeeForm(@RequestParam(value = "id", required = false) Integer maHoaDon, 
@@ -1064,40 +1153,40 @@ public class AdminController {
         model.addAttribute("invoiceTypes", InvoiceType.values()); 
         List<HoGiaDinh> allHo = hoGiaDinhService.getAllHouseholds(); 
         model.addAttribute("allHo", allHo);
-        // model.addAttribute("allHo", hoGiaDinhService.getAllHouseholds()); // Cần Autowired HoGiaDinhService
         
-        // Vẫn trỏ đến file form chung
         return "invoice-add-edit-admin"; 
     }
     
     /**
-     * Admin save: URL: /admin/fee-save (Tái sử dụng logic Service)
+     * API JSON: Trả về danh sách thành viên của một hộ cụ thể.
+     * Giao diện sẽ gọi cái này khi người dùng chọn Hộ.
      */
-    @PostMapping("/fee-save")
-    public String handleAdminFeeSave(@ModelAttribute("hoaDon") HoaDon hoaDon, 
-                                @RequestParam("maHo") String maHo,
-                                Authentication auth,
-                                RedirectAttributes redirectAttributes) {
-        DoiTuong currentUser = getCurrentUser(auth);
-        
-        try {
-            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, currentUser);
-            
-            String message = (hoaDon.getMaHoaDon() == null) 
-                             ? "Tạo mới Hóa đơn thành công (Admin)!" 
-                             : "Cập nhật Hóa đơn #" + hoaDon.getMaHoaDon() + " thành công (Admin)!";
-            
-            redirectAttributes.addFlashAttribute("successMessage", message);
-            return "redirect:/admin/fees";
-        } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            return "redirect:/admin/fee-form?id=" + (hoaDon.getMaHoaDon() != null ? hoaDon.getMaHoaDon() : "");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
-            return "redirect:/admin/fees";
+    @GetMapping("/api/households/{maHo}/members")
+    public ResponseEntity<List<Map<String, String>>> getHouseholdMembers(@PathVariable String maHo) {
+        // 1. Tìm hộ gia đình
+        HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo).orElse(null);
+    
+        if (hgd == null) {
+            return ResponseEntity.notFound().build();
         }
-    }
 
+        // 2. Lấy danh sách thành viên ĐANG Ở (ngayKetThuc == null)
+        List<Map<String, String>> members = hgd.getThanhVienHoList().stream()
+            .filter(tvh -> tvh.getNgayKetThuc() == null) 
+            .map(tvh -> {
+                Map<String, String> map = new HashMap<>();
+                map.put("cccd", tvh.getDoiTuong().getCccd());
+            
+                // Đánh dấu ai là Chủ hộ để dễ nhìn
+                String role = tvh.getLaChuHo() ? " (Chủ hộ)" : "";
+                map.put("hoVaTen", tvh.getDoiTuong().getHoVaTen() + role);
+            
+                return map;
+            })
+            .toList();
+
+        return ResponseEntity.ok(members);
+    }
     /**
      * Admin delete: URL: /admin/fee-delete (Tái sử dụng logic Service)
      */
@@ -1112,8 +1201,127 @@ public class AdminController {
         }
         return "redirect:/admin/fees";
     }
+    // =======================================================
+    // QUẢN LÝ DỊCH VỤ (SERVICES)
+    // =======================================================
+
+    /**
+     * HIỂN THỊ DANH SÁCH DỊCH VỤ (GET)
+     * URL: /admin/service-list
+     */
+    @GetMapping("/service-list")
+    public String showServiceList(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
     
-    // ========== EXPORT REPORTS ==========
+        // 1. Lấy danh sách tất cả dịch vụ
+        List<DichVu> dichVuList = dichVuService.getAllDichVu();
+    
+        model.addAttribute("services", dichVuList);
+        model.addAttribute("serviceTypes", BlueMoon.bluemoon.utils.ServiceType.values());
+        model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
+
+        return "service-list-admin"; // Trỏ đến file Thymeleaf mới
+    }
+
+    // -------------------------------------------------------
+
+    /**
+     * HIỂN THỊ FORM THÊM/SỬA DỊCH VỤ (GET)
+     * URL: /admin/service-form?id={id}
+     */
+    @GetMapping("/service-form")
+    public String showServiceForm(@RequestParam(value = "id", required = false) Integer maDichVu, 
+                                  Model model, 
+                                  Authentication auth) {
+    
+        model.addAttribute("user", getCurrentUser(auth));
+        DichVu dichVu = new DichVu();
+        String pageTitle = "Tạo Dịch Vụ Mới";
+
+        if (maDichVu != null) {
+            // Chế độ chỉnh sửa
+            dichVu = dichVuService.getDichVuById(maDichVu)
+                       .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Dịch Vụ Mã: " + maDichVu));
+            pageTitle = "Chỉnh Sửa Dịch Vụ #" + maDichVu;
+        }
+    
+        model.addAttribute("dichVu", dichVu);
+        model.addAttribute("pageTitle", pageTitle);
+        model.addAttribute("serviceTypes", BlueMoon.bluemoon.utils.ServiceType.values());
+        model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
+        // Thêm Admin/Ban Quản Trị để chọn người phụ trách (nếu cần, tạm bỏ qua)
+        // model.addAttribute("adminList", nguoiDungService.getUsersByRole(UserRole.ADMIN)); 
+
+        return "service-add-edit-admin"; // Trỏ đến file Thymeleaf mới
+    }
+
+    // -------------------------------------------------------
+
+    /**
+     * XỬ LÝ LƯU DỊCH VỤ (POST)
+     * URL: /admin/service-save
+     */
+    @PostMapping("/service-save")
+    public String handleServiceSave(@ModelAttribute("dichVu") DichVu dichVu, 
+                                    Authentication auth,
+                                    RedirectAttributes redirectAttributes) {
+        DoiTuong currentUser = getCurrentUser(auth); // Admin là người tạo/cập nhật
+    
+        try {
+            // Tên Ban Quản Trị (Admin) phải được lấy từ currentUser (CCCD)
+            DichVu savedDichVu = dichVuService.saveOrUpdateDichVu(dichVu, currentUser.getCccd());
+        
+            String message = (savedDichVu.getMaDichVu() == null) 
+                             ? "Tạo mới Dịch vụ thành công!" 
+                             : "Cập nhật Dịch vụ #" + savedDichVu.getMaDichVu() + " thành công!";
+        
+            redirectAttributes.addFlashAttribute("successMessage", message);
+            return "redirect:/admin/service-list";
+        
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            // Quay lại form với ID (nếu có)
+            String idParam = (dichVu.getMaDichVu() != null) ? "?id=" + dichVu.getMaDichVu() : "";
+            return "redirect:/admin/service-form" + idParam;
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống khi lưu: " + e.getMessage());
+            return "redirect:/admin/service-list";
+        }
+    }
+
+    // -------------------------------------------------------
+
+    /**
+     * XỬ LÝ XÓA DỊCH VỤ (GET/Chuyển trạng thái)
+     * URL: /admin/service-delete?id={id}
+     */
+    @GetMapping("/service-delete")
+    public String handleServiceDelete(@RequestParam("id") Integer maDichVu, 
+                                      RedirectAttributes redirectAttributes) {
+        try {
+            // Giả định logic xóa/chuyển trạng thái nằm trong Service
+            dichVuService.deleteDichVu(maDichVu); // Thực tế nên là thay đổi trạng thái sang KHÔNG HOẠT ĐỘNG
+            redirectAttributes.addFlashAttribute("successMessage", "Đã xóa (hoặc chuyển trạng thái) Dịch vụ #" + maDichVu + " thành công.");
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống khi xóa: " + e.getMessage());
+        }
+        return "redirect:/admin/service-list";
+    }
+    @GetMapping("/service-registrations")
+    public String showServiceRegistrations(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        
+        // 1. Lấy danh sách tất cả đăng ký dịch vụ
+        List<DangKyDichVu> allRegistrations = dangKyDichVuService.getAllDangKyDichVu(); // CẦN THÊM TRONG DangKyDichVuService
+        
+        model.addAttribute("allRegistrations", allRegistrations);
+        model.addAttribute("registrationStatuses", BlueMoon.bluemoon.utils.RegistrationStatus.values());
+        
+        return "service-registrations-admin"; // Trỏ đến file Thymeleaf mới
+    }
+        // ========== EXPORT REPORTS ==========
     
     /**
      * Xuất báo cáo danh sách căn hộ ra file Excel
@@ -1131,7 +1339,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1153,7 +1361,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1174,7 +1382,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1195,9 +1403,60 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    // =======================================================
+    // IMPORT EXCEL (MỚI)
+    // =======================================================
+
+    /**
+     * 1. Hiển thị trang Import Excel
+     * URL: /admin/fees/import
+     */
+    @GetMapping("/fees/import")
+    public String showImportFeesPage(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        return "fees-import-admin"; // Trỏ đến file HTML sắp tạo
+    }
+
+    /**
+     * 2. Xử lý Upload File Excel
+     * URL: /admin/fees/import
+     */
+    @PostMapping("/fees/import")
+    @SuppressWarnings({"CallToPrintStackTrace", "UseSpecificCatch"})
+    public String handleImportFees(@RequestParam("file") MultipartFile file,
+                                   Authentication auth,
+                                   RedirectAttributes redirectAttributes) {
+        DoiTuong user = getCurrentUser(auth);
+        
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file Excel.");
+            return "redirect:/admin/fees/import";
+        }
+
+        try {
+            // Gọi Service xử lý đọc file và lưu DB
+            String result = hoaDonService.importHoaDonFromExcel(file, user);
+            
+            // Kiểm tra kết quả để hiển thị màu thông báo phù hợp
+            if (result.contains("Thất bại") || result.contains("Lỗi")) {
+                // Nếu có lỗi dòng nào đó, hiện thông báo dạng cảnh báo/lỗi
+                redirectAttributes.addFlashAttribute("errorMessage", result); 
+            } else {
+                redirectAttributes.addFlashAttribute("successMessage", result);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+            return "redirect:/admin/fees/import";
+        }
+        
+        // Thành công thì quay về danh sách hóa đơn
+        return "redirect:/admin/fees";
     }
     
     /**
@@ -1216,7 +1475,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1245,7 +1504,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1268,7 +1527,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1289,7 +1548,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1310,7 +1569,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1331,7 +1590,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1352,7 +1611,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1378,7 +1637,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1402,7 +1661,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1426,7 +1685,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1450,7 +1709,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1474,7 +1733,7 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -1498,8 +1757,108 @@ public class AdminController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    // THÔNG BÁO 
+        // 📨 Hiển thị danh sách thông báo
+    @GetMapping("/notifications")
+    public String hienThiThongBao(Model model, Principal principal) {
+        List<ThongBao> thongBaos = thongBaoService.layTatCaThongBaoMoiNhat();
+        model.addAttribute("thongBaos", thongBaos);
+
+        //Lấy thông tin người đang đăng nhập
+        DoiTuong user = null;
+        if (principal != null) {
+            user = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
+        }
+        model.addAttribute("user", user);
+
+        return "notification-admin";
+    }
+
+    // Gửi thông báo mới
+    @PostMapping("/notifications/send")
+    public String guiThongBao(
+            @RequestParam("tieuDe") String tieuDe,
+            @RequestParam("noiDung") String noiDung,
+            Principal principal
+    ) {
+        //Lấy người gửi thật từ tài khoản đang đăng nhập
+        DoiTuong nguoiTao = null;
+        if (principal != null) {
+            nguoiTao = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
+        }
+
+        // Nếu không có người đăng nhập (trường hợp test), dùng giả lập
+        if (nguoiTao == null) {
+            nguoiTao = new DoiTuong();
+            nguoiTao.setCccd("BQT");
+            nguoiTao.setHoVaTen("Ban Quản Trị");
+        }
+
+        //Gọi service để lưu thông báo
+        thongBaoService.taoVaGuiThongBao(tieuDe, noiDung, nguoiTao);
+
+        return "redirect:/admin/notifications?success=true";
+    }
+    /**
+     * Endpoint REST API: Lấy danh sách phản hồi của một thông báo
+     * URL: GET /admin/notifications/{maThongBao}/replies
+     */
+    @GetMapping("/notifications/{maThongBao}/replies")
+    public ResponseEntity<List<PhanHoiThongBaoDTO>> getNotificationReplies(@PathVariable Integer maThongBao) {
+        
+        // 1. Lấy dữ liệu từ Service
+        List<PhanHoiThongBaoDTO> replies = phanHoiThongBaoService.getRepliesByMaThongBao(maThongBao);
+        
+        // 2. Trả về JSON
+        // Nếu không có phản hồi, trả về List rỗng (status 200)
+        return ResponseEntity.ok(replies);
+    }
+    /**
+     * Hiển thị trang báo cáo thống kê tổng hợp
+     * URL: /admin/reports
+     */
+    @GetMapping("/reports") // Endpoint chung cho trang báo cáo
+    public String showUnifiedReport(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+
+        // === PHẦN 1: DỮ LIỆU TÀI SẢN CHUNG ===
+        Map<String, Object> assetStats = taiSanChungCuService.getGeneralAssetStatistics();
+        model.addAttribute("assetTypeLabels", assetStats.get("typeLabels"));
+        model.addAttribute("assetTypeData", assetStats.get("typeData"));
+        model.addAttribute("assetStatusLabels", assetStats.get("statusLabels"));
+        model.addAttribute("assetStatusData", assetStats.get("statusData"));
+        model.addAttribute("assetLocationLabels", assetStats.get("locationLabels"));
+        model.addAttribute("assetLocationData", assetStats.get("locationData"));
+        
+        // Danh sách bảng tài sản
+        model.addAttribute("assetList", taiSanChungCuService.getGeneralAssetListReport());
+
+        // === PHẦN 2: DỮ LIỆU CƯ DÂN ===
+        // A. Thống kê theo Tòa/Tầng (Lấy từ TaiSanChungCuService cũ)
+        Map<String, Object> buildingStats = taiSanChungCuService.getChartData(); // Hàm cũ bạn đã viết
+        
+        // Xử lý dữ liệu Tầng
+        Map<Integer, Long> floorMap = (Map<Integer, Long>) buildingStats.get("floorStats");
+        List<String> floorLabels = new ArrayList<>();
+        List<Long> floorData = new ArrayList<>();
+        for (Map.Entry<Integer, Long> e : floorMap.entrySet()) {
+            floorLabels.add("Tầng " + e.getKey());
+            floorData.add(e.getValue());
+        }
+        model.addAttribute("floorLabels", floorLabels);
+        model.addAttribute("floorData", floorData);
+
+        // B. Thống kê Giới tính & Trạng thái (Lấy từ CuDanService mới)
+        Map<String, Object> residentStats = cuDanService.getResidentStatistics();
+        model.addAttribute("genderLabels", residentStats.get("genderLabels"));
+        model.addAttribute("genderData", residentStats.get("genderData"));
+        model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
+        model.addAttribute("resStatusData", residentStats.get("resStatusData"));
+
+        return "reports-dashboard"; // Tên file HTML mới
     }
 }

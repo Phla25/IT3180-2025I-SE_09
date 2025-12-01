@@ -1,9 +1,15 @@
 package BlueMoon.bluemoon.controllers;
 
+import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -13,21 +19,20 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import BlueMoon.bluemoon.entities.DoiTuong;
+import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.HoaDon;
 import BlueMoon.bluemoon.models.HoaDonStatsDTO;
+import BlueMoon.bluemoon.models.InvoiceReportDTO;
+import BlueMoon.bluemoon.services.ExportService;
 import BlueMoon.bluemoon.services.HoGiaDinhService;
 import BlueMoon.bluemoon.services.HoaDonService;
 import BlueMoon.bluemoon.services.NguoiDungService;
 import BlueMoon.bluemoon.services.ReportService;
-import BlueMoon.bluemoon.services.ExportService;
-import BlueMoon.bluemoon.models.InvoiceReportDTO;
 import BlueMoon.bluemoon.utils.InvoiceType;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 
 @Controller
 @RequestMapping("/accountant")
@@ -186,27 +191,22 @@ public class AccountantController {
     // QUẢN LÝ HÓA ĐƠN (CRUD)
     // =======================================================
 
-    /**
-     * Hiển thị danh sách tất cả hóa đơn.
-     * URL: /accountant/fees
-     */
+// =======================================================
+    // QUẢN LÝ HÓA ĐƠN (CRUD)
+    // =======================================================
+
     @GetMapping("/fees")
     public String showAccountantFees(Model model, Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
         List<HoaDon> hoaDonList = hoaDonService.getAllHoaDon(); 
         model.addAttribute("hoaDonList", hoaDonList);
-        return "fees-accountant"; // Tên file Thymeleaf mới
+        return "fees-accountant";
     }
     
-    /**
-     * Hiển thị form Tạo/Chỉnh sửa Hóa đơn (GET).
-     * URL: /accountant/fee-form?id={maHoaDon} (Edit) hoặc /accountant/fee-form (Add)
-     */
     @GetMapping("/fee-form")
     public String showFeeForm(@RequestParam(value = "id", required = false) Integer maHoaDon, 
                               Model model, 
                               Authentication auth) {
-        
         model.addAttribute("user", getCurrentUser(auth));
         HoaDon hoaDon = (maHoaDon != null) ? 
                         hoaDonService.getHoaDonById(maHoaDon).orElse(new HoaDon()) : 
@@ -215,44 +215,50 @@ public class AccountantController {
         model.addAttribute("hoaDon", hoaDon);
         model.addAttribute("pageTitle", (maHoaDon != null) ? "Chỉnh Sửa Hóa Đơn #" + maHoaDon : "Tạo Hóa Đơn Mới");
         model.addAttribute("invoiceTypes", InvoiceType.values()); 
-        // Lấy danh sách Hộ gia đình cho Select box
-
-        model.addAttribute("allHo", hoGiaDinhService.getAllHouseholds()); // Cần Autowired HoGiaDinhService
+        model.addAttribute("allHo", hoGiaDinhService.getAllHouseholds());
         
         return "invoice-add-edit-accountant"; 
     }
     
-    /**
-     * Xử lý Tạo/Chỉnh sửa Hóa đơn (POST).
-     * URL: /accountant/fee-save
-     */
+    // [MỚI] API JSON cho Kế toán
+    @GetMapping("/api/households/{maHo}/members")
+    public ResponseEntity<List<Map<String, String>>> getHouseholdMembers(@PathVariable String maHo) {
+        HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo).orElse(null);
+        if (hgd == null) return ResponseEntity.notFound().build();
+
+        List<Map<String, String>> members = hgd.getThanhVienHoList().stream()
+            .filter(tvh -> tvh.getNgayKetThuc() == null)
+            .map(tvh -> {
+                Map<String, String> map = new HashMap<>();
+                map.put("cccd", tvh.getDoiTuong().getCccd());
+                String role = tvh.getLaChuHo() ? " (Chủ hộ)" : "";
+                map.put("hoVaTen", tvh.getDoiTuong().getHoVaTen() + role);
+                return map;
+            })
+            .toList();
+        return ResponseEntity.ok(members);
+    }
+
+    // [CẬP NHẬT] Xử lý lưu hóa đơn
     @PostMapping("/fee-save")
     public String handleFeeSave(@ModelAttribute("hoaDon") HoaDon hoaDon, 
                                 @RequestParam("maHo") String maHo, 
+                                @RequestParam(value = "nguoiDangKyCccd", required = false) String nguoiDangKyCccd, // <-- Tham số mới
                                 Authentication auth,
                                 RedirectAttributes redirectAttributes) {
-        
         DoiTuong currentUser = getCurrentUser(auth);
-        
         try {
-            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, currentUser); 
-            
-            String message = (hoaDon.getMaHoaDon() == null) 
-                             ? "Tạo mới Hóa đơn thành công!" 
-                             : "Cập nhật Hóa đơn #" + hoaDon.getMaHoaDon() + " thành công!";
-            
-            redirectAttributes.addFlashAttribute("successMessage", message);
+            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser); 
+            redirectAttributes.addFlashAttribute("successMessage", "Lưu hóa đơn thành công!");
             return "redirect:/accountant/fees";
-            
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             return "redirect:/accountant/fee-form?id=" + (hoaDon.getMaHoaDon() != null ? hoaDon.getMaHoaDon() : "");
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
             return "redirect:/accountant/fees";
         }
     }
-
     /**
      * Xử lý Xóa Hóa đơn (POST).
      * URL: /accountant/fee-delete
@@ -349,7 +355,7 @@ public class AccountantController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -370,9 +376,44 @@ public class AccountantController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    // =======================================================
+    // IMPORT EXCEL (MỚI)
+    // =======================================================
+
+    @GetMapping("/fees/import")
+    public String showImportFeesPage(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        return "fees-import-accountant"; // Trỏ đến file HTML sắp tạo
+    }
+
+    @PostMapping("/fees/import")
+    public String handleImportFees(@RequestParam("file") MultipartFile file,
+                                   Authentication auth,
+                                   RedirectAttributes redirectAttributes) {
+        DoiTuong user = getCurrentUser(auth);
+        
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file Excel.");
+            return "redirect:/accountant/fees/import";
+        }
+
+        try {
+            String result = hoaDonService.importHoaDonFromExcel(file, user);
+            
+            if (result.contains("Thất bại")) {
+                redirectAttributes.addFlashAttribute("errorMessage", result);
+            } else {
+                redirectAttributes.addFlashAttribute("successMessage", result);
+            }
+        } catch (IOException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+            return "redirect:/accountant/fees/import";
+        }
+        return "redirect:/accountant/fees";
     }
     
     // ========== EXPORT DETAIL ENDPOINTS ==========
@@ -396,7 +437,7 @@ public class AccountantController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }
@@ -420,7 +461,7 @@ public class AccountantController {
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
-        } catch (Exception e) {
+        } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
     }

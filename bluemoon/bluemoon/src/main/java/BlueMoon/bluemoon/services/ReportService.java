@@ -1,9 +1,16 @@
 package BlueMoon.bluemoon.services;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import BlueMoon.bluemoon.daos.DoiTuongDAO;
 import BlueMoon.bluemoon.daos.HoGiaDinhDAO;
 import BlueMoon.bluemoon.daos.HoaDonDAO;
 import BlueMoon.bluemoon.daos.TaiSanChungCuDAO;
-import BlueMoon.bluemoon.daos.DoiTuongDAO;
 import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.HoaDon;
@@ -15,12 +22,6 @@ import BlueMoon.bluemoon.models.InvoiceReportDTO;
 import BlueMoon.bluemoon.models.ResidentReportDTO;
 import BlueMoon.bluemoon.utils.AssetType;
 import BlueMoon.bluemoon.utils.UserRole;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-
-import java.util.ArrayList;
-import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Service để truy xuất và tổng hợp dữ liệu báo cáo theo role
@@ -177,7 +178,7 @@ public class ReportService {
     private List<ApartmentReportDTO> convertToApartmentReportDTO(List<TaiSanChungCu> assets) {
         return assets.stream().map(asset -> {
             HoGiaDinh hoGiaDinh = asset.getHoGiaDinh();
-            DoiTuong chuHo = null;
+            DoiTuong chuHo;
             String maHo = "";
             String tenHo = "";
             String tenChuHo = "";
@@ -220,7 +221,7 @@ public class ReportService {
     private List<InvoiceReportDTO> convertToInvoiceReportDTO(List<HoaDon> invoices) {
         return invoices.stream().map(invoice -> {
             HoGiaDinh hoGiaDinh = invoice.getHoGiaDinh();
-            DoiTuong chuHo = null;
+            DoiTuong chuHo;
             DoiTuong nguoiThanhToan = invoice.getNguoiThanhToan();
             
             String maHo = "";
@@ -409,4 +410,3 @@ public class ReportService {
         }).collect(Collectors.toList());
     }
 }
-

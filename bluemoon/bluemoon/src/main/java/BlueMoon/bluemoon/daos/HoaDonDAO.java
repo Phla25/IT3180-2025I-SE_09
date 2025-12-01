@@ -42,11 +42,19 @@ public class HoaDonDAO {
                 .setParameter("trangThai", trangThai)
                 .getResultList();
     }
-    public List<HoaDon> findByHoGiaDinh(HoGiaDinh HoGiaDinh) 
+    /**
+     * CẬP NHẬT: Lấy danh sách hóa đơn theo Hộ Gia Đình (Cho Cư Dân)
+     * Đảm bảo tải: NguoiDangKyDichVu, NguoiThanhToan
+     */
+    public List<HoaDon> findByHoGiaDinh(HoGiaDinh hoGiaDinh) 
     {
-        String jpql = "SELECT hd FROM HoaDon hd WHERE hd.hoGiaDinh = :hoGiaDinh";
+        String jpql = "SELECT hd FROM HoaDon hd "
+                    + "LEFT JOIN FETCH hd.nguoiDangKyDichVu ndkdv "
+                    + "LEFT JOIN FETCH hd.nguoiThanhToan ntt "
+                    + "WHERE hd.hoGiaDinh = :hoGiaDinh "
+                    + "ORDER BY hd.ngayTao DESC";
         return entityManager.createQuery(jpql, HoaDon.class)
-                .setParameter("hoGiaDinh", HoGiaDinh)
+                .setParameter("hoGiaDinh", hoGiaDinh)
                 .getResultList();
     }
     public List<HoaDon> findByHoGiaDinhMaHo(String maHo) 
@@ -61,12 +69,12 @@ public class HoaDonDAO {
     public Optional<HoaDon> findById(Integer maHoaDon) {
         // Sử dụng Integer cho maHoaDon
         String jpql = "SELECT hd FROM HoaDon hd "
-                    + "JOIN FETCH hd.hoGiaDinh h " 
-                    // Tải người thực hiện giao dịch (cccd_thanh_vien)
-                    + "LEFT JOIN FETCH hd.nguoiThucHienGiaoDich ntdg " 
-                    // Tải người thanh toán/xác nhận (cccd_nguoi_thanh_toan)
-                    + "LEFT JOIN FETCH hd.nguoiThanhToanHoacXacNhan nttx "
-                    + "WHERE hd.maHoaDon = :maHoaDon";
+                + "JOIN FETCH hd.hoGiaDinh h " 
+                // SỬA: Dùng tên thuộc tính mới cho Người tạo HĐ/Người đăng ký
+                + "LEFT JOIN FETCH hd.nguoiDangKyDichVu ndkdv " 
+                // SỬA: Dùng tên thuộc tính mới cho Người Thanh Toán/Xác nhận
+                + "LEFT JOIN FETCH hd.nguoiThanhToan ntt "
+                + "WHERE hd.maHoaDon = :maHoaDon";
         try {
              HoaDon hoaDon = entityManager.createQuery(jpql, HoaDon.class)
                 .setParameter("maHoaDon", maHoaDon)
@@ -84,9 +92,8 @@ public class HoaDonDAO {
         return sum != null ? sum : BigDecimal.ZERO;
     }
     public List<HoaDon> findAllWithHoGiaDinh() {
-        // Thêm FETCH JOIN để tránh vấn đề N+1 khi truy cập hoGiaDinh trong Thymeleaf
-        String jpql = "SELECT hd FROM HoaDon hd JOIN FETCH hd.hoGiaDinh h";
-        return entityManager.createQuery(jpql, HoaDon.class).getResultList();
+        // Tái sử dụng phương thức findAllWithDetails mới
+        return findAllWithDetails();
     }
     
     // PHƯƠNG THỨC MỚI ĐỂ GIẢI QUYẾT LỖI BIÊN DỊCH
@@ -98,15 +105,15 @@ public class HoaDonDAO {
             .getResultList();
     }
     
-    // PHƯƠNG THỨC NÀY ĐƯỢC SỬ DỤNG KHI CẦN HIỂN THỊ TÊN CHỦ HỘ
     @SuppressWarnings("unchecked")
     public List<HoaDon> findByTrangThaiWithChuHo(InvoiceStatus trangThai) {
         
-        // JPQL sử dụng JOIN PHỨC HỢP để tải Chủ Hộ
+        // JPQL sử dụng JOIN PHỨC HỢP để tải Chủ Hộ VÀ Người Đăng Ký Dịch VỤ
         String jpql = "SELECT DISTINCT hd FROM HoaDon hd "
                 + "JOIN FETCH hd.hoGiaDinh h "
-                + "JOIN h.thanhVienHoList tvh " // Tên trường @OneToMany trong HoGiaDinh.java
-                + "JOIN tvh.doiTuong dt " // Tên trường trong ThanhVienHo.java
+                + "JOIN h.thanhVienHoList tvh " 
+                + "JOIN tvh.doiTuong dt " 
+                + "LEFT JOIN FETCH hd.nguoiDangKyDichVu ndkdv " // Thêm Fetch Join cho người đăng ký/người tạo
                 + "WHERE tvh.laChuHo = TRUE AND hd.trangThai = :trangThai "
                 + "ORDER BY hd.ngayTao DESC";
 
@@ -131,4 +138,17 @@ public class HoaDonDAO {
     public void delete(HoaDon hd) {
         entityManager.remove(hd);
     }
+    /**
+     * CẬP NHẬT: Lấy tất cả hóa đơn với Fetch Join (Cho Admin/Kế toán)
+     * Đảm bảo tải: HoGiaDinh, NguoiDangKyDichVu, NguoiThanhToan
+     */
+    public List<HoaDon> findAllWithDetails() {
+        String jpql = "SELECT hd FROM HoaDon hd "
+                    + "JOIN FETCH hd.hoGiaDinh h " 
+                    + "LEFT JOIN FETCH hd.nguoiDangKyDichVu ndkdv " // Người đăng ký dịch vụ/Người tạo hóa đơn
+                    + "LEFT JOIN FETCH hd.nguoiThanhToan ntt " // Người thanh toán/Xác nhận
+                    + "ORDER BY hd.ngayTao DESC";
+        return entityManager.createQuery(jpql, HoaDon.class).getResultList();
+    }
+    
 }

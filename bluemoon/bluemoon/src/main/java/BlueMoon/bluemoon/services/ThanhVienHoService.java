@@ -12,6 +12,7 @@ import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.models.HoGiaDinhDTO; 
+import BlueMoon.bluemoon.entities.DoiTuong;
 
 @Service
 public class ThanhVienHoService {
@@ -59,5 +60,11 @@ public class ThanhVienHoService {
     public Optional<HoGiaDinh> getHoGiaDinhByCccd(String cccd) {
         Optional<ThanhVienHo> tvhOpt = thanhVienHoDAO.findCurrentByCccd(cccd);
         return tvhOpt.map(ThanhVienHo::getHoGiaDinh);
+    }
+    public Optional<ThanhVienHo> getThanhVienHoByCccd(String cccd){
+        return thanhVienHoDAO.findCurrentByCccd(cccd);
+    }
+    public Optional<DoiTuong> getChuHoByMaHo(String maHo){
+        return thanhVienHoDAO.findChuHoByHo(maHo);
     }
 }

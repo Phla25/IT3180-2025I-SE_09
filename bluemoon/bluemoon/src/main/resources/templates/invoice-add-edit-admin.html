@@ -9,6 +9,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        .feature-badge {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: auto;
+            animation: pulse 2s infinite;
+        }        
         .form-group {
             margin-bottom: 20px;
         }
@@ -26,6 +36,7 @@
             border: 1px solid #D1D5DB;
             border-radius: 8px;
             font-size: 14px;
+            box-sizing: border-box; /* Quan trọng để không bị vỡ layout */
         }
         .form-group textarea {
             min-height: 100px;
@@ -35,6 +46,7 @@
             display: flex;
             gap: 12px;
             margin-top: 24px;
+            justify-content: flex-end;
         }
         .btn-save {
             background-color: #10B981;
@@ -54,6 +66,11 @@
             font-weight: 600;
             text-decoration: none;
             display: inline-block;
+        }
+        .spinner {
+            display: none;
+            margin-left: 10px;
+            color: #10B981;
         }
     </style>
 </head>
@@ -79,10 +96,16 @@
             <a th:href="@{/admin/household-list}" class="nav-item"> <i class="fas fa-users-cog"></i> <span>Quản Lý Hộ Gia Đình</span> </a>
             <a th:href="@{/admin/general-asset-list}" class="nav-item"> <i class="fas fa-building"></i> <span>Quản Lý Tài Sản</span> </a>
             <a th:href="@{/admin/fees}" class="nav-item active"> <i class="fas fa-file-invoice-dollar"></i> <span>Quản Lý Khoản Phí</span> </a>
-            <a href="#" class="nav-item"> <i class="fas fa-concierge-bell"></i> <span>Quản Lý Dịch Vụ</span> </a>
-            <a href="#" class="nav-item"> <i class="fas fa-exclamation-triangle"></i> <span>Xử Lý Sự Cố</span> </a>
-            <a href="#" class="nav-item"> <i class="fas fa-bell"></i> <span>Gửi Thông Báo</span> </a>
-            <a href="#" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
+            <a th:href="@{/admin/service-list}" class="nav-item"><i class="fas fa-concierge-bell"></i><span>Quản Lý Dịch Vụ</span></a>
+            <a th:href="@{/admin/service-registrations}" class="nav-item">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Quản Lý Đăng Ký Dịch Vụ</span>
+                <span class="feature-badge">MỚI</span>
+            </a>            
+            <a th:href="@{/admin/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
+            </a>
+            <a th:href="@{/admin/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
         </nav>
         
         <div class="sidebar-footer">
@@ -139,51 +162,69 @@
 
             <div class="content-card">
                 <form th:action="@{/admin/fee-save}" method="post" th:object="${hoaDon}">
-                    <!-- Hidden field for ID if editing -->
-                    <input type="hidden" th:field="*{maHoaDon}" th:if="${hoaDon.maHoaDon != null}">
+                    <input type="hidden" th:field="*{maHoaDon}" th:if="${hoaDon.maHoaDon != null}" />
                     
-                    <div class="form-group">
-                        <label for="maHo"><i class="fas fa-home"></i> Hộ Gia Đình <span style="color: red;">*</span></label>
-                        <select id="maHo" name="maHo" required>
-                            <option value="">-- Chọn Hộ Gia Đình --</option>
-                            <option th:each="ho : ${allHo}" 
-                                    th:value="${ho.maHo}" 
-                                    th:text="${ho.tenHo + ' (Mã: ' + ho.maHo + ')'}"
-                                    th:selected="${hoaDon.hoGiaDinh != null and hoaDon.hoGiaDinh.maHo == ho.maHo}">
-                                Hộ Nguyễn Văn A (Mã: HGD001)
-                            </option>
-                        </select>
-                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        
+                        <div class="form-group">
+                            <label for="maHo"><i class="fas fa-home"></i> Hộ Gia Đình <span style="color: red;">*</span></label>
+                            <select id="maHo" name="maHo" required="required" onchange="loadMembers(this.value)">
+                                <option value="">-- Chọn Hộ Gia Đình --</option>
+                                <option th:each="ho : ${allHo}" 
+                                        th:value="${ho.maHo}" 
+                                        th:text="${ho.tenHo + ' (Mã: ' + ho.maHo + ')'}"
+                                        th:selected="${hoaDon.hoGiaDinh != null and hoaDon.hoGiaDinh.maHo == ho.maHo}">
+                                    Hộ Nguyễn Văn A (Mã: HGD001)
+                                </option>
+                            </select>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="loaiHoaDon"><i class="fas fa-tag"></i> Loại Hóa Đơn <span style="color: red;">*</span></label>
-                        <select id="loaiHoaDon" th:field="*{loaiHoaDon}" required>
-                            <option value="">-- Chọn Loại Hóa Đơn --</option>
-                            <option th:each="type : ${invoiceTypes}" 
-                                    th:value="${type}" 
-                                    th:text="${type.dbValue}">
-                                Phí Quản Lý
-                            </option>
-                        </select>
-                    </div>
+                        <div class="form-group">
+                            <label for="memberSelect">
+                                <i class="fas fa-user"></i> Người Đứng Tên Hóa Đơn
+                                <i class="fas fa-spinner fa-spin spinner" id="memberLoader"></i>
+                            </label>
+                            <select name="nguoiDangKyCccd" id="memberSelect">
+                                <option value="">-- Mặc định (Chủ Hộ) --</option>
+                                
+                                <option th:if="${hoaDon.nguoiDangKyDichVu != null}"
+                                        th:value="${hoaDon.nguoiDangKyDichVu.cccd}"
+                                        th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen}"
+                                        selected="selected"></option>
+                            </select>
+                            <small style="color: gray; font-size: 0.85em; margin-top: 5px; display: block;">Để trống sẽ tự động gán cho Chủ Hộ.</small>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="soTien"><i class="fas fa-money-bill-wave"></i> Số Tiền (VNĐ) <span style="color: red;">*</span></label>
-                        <input type="number" id="soTien" th:field="*{soTien}" min="0" step="1000" required placeholder="Nhập số tiền">
-                    </div>
+                        <div class="form-group">
+                            <label for="loaiHoaDon"><i class="fas fa-tag"></i> Loại Hóa Đơn <span style="color: red;">*</span></label>
+                            <select id="loaiHoaDon" th:field="*{loaiHoaDon}" required="required">
+                                <option value="">-- Chọn Loại Hóa Đơn --</option>
+                                <option th:each="type : ${invoiceTypes}" 
+                                        th:value="${type}" 
+                                        th:text="${type.dbValue}">
+                                    Phí Quản Lý
+                                </option>
+                            </select>
+                        </div>
 
-                    <div class="form-group">
-                        <label for="hanThanhToan"><i class="fas fa-calendar-alt"></i> Hạn Thanh Toán <span style="color: red;">*</span></label>
-                        <input type="date" id="hanThanhToan" th:field="*{hanThanhToan}" required>
-                    </div>
+                        <div class="form-group">
+                            <label for="soTien"><i class="fas fa-money-bill-wave"></i> Số Tiền (VNĐ) <span style="color: red;">*</span></label>
+                            <input type="number" id="soTien" th:field="*{soTien}" min="0" step="1000" required="required" placeholder="Nhập số tiền" />
+                        </div>
 
-                    <div class="form-group">
-                        <label for="trangThai"><i class="fas fa-check-circle"></i> Trạng Thái</label>
-                        <select id="trangThai" th:field="*{trangThai}">
-                            <option value="chua_thanh_toan">Chưa Thanh Toán</option>
-                            <option value="da_thanh_toan">Đã Thanh Toán</option>
-                            <option value="qua_han">Quá Hạn</option>
-                        </select>
+                        <div class="form-group">
+                            <label for="hanThanhToan"><i class="fas fa-calendar-alt"></i> Hạn Thanh Toán <span style="color: red;">*</span></label>
+                            <input type="date" id="hanThanhToan" th:field="*{hanThanhToan}" required="required" />
+                        </div>
+
+                        <div class="form-group">
+                            <label for="trangThai"><i class="fas fa-check-circle"></i> Trạng Thái</label>
+                            <select id="trangThai" th:field="*{trangThai}">
+                                <option value="chua_thanh_toan">Chưa Thanh Toán</option>
+                                <option value="da_thanh_toan">Đã Thanh Toán</option>
+                                <option value="qua_han">Quá Hạn</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="form-group">
@@ -210,6 +251,7 @@
         </div>
     </footer>
 
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="/js/main.js"></script>
     <script>
         function toggleSidebar() {
@@ -220,6 +262,42 @@
         document.querySelector('.user-menu').addEventListener('click', function() {
             this.querySelector('.dropdown-menu').classList.toggle('show');
         });
+
+        // --- SCRIPT AJAX LOAD MEMBER ---
+        function loadMembers(maHo) {
+            const memberSelect = document.getElementById('memberSelect');
+            const loader = document.getElementById('memberLoader');
+            
+            // Reset dropdown
+            memberSelect.innerHTML = '<option value="">-- Mặc định (Chủ Hộ) --</option>';
+            
+            if (!maHo) return;
+
+            loader.style.display = 'inline-block';
+            memberSelect.disabled = true;
+
+            // Gọi API Admin (Vì đây là trang Admin)
+            fetch(`/admin/api/households/${maHo}/members`)
+                .then(response => {
+                    if (!response.ok) throw new Error('Không tìm thấy dữ liệu');
+                    return response.json();
+                })
+                .then(data => {
+                    data.forEach(member => {
+                        const option = document.createElement('option');
+                        option.value = member.cccd;
+                        option.text = member.hoVaTen;
+                        memberSelect.appendChild(option);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                })
+                .finally(() => {
+                    loader.style.display = 'none';
+                    memberSelect.disabled = false;
+                });
+        }
     </script>
 </body>
 </html>

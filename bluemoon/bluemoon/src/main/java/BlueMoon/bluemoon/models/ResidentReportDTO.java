@@ -150,4 +150,3 @@ public class ResidentReportDTO {
         this.quanHeChuHo = quanHeChuHo;
     }
 }
-
