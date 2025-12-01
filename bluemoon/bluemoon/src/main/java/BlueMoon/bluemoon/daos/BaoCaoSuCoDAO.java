@@ -1,60 +1,45 @@
 package BlueMoon.bluemoon.daos;
 
 import java.util.List;
+import java.util.Optional; // Cần import
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query; // Cần import
+import org.springframework.data.repository.query.Param; // Cần import
 import org.springframework.stereotype.Repository;
 
 import BlueMoon.bluemoon.entities.BaoCaoSuCo;
+import BlueMoon.bluemoon.entities.DoiTuong; // Cần import
 import BlueMoon.bluemoon.utils.IncidentStatus;
 import BlueMoon.bluemoon.utils.PriorityLevel;
-import jakarta.persistence.EntityManager;
 
 @Repository
-public class BaoCaoSuCoDAO {
-    @Autowired
-    private EntityManager entityManager;
+public interface BaoCaoSuCoDAO extends JpaRepository<BaoCaoSuCo, Integer> {
 
-    public Long countAll() {
-        String jpql = "SELECT COUNT(bcs) FROM BaoCaoSuCo bcs";
-        Long count = entityManager.createQuery(jpql, Long.class).getSingleResult();
-        return count != null ? count : 0;
-    }
-    public Long countByTrangThai(IncidentStatus trangThai) {
-        String jpql = "SELECT COUNT(bcs) FROM BaoCaoSuCo bcs WHERE bcs.trangThai = :trangThai";
-        Long count = entityManager.createQuery(jpql, Long.class)
-                .setParameter("trangThai", trangThai)
-                .getSingleResult();
-        return count != null ? count : 0;
-    }
-    public Long countByMucDoUuTien(PriorityLevel mucDoUuTien) {
-        String jpql = "SELECT COUNT(bcs) FROM BaoCaoSuCo bcs WHERE bcs.mucDoUuTien = :mucDoUuTien";
-        Long count = entityManager.createQuery(jpql, Long.class)
-                .setParameter("mucDoUuTien", mucDoUuTien)
-                .getSingleResult();
-        return count != null ? count : 0;
-    }
-    public List<BaoCaoSuCo> findAll() {
-        String jpql = "SELECT bcs FROM BaoCaoSuCo bcs";
-        return entityManager.createQuery(jpql, BaoCaoSuCo.class).getResultList();
-    }
-    public List<BaoCaoSuCo> findByTrangThai(IncidentStatus trangThai) {
-        String jpql = "SELECT bcs FROM BaoCaoSuCo bcs WHERE bcs.trangThai = :trangThai";
-        return entityManager.createQuery(jpql, BaoCaoSuCo.class)
-                .setParameter("trangThai", trangThai)
-                .getResultList();
-    }
-    public List<BaoCaoSuCo> findByMucDoUuTien(PriorityLevel mucDoUuTien) {
-        String jpql = "SELECT bcs FROM BaoCaoSuCo bcs WHERE bcs.mucDoUuTien = :mucDoUuTien";
-        return entityManager.createQuery(jpql, BaoCaoSuCo.class)
-                .setParameter("mucDoUuTien", mucDoUuTien)
-                .setMaxResults(5)
-                .getResultList();
-    }
-    public List<BaoCaoSuCo> findByNguoiBaoCao(String cccdNguoiBaoCao) {
-        String jpql = "SELECT bcs FROM BaoCaoSuCo bcs WHERE bcs.cccdNguoiBaoCao = :cccdNguoiBaoCao";
-        return entityManager.createQuery(jpql, BaoCaoSuCo.class)
-                .setParameter("cccdNguoiBaoCao", cccdNguoiBaoCao)
-                .getResultList();
-    }
+    // 1. Tự động đếm số sự cố theo trạng thái (Giữ nguyên)
+    Long countByTrangThai(IncidentStatus trangThai);
+
+    // 2. Tự động đếm số sự cố theo mức độ ưu tiên (Giữ nguyên)
+    Long countByMucDoUuTien(PriorityLevel mucDo);
+
+    // 3. Tự động tìm kiếm theo mức độ ưu tiên (Giữ nguyên)
+    List<BaoCaoSuCo> findByMucDoUuTien(PriorityLevel mucDo);
+    
+    // 4. Lấy tất cả sự cố theo thời gian báo cáo giảm dần (Giữ nguyên)
+    List<BaoCaoSuCo> findAllByOrderByThoiGianBaoCaoDesc();
+
+    // ==================== BỔ SUNG CHO TÍNH NĂNG RESIDENT ====================
+
+    /**
+     * 5. Bổ sung: Lấy danh sách sự cố đã báo cáo bởi một DoiTuong cụ thể, 
+     * sắp xếp theo thời gian báo cáo giảm dần. Dùng cho giao diện cư dân.
+     */
+    List<BaoCaoSuCo> findByNguoiBaoCaoOrderByThoiGianBaoCaoDesc(DoiTuong nguoiBaoCao);
+
+    /**
+     * 6. Bổ sung: Lấy chi tiết sự cố theo ID, tải ngay (JOIN FETCH) các đối tượng 
+     * người báo cáo và tài sản để tránh lỗi Lazy Loading.
+     */
+    @Query("SELECT sc FROM BaoCaoSuCo sc LEFT JOIN FETCH sc.nguoiBaoCao LEFT JOIN FETCH sc.taiSan WHERE sc.maBaoCao = :id")
+    Optional<BaoCaoSuCo> findByIdWithDetails(@Param("id") Integer id);
 }
