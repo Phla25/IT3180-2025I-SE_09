@@ -1,4 +1,5 @@
 package BlueMoon.bluemoon.daos;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
@@ -18,13 +19,14 @@ public class TaiSanChungCuDAO {
     @Autowired
     @PersistenceContext
     private EntityManager entityManager;
-    
+
     // =======================================================
     // 1. CÁC PHƯƠNG THỨC CRUD CƠ BẢN (Sử dụng EntityManager)
     // =======================================================
 
     /**
      * Lưu (hoặc cập nhật) một Entity.
+     * 
      * @param taiSan Entity cần lưu.
      * @return Entity đã được quản lý (managed).
      */
@@ -40,7 +42,7 @@ public class TaiSanChungCuDAO {
         TaiSanChungCu taiSan = entityManager.find(TaiSanChungCu.class, ma_tai_san);
         return Optional.ofNullable(taiSan);
     }
-    
+
     /**
      * Tìm tất cả các Entity.
      */
@@ -48,7 +50,7 @@ public class TaiSanChungCuDAO {
         // Sử dụng JPQL để truy vấn tất cả
         return entityManager.createQuery("SELECT ts FROM TaiSanChungCu ts", TaiSanChungCu.class).getResultList();
     }
-    
+
     /**
      * Xóa Entity.
      */
@@ -72,8 +74,8 @@ public class TaiSanChungCuDAO {
     public List<TaiSanChungCu> findAllApartments() {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .getResultList();
+                .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .getResultList();
     }
 
     /**
@@ -82,10 +84,11 @@ public class TaiSanChungCuDAO {
     public List<TaiSanChungCu> findAllParkingSpots() {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.tenTaiSan =: ten AND ts.loaiTaiSan = :loai";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("ten", "Chỗ đỗ xe")
-                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.tien_ich)
-                            .getResultList();
+                .setParameter("ten", "Chỗ đỗ xe")
+                .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.tien_ich)
+                .getResultList();
     }
+
     /**
      * Tìm kiếm tất cả tài sản, có thể lọc theo loại tài sản.
      * Nếu loaiTaiSan là null, trả về tất cả.
@@ -93,8 +96,8 @@ public class TaiSanChungCuDAO {
     public List<TaiSanChungCu> findAllAssets(BlueMoon.bluemoon.utils.AssetType loaiTaiSan) {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE (:loai is null OR ts.loaiTaiSan = :loai)";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("loai", loaiTaiSan)
-                            .getResultList();
+                .setParameter("loai", loaiTaiSan)
+                .getResultList();
     }
 
     /**
@@ -103,9 +106,10 @@ public class TaiSanChungCuDAO {
     public List<TaiSanChungCu> findAssetsByName(String keyword) {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.tenTaiSan LIKE :keyword";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("keyword", "%" + keyword + "%")
-                            .getResultList();
+                .setParameter("keyword", "%" + keyword + "%")
+                .getResultList();
     }
+
     /**
      * Sửa thông tin căn hộ
      */
@@ -118,48 +122,64 @@ public class TaiSanChungCuDAO {
             entityManager.merge(taiSan);
         }
     }
+
     /**
      * Tìm kiếm căn hộ theo hộ gia đình
      */
     public List<TaiSanChungCu> findApartmentsByHousehold(HoGiaDinh hoGiaDinh) {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai AND ts.hoGiaDinh = :hoGiaDinh";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .setParameter("hoGiaDinh", hoGiaDinh)
-                            .getResultList();
+                .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .setParameter("hoGiaDinh", hoGiaDinh)
+                .getResultList();
     }
-    
+
+    /**
+     * Tìm kiếm TẤT CẢ tài sản (căn hộ, thiết bị, tiện ích...) theo hộ gia đình
+     */
+    public List<TaiSanChungCu> findAllAssetsByHousehold(HoGiaDinh hoGiaDinh) {
+        String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.hoGiaDinh = :hoGiaDinh ORDER BY ts.ngayThem DESC";
+        List<TaiSanChungCu> results = entityManager.createQuery(jpql, TaiSanChungCu.class)
+                .setParameter("hoGiaDinh", hoGiaDinh)
+                .getResultList();
+        System.out.println("DEBUG - findAllAssetsByHousehold: Tìm được " + results.size() + " tài sản cho hộ "
+                + hoGiaDinh.getMaHo());
+        return results;
+    }
+
     /**
      * Phân loại căn hộ theo trạng thái
      */
     public List<TaiSanChungCu> findApartmentsByStatus(BlueMoon.bluemoon.utils.AssetStatus status) {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai AND ts.trangThai = :trangThai";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .setParameter("trangThai", status)
-                            .getResultList();
+                .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .setParameter("trangThai", status)
+                .getResultList();
     }
+
     /**
      * Phân loại căn hộ theo dải diện tích
      */
     public List<TaiSanChungCu> findApartmentsByAreaRange(BigDecimal minDienTich, BigDecimal maxDienTich) {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai AND ts.dienTich BETWEEN :minDienTich AND :maxDienTich";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .setParameter("minDienTich", minDienTich)
-                            .setParameter("maxDienTich", maxDienTich)
-                            .getResultList();
+                .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .setParameter("minDienTich", minDienTich)
+                .setParameter("maxDienTich", maxDienTich)
+                .getResultList();
     }
+
     /**
      * Phân loại căn hộ theo dải giá trị
      */
     public List<TaiSanChungCu> findApartmentsByValueRange(BigDecimal minGiaTri, BigDecimal maxGiaTri) {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai AND ts.giaTri BETWEEN :minGiaTri AND :maxGiaTri";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .setParameter("minGiaTri", minGiaTri)
-                            .setParameter("maxGiaTri", maxGiaTri)
-                            .getResultList();
+                .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .setParameter("minGiaTri", minGiaTri)
+                .setParameter("maxGiaTri", maxGiaTri)
+                .getResultList();
     }
     // Giả định bạn đã sửa lại TaiSanChungCuDAO.java để bao gồm phương thức sau:
 
@@ -170,35 +190,38 @@ public class TaiSanChungCuDAO {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.hoGiaDinh.maHo = :maHo AND ts.loaiTaiSan = :loaiCanHo";
         try {
             return Optional.of(entityManager.createQuery(jpql, TaiSanChungCu.class)
-                                            .setParameter("maHo", maHo)
-                                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                                            .setMaxResults(1) // Lấy căn hộ đầu tiên (giả định 1 hộ sở hữu 1 căn chính)
-                                            .getSingleResult());
+                    .setParameter("maHo", maHo)
+                    .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                    .setMaxResults(1) // Lấy căn hộ đầu tiên (giả định 1 hộ sở hữu 1 căn chính)
+                    .getSingleResult());
         } catch (NoResultException e) {
             return Optional.empty();
         }
     }
+
     /**
      * Đếm tổng số căn hộ trong hệ thống
      */
     public Long countAllApartments() {
         String jpql = "SELECT COUNT(ts) FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loaiCanHo";
         Long count = entityManager.createQuery(jpql, Long.class)
-                                  .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                                  .getSingleResult();
+                .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .getSingleResult();
         return count != null ? count : 0;
     }
+
     /**
      * Đếm tổng số chỗ đỗ xe trong hệ thống
      */
     public Long countAllParkingSpots() {
         String jpql = "SELECT COUNT(ts) FROM TaiSanChungCu ts WHERE ts.tenTaiSan = :ten AND ts.loaiTaiSan = :loaiTienIch";
         Long count = entityManager.createQuery(jpql, Long.class)
-                                  .setParameter("ten", "cho_do_xe")
-                                  .setParameter("loaiTienIch", BlueMoon.bluemoon.utils.AssetType.tien_ich)
-                                  .getSingleResult();
+                .setParameter("ten", "cho_do_xe")
+                .setParameter("loaiTienIch", BlueMoon.bluemoon.utils.AssetType.tien_ich)
+                .getSingleResult();
         return count != null ? count : 0;
     }
+
     /**
      * Đếm tổng số tài sản chung cư
      */
@@ -207,15 +230,17 @@ public class TaiSanChungCuDAO {
         Long count = entityManager.createQuery(jpql, Long.class).getSingleResult();
         return count != null ? count : 0;
     }
+
     /**
      * Tìm tất cả các tầng (ViTri) có căn hộ (loaiTaiSan = CAN_HỌ)
      */
     public List<String> findAllApartmentFloors() {
         String jpql = "SELECT DISTINCT ts.viTri FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai ORDER BY ts.viTri ASC";
         return entityManager.createQuery(jpql, String.class)
-                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .getResultList();
+                .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .getResultList();
     }
+
     /**
      * Kiểm tra xem Tên Tài Sản đã tồn tại chưa (dùng khi thêm mới)
      */
@@ -223,37 +248,39 @@ public class TaiSanChungCuDAO {
         // Chỉ kiểm tra cho CĂN HỘ (AssetType.can_ho)
         String jpql = "SELECT COUNT(ts) FROM TaiSanChungCu ts WHERE ts.tenTaiSan = :tenTaiSan AND ts.loaiTaiSan = :loaiCanHo";
         Long count = entityManager.createQuery(jpql, Long.class)
-                                  .setParameter("tenTaiSan", tenTaiSan)
-                                  .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                                  .getSingleResult();
+                .setParameter("tenTaiSan", tenTaiSan)
+                .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .getSingleResult();
         return count > 0;
     }
-    
+
     /**
-     * Kiểm tra xem Tên Tài Sản đã tồn tại chưa (dùng khi cập nhật, loại trừ chính nó)
+     * Kiểm tra xem Tên Tài Sản đã tồn tại chưa (dùng khi cập nhật, loại trừ chính
+     * nó)
      */
     public boolean existsByTenCanHoExceptId(String tenTaiSan, Integer maTaiSan) {
         String jpql = "SELECT COUNT(ts) FROM TaiSanChungCu ts WHERE ts.tenTaiSan = :tenTaiSan " +
-                      "AND ts.loaiTaiSan = :loaiCanHo AND ts.maTaiSan != :maTaiSan";
+                "AND ts.loaiTaiSan = :loaiCanHo AND ts.maTaiSan != :maTaiSan";
         Long count = entityManager.createQuery(jpql, Long.class)
-                                  .setParameter("tenTaiSan", tenTaiSan)
-                                  .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                                  .setParameter("maTaiSan", maTaiSan)
-                                  .getSingleResult();
+                .setParameter("tenTaiSan", tenTaiSan)
+                .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .setParameter("maTaiSan", maTaiSan)
+                .getSingleResult();
         return count > 0;
     }
-    
+
     /**
      * Tìm kiếm các căn hộ đang TRỐNG (HoGiaDinh IS NULL) theo vị trí (tầng).
      */
     public List<TaiSanChungCu> findEmptyApartmentsByFloor(String viTri) {
         String jpql = "SELECT ts FROM TaiSanChungCu ts WHERE ts.loaiTaiSan = :loai " +
-                      "AND ts.hoGiaDinh IS NULL AND ts.viTri = :viTri";
+                "AND ts.hoGiaDinh IS NULL AND ts.viTri = :viTri";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .setParameter("viTri", viTri)
-                            .getResultList();
+                .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .setParameter("viTri", viTri)
+                .getResultList();
     }
+
     /**
      * Lấy danh sách: [Tên Căn Hộ, Số lượng cư dân đang ở]
      * Ví dụ: ["A-1001", 3], ["B-0502", 2]
@@ -261,16 +288,16 @@ public class TaiSanChungCuDAO {
      */
     public List<Object[]> getRawResidentCounts() {
         String jpql = "SELECT t.tenTaiSan, COUNT(tv) " +
-                      "FROM TaiSanChungCu t " +
-                      "JOIN t.hoGiaDinh h " +
-                      "JOIN h.thanhVienHoList tv " +
-                      "WHERE t.loaiTaiSan = :loai " +
-                      "AND tv.ngayKetThuc IS NULL " +
-                      "GROUP BY t.tenTaiSan";
-        
+                "FROM TaiSanChungCu t " +
+                "JOIN t.hoGiaDinh h " +
+                "JOIN h.thanhVienHoList tv " +
+                "WHERE t.loaiTaiSan = :loai " +
+                "AND tv.ngayKetThuc IS NULL " +
+                "GROUP BY t.tenTaiSan";
+
         return entityManager.createQuery(jpql, Object[].class)
-                            .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .getResultList();
+                .setParameter("loai", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .getResultList();
     }
     // =======================================================
     // THỐNG KÊ TÀI SẢN CHUNG (KHÔNG BAO GỒM CĂN HỘ)
@@ -282,8 +309,8 @@ public class TaiSanChungCuDAO {
     public List<TaiSanChungCu> findAllGeneralAssets() {
         String jpql = "SELECT t FROM TaiSanChungCu t WHERE t.loaiTaiSan != :loaiCanHo ORDER BY t.tenTaiSan ASC";
         return entityManager.createQuery(jpql, TaiSanChungCu.class)
-                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .getResultList();
+                .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .getResultList();
     }
 
     /**
@@ -292,11 +319,11 @@ public class TaiSanChungCuDAO {
      */
     public List<Object[]> countGeneralAssetsByType() {
         String jpql = "SELECT t.loaiTaiSan, COUNT(t) FROM TaiSanChungCu t " +
-                      "WHERE t.loaiTaiSan != :loaiCanHo " +
-                      "GROUP BY t.loaiTaiSan";
+                "WHERE t.loaiTaiSan != :loaiCanHo " +
+                "GROUP BY t.loaiTaiSan";
         return entityManager.createQuery(jpql, Object[].class)
-                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .getResultList();
+                .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .getResultList();
     }
 
     /**
@@ -305,11 +332,11 @@ public class TaiSanChungCuDAO {
      */
     public List<Object[]> countGeneralAssetsByStatus() {
         String jpql = "SELECT t.trangThai, COUNT(t) FROM TaiSanChungCu t " +
-                      "WHERE t.loaiTaiSan != :loaiCanHo " +
-                      "GROUP BY t.trangThai";
+                "WHERE t.loaiTaiSan != :loaiCanHo " +
+                "GROUP BY t.trangThai";
         return entityManager.createQuery(jpql, Object[].class)
-                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .getResultList();
+                .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .getResultList();
     }
 
     /**
@@ -318,13 +345,13 @@ public class TaiSanChungCuDAO {
      */
     public List<Object[]> countGeneralAssetsByLocation() {
         // Group by chuỗi vị trí.
-        // Lưu ý: Dữ liệu vị trí cần nhập chuẩn hóa (VD: "Tầng 1", "Sảnh A") để biểu đồ đẹp.
+        // Lưu ý: Dữ liệu vị trí cần nhập chuẩn hóa (VD: "Tầng 1", "Sảnh A") để biểu đồ
+        // đẹp.
         String jpql = "SELECT t.viTri, COUNT(t) FROM TaiSanChungCu t " +
-                      "WHERE t.loaiTaiSan != :loaiCanHo " +
-                      "GROUP BY t.viTri";
+                "WHERE t.loaiTaiSan != :loaiCanHo " +
+                "GROUP BY t.viTri";
         return entityManager.createQuery(jpql, Object[].class)
-                            .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
-                            .getResultList();
+                .setParameter("loaiCanHo", BlueMoon.bluemoon.utils.AssetType.can_ho)
+                .getResultList();
     }
 }
-

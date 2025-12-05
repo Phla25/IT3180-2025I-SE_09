@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tài Sản Của Tôi - Cư Dân - BlueMoon Portal</title>
+
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        .feature-badge {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 8px;
+            margin-left: auto;
+            animation: pulse 2s infinite;
+        }        
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .info-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .info-box h3 {
+            margin: 0 0 10px 0;
+            font-size: 1.2rem;
+        }
+
+        .info-box p {
+            margin: 5px 0;
+            opacity: 0.95;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .data-table th, .data-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #E5E7EB;
+        }
+
+        .data-table th {
+            background-color: #F9FAFB;
+            font-weight: 600;
+            color: #4B5563;
+            text-transform: uppercase;
+            font-size: 0.85rem;
+        }
+        
+        .data-table tr:hover {
+            background-color: #F3F4F6;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .status-active {
+            background-color: #D1FAE5;
+            color: #065F46;
+        }
+        .status-inactive, .status-dissolved {
+            background-color: #FEE2E2;
+            color: #991B1B;
+        }
+        .status-maintenance {
+            background-color: #FEF3C7;
+            color: #B45309;
+        }
+        .status-broken {
+            background-color: #FEE2E2;
+            color: #991B1B;
+        }
+        .status-stopped {
+            background-color: #E5E7EB;
+            color: #4B5563;
+        }
+        .status-rented {
+            background-color: #DBEAFE;
+            color: #1E40AF;
+        }
+        .asset-type-badge-info {
+             background-color: #DBEAFE; 
+             color: #1E40AF;
+        }
+        .asset-type-badge-primary {
+             background-color: #E0E7FF;
+             color: #4338CA;
+        }
+        .asset-type-badge-warning {
+             background-color: #FEEEDD;
+             color: #D97706;
+        }
+
+        .alert-info {
+            background-color: #E0F2FE;
+            color: #075985;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 4px solid #0284C7;
+        }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"> <i class="fas fa-building"></i> <span>BlueMoon Portal</span> </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user?.hoVaTen} ?: 'Tên Người Dùng'">Tên Người Dùng</span>
+                    <span class="user-role" style="color: #10B981;">CƯ DÂN</span>
+                </div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/resident/dashboard}" class="nav-item"> <i class="fas fa-chart-line"></i> <span>Dashboard</span> </a>
+            <a th:href="@{/resident/profile}" class="nav-item"> <i class="fas fa-user"></i> <span>Thông Tin Cá Nhân</span> </a>
+            <a th:href="@{/resident/fees}" class="nav-item"> <i class="fas fa-file-invoice-dollar"></i> <span>Hóa Đơn & Thanh Toán</span> </a>
+            <a th:href="@{/resident/services}" class="nav-item"> <i class="fas fa-concierge-bell"></i> <span>Đăng Ký Dịch Vụ</span> </a>
+            <a th:href="@{/resident/my-services}" class="nav-item"> <i class="fas fa-clipboard-list"></i> <span>Dịch Vụ Đã Đăng Ký</span> </a>
+            <a th:href="@{/resident/my-assets}" class="nav-item active"> <i class="fas fa-building"></i> <span>Tài Sản Của Tôi</span> </a>
+            <a th:href="@{/resident/notifications}" class="nav-item"> <i class="fas fa-bell"></i> <span>Thông Báo</span> </a>
+        </nav>
+        <div class="sidebar-footer">
+             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;"> <i class="fas fa-sign-out-alt"></i> Đăng Xuất </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()"> <i class="fas fa-bars"></i> </button>
+            <h1>Tài Sản Của Tôi</h1>
+        </div>
+        <div class="header-right">
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn A</span>
+                    <span class="user-role" style="color: #10B981;">CƯ DÂN</span>
+                </div>
+                <div class="user-avatar"> <i class="fas fa-user-circle"></i> </div>
+                <div class="dropdown-menu">
+                    <a th:href="@{/resident/profile}"> <i class="fas fa-user"></i> Thông Tin Cá Nhân </a>
+                    <a th:href="@{/resident/change-password}"> <i class="fas fa-key"></i> Đổi Mật Khẩu </a> <hr>
+                    <form th:action="@{/logout}" method="post"> <button type="submit" class="logout-btn"> <i class="fas fa-sign-out-alt"></i> Đăng Xuất </button> </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Thông báo thành công</div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
+
+            <!-- Thông tin hộ gia đình -->
+            <div th:if="${hoGiaDinh}" class="info-box">
+                <h3><i class="fas fa-home"></i> Thông Tin Hộ Gia Đình</h3>
+                <p><strong>Mã Hộ:</strong> <span th:text="${hoGiaDinh.maHo}">HGD001</span></p>
+                <p><strong>Chủ Hộ:</strong> <span th:text="${hoGiaDinh.chuHo?.hoVaTen} ?: 'N/A'">Nguyễn Văn A</span></p>
+                <p><strong>Số Tài Sản:</strong> <span th:text="${#lists.size(assets)}">0</span> tài sản</p>
+            </div>
+
+            <!-- Thông báo khi chưa có hộ -->
+            <div th:if="${message}" class="alert alert-info">
+                <i class="fas fa-info-circle"></i> <span th:text="${message}">Thông báo</span>
+            </div>
+
+            <!-- Bảng danh sách tài sản -->
+            <div th:if="${assets != null and !assets.isEmpty()}">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Mã TS</th>
+                            <th>Tên Tài Sản</th>
+                            <th>Loại</th>
+                            <th>Trạng Thái</th>
+                            <th>Vị Trí</th>
+                            <th>Diện Tích</th>
+                            <th>Giá Trị</th>
+                            <th>Ngày Thêm</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="asset : ${assets}">
+                            <td th:text="${asset.maTaiSan}">101</td>
+                            <td th:text="${asset.tenTaiSan}">Căn Hộ A-0101</td>
+                            <td>
+                                <span class="status-badge" 
+                                    th:classappend="${asset.loaiTaiSan.name() == 'can_ho' ? 'asset-type-badge-info' : (asset.loaiTaiSan.name() == 'thiet_bi' ? 'asset-type-badge-primary' : 'asset-type-badge-warning')}"
+                                    th:text="${asset.loaiTaiSan?.dbValue}">Căn Hộ</span>
+                            </td>
+                            <td>
+                                <span class="status-badge" 
+                                    th:classappend="${asset.trangThai.name() == 'hoat_dong' ? 'status-active' : 
+                                                    (asset.trangThai.name() == 'bao_tri' ? 'status-maintenance' : 
+                                                    (asset.trangThai.name() == 'hong' ? 'status-broken' : 
+                                                    (asset.trangThai.name() == 'ngung_hoat_dong' ? 'status-stopped' : 
+                                                    (asset.trangThai.name() == 'da_duoc_thue' ? 'status-rented' : 'status-inactive'))))}"
+                                    th:text="${asset.trangThai?.dbValue}">Hoạt Động</span>
+                            </td>
+                            <td th:text="${asset.viTri} ?: 'N/A'">Tầng 1, Khu A</td>
+                            <td th:text="${asset.dienTich != null ? #numbers.formatDecimal(asset.dienTich, 1, 2) + ' m²' : 'N/A'}">120.5 m²</td>
+                            <td th:text="${asset.giaTri != null ? #numbers.formatDecimal(asset.giaTri, 1, 0) + ' ₫' : 'N/A'}">5,500,000,000 ₫</td>
+                            <td th:text="${asset.ngayThem != null ? #temporals.format(asset.ngayThem, 'dd/MM/yyyy') : 'N/A'}">01/01/2024</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Thông báo khi không có tài sản -->
+            <div th:if="${assets == null or assets.isEmpty()}" class="alert alert-info" style="margin-top: 20px;">
+                <i class="fas fa-info-circle"></i> Hộ gia đình của bạn hiện chưa có tài sản nào được đăng ký.
+            </div>
+
+        </div>
+    </main>
+
+    <script src="/js/main.js"></script>
+    <script>
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+            document.querySelector('.main-content').classList.toggle('shifted');
+            document.querySelector('.header').classList.toggle('shifted');
+        }
+        document.querySelector('.user-menu').addEventListener('click', function() {
+            this.querySelector('.dropdown-menu').classList.toggle('show');
+        });
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.user-menu')) {
+                document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>TEST - Tài Sản</title>
+</head>
+<body>
+    <h1>TEST PAGE</h1>
+    
+    <h2>User Info:</h2>
+    <p>Tên: <span th:text="${user?.hoVaTen}">N/A</span></p>
+    
+    <h2>Hộ Gia Đình:</h2>
+    <p>Mã Hộ: <span th:text="${hoGiaDinh?.maHo}">N/A</span></p>
+    <p>Tổng Tài Sản: <span th:text="${totalAssets}">0</span></p>
+    
+    <h2>Danh Sách Tài Sản:</h2>
+    <p>Assets Size: <span th:text="${assets != null ? assets.size() : 'null'}">0</span></p>
+    
+    <table border="1">
+        <tr>
+            <th>Mã</th>
+            <th>Tên</th>
+            <th>Loại</th>
+        </tr>
+        <tr th:each="asset : ${assets}">
+            <td th:text="${asset.maTaiSan}">?</td>
+            <td th:text="${asset.tenTaiSan}">?</td>
+            <td th:text="${asset.loaiTaiSan}">?</td>
+        </tr>
+    </table>
+    
+    <hr>
+    <p><strong>Nếu bảng trống thì assets = empty hoặc null</strong></p>
+</body>
+</html>
