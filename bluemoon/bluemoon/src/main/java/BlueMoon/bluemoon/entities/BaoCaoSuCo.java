@@ -61,10 +61,11 @@ public class BaoCaoSuCo {
     private BigDecimal chiPhiXuLy = BigDecimal.ZERO;
 
     // ✅ Constructors
-    public BaoCaoSuCo() {}
+    public BaoCaoSuCo() {
+    }
 
     public BaoCaoSuCo(DoiTuong nguoiBaoCao, TaiSanChungCu taiSan, String tieuDe, String noiDung,
-                      PriorityLevel mucDoUuTien, IncidentStatus trangThai) {
+            PriorityLevel mucDoUuTien, IncidentStatus trangThai) {
         this.nguoiBaoCao = nguoiBaoCao;
         this.taiSan = taiSan;
         this.tieuDe = tieuDe;

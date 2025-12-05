@@ -263,6 +263,14 @@
                         <h3>Cơ Cấu Cư Trú</h3>
                         <div style="height: 300px; padding: 0 30px;"><canvas id="resStatusChart"></canvas></div>
                     </div>
+                    <div class="chart-card">
+                        <h3>Phân Loại Theo Độ Tuổi</h3>
+                        <div style="height: 300px; padding: 0 30px;"><canvas id="ageChart"></canvas></div>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Độ Tuổi Trung Bình</h3>
+                        <div style="height: 300px; padding: 0 30px;"><canvas id="ageGroupChart"></canvas></div>
+                    </div>
                 </div>
             </div>
 
@@ -340,6 +348,95 @@
                 datasets: [{ data: /*[[${resStatusData}]]*/ [], backgroundColor: ['#10B981', '#F59E0B', '#6B7280'] }] 
             },
             options: commonOptions
+        });
+
+        // 3. BIỂU ĐỒ ĐỘ TUỔI - Dạng Pie
+        new Chart(document.getElementById('ageChart'), {
+            type: 'pie',
+            data: { 
+                labels: /*[[${ageLabels}]]*/ [], 
+                datasets: [{ 
+                    data: /*[[${ageData}]]*/ [], 
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                }] 
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    legend: { 
+                        position: 'right',
+                        labels: { 
+                            padding: 15,
+                            font: { size: 12 },
+                            generateLabels: function(chart) {
+                                const data = chart.data;
+                                if (data.labels.length && data.datasets.length) {
+                                    return data.labels.map((label, i) => {
+                                        const value = data.datasets[0].data[i];
+                                        const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                        const percentage = ((value / total) * 100).toFixed(1);
+                                        return {
+                                            text: `${label}: ${value} (${percentage}%)`,
+                                            fillStyle: data.datasets[0].backgroundColor[i],
+                                            hidden: false,
+                                            index: i
+                                        };
+                                    });
+                                }
+                                return [];
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} người (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // 4. BIỂU ĐỒ NHÓM TUỔI - Dạng Doughnut (Tóm tắt)
+        const ageDataArray = /*[[${ageData}]]*/ [];
+        const youngGroup = ageDataArray[0] + ageDataArray[1]; // Trẻ em + Học sinh
+        const adultGroup = ageDataArray[2] + ageDataArray[3]; // Sinh viên + Người đi làm
+        const elderGroup = ageDataArray[4]; // Người già
+
+        new Chart(document.getElementById('ageGroupChart'), {
+            type: 'doughnut',
+            data: { 
+                labels: ['Trẻ em & Học sinh', 'Người trưởng thành', 'Người cao tuổi'], 
+                datasets: [{ 
+                    data: [youngGroup, adultGroup, elderGroup], 
+                    backgroundColor: ['#FF6B9D', '#4ECDC4', '#95E1D3']
+                }] 
+            },
+            options: {
+                ...commonOptions,
+                plugins: {
+                    legend: { 
+                        position: 'bottom',
+                        labels: { padding: 15, font: { size: 12 } }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((value / total) * 100).toFixed(1);
+                                return `${label}: ${value} người (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
         });
     </script>
 </body>

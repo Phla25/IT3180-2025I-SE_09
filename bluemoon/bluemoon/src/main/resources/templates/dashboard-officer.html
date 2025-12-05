@@ -226,24 +226,25 @@
                     </thead>
                     <tbody>
                         <tr th:each="suCo : ${danhSachSuCo}">
-                            <td th:text="'#' + ${suCo.maSuCo}"><strong>#SC001</strong></td>
-                            <td th:text="${suCo.loaiSuCo}">Chập điện</td>
-                            <td th:text="${suCo.viTri}">Tầng 5</td>
+                            <td th:text="'#' + ${suCo.maBaoCao}"><strong>#SC001</strong></td>
+                            <td th:text="${suCo.tieuDe ?: 'N/A'}">Chập điện</td>
+                            <td th:text="${suCo.taiSan?.viTri ?: 'N/A'}">Tầng 5</td>
                             <td>
                                 <span class="badge" 
-                                      th:classappend="${suCo.mucDoUuTien.name() == 'cao' ? 'badge-danger' : 
-                                                      (suCo.mucDoUuTien.name() == 'trung_binh' ? 'badge-warning' : 'badge-primary')}"
-                                      th:text="${suCo.mucDoUuTien.dbValue}">Cao</span>
+                                      th:classappend="${suCo.mucDoUuTien?.name() == 'khan_cap' ? 'badge-danger' :
+                                                      (suCo.mucDoUuTien?.name() == 'cao' ? 'badge-danger' : 
+                                                      (suCo.mucDoUuTien?.name() == 'binh_thuong' ? 'badge-warning' : 'badge-primary'))}"
+                                      th:text="${suCo.mucDoUuTien?.dbValue ?: 'N/A'}">Cao</span>
                             </td>
-                            <td th:text="${#temporals.format(suCo.ngayBaoCao, 'dd/MM/yyyy')}">14/10/2024</td>
+                            <td th:text="${suCo.thoiGianBaoCao != null ? #temporals.format(suCo.thoiGianBaoCao, 'dd/MM/yyyy HH:mm') : 'N/A'}">14/10/2024</td>
                             <td>
                                 <span class="badge"
-                                       th:classappend="${suCo.trangThai.name() == 'dang_xu_ly' ? 'badge-warning' : 
-                                                       (suCo.trangThai.name() == 'da_hoan_thanh' ? 'badge-success' : 'badge-info')}"
-                                       th:text="${suCo.trangThai.dbValue}">Đang xử lý</span>
+                                       th:classappend="${suCo.trangThai?.name() == 'dang_xu_ly' ? 'badge-warning' : 
+                                                       (suCo.trangThai?.name() == 'da_hoan_thanh' ? 'badge-success' : 'badge-info')}"
+                                       th:text="${suCo.trangThai?.dbValue ?: 'N/A'}">Đang xử lý</span>
                             </td>
                             <td>
-                                <a th:href="@{'/officer/incident/detail/' + ${suCo.maSuCo}}" class="btn btn-sm btn-outline">
+                                <a th:href="@{'/officer/incident/detail/' + ${suCo.maBaoCao}}" class="btn btn-sm btn-outline">
                                     <i class="fas fa-eye"></i>
                                 </a>
                             </td>

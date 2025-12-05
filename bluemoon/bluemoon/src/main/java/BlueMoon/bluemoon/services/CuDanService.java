@@ -34,7 +34,7 @@ public class CuDanService {
             if (cuDan.getCccd() == null || cuDan.getCccd().trim().isEmpty()) {
                 throw new IllegalArgumentException("CCCD không được để trống");
             }
-        
+
             // Check if CCCD already exists
             if (doiTuongDAO.findByCccd(cuDan.getCccd()).isPresent()) {
                 cuDan.setTrangThaiDanCu(ResidentStatus.o_chung_cu);
@@ -60,7 +60,7 @@ public class CuDanService {
             cuDan.setMatKhau(BCryptPasswordEncoder("123")); // Chưa có mật khẩu
 
             return doiTuongDAO.save(cuDan);
-        
+
         } catch (DataIntegrityViolationException e) {
             throw new RuntimeException("Lỗi khi lưu dữ liệu: " + e.getMessage());
         }
@@ -72,10 +72,10 @@ public class CuDanService {
     @Transactional
     public DoiTuong capNhatCuDan(String cccd, DoiTuong cuDanCapNhat) {
         Optional<DoiTuong> cuDanHienTai = doiTuongDAO.findByCccd(cccd);
-        
+
         if (cuDanHienTai.isPresent()) {
             DoiTuong cuDan = cuDanHienTai.get();
-            
+
             // Chỉ cập nhật các thông tin được phép thay đổi
             cuDan.setHoVaTen(cuDanCapNhat.getHoVaTen());
             cuDan.setNgaySinh(cuDanCapNhat.getNgaySinh());
@@ -84,10 +84,10 @@ public class CuDanService {
             cuDan.setSoDienThoai(cuDanCapNhat.getSoDienThoai());
             cuDan.setEmail(cuDanCapNhat.getEmail());
             cuDan.setNgheNghiep(cuDanCapNhat.getNgheNghiep());
-            
+
             return doiTuongDAO.save(cuDan);
         }
-        
+
         throw new RuntimeException("Không tìm thấy cư dân với CCCD: " + cccd);
     }
 
@@ -98,51 +98,52 @@ public class CuDanService {
     /**
      * Đánh dấu cư dân đã chuyển đi/mất (Thao tác xóa mềm)
      */
-@Transactional
-public void xoaCuDan(String cccd, ResidentStatus lyDo) {
-    System.out.println("=== BẮT ĐẦU XÓA CƯ DÂN ===");
-    System.out.println("CCCD: " + cccd);
-    System.out.println("Lý do: " + lyDo);
-    
-    Optional<DoiTuong> cuDanOptional = doiTuongDAO.findResidentByCccd(cccd);
-    
-    System.out.println("Tìm thấy cư dân: " + cuDanOptional.isPresent());
-    
-    if (cuDanOptional.isPresent()) {
-        DoiTuong cuDan = cuDanOptional.get();
-        
-        System.out.println("Trước khi update:");
-        System.out.println("- Trạng thái dân cư: " + cuDan.getTrangThaiDanCu());
-        System.out.println("- Là cư dân: " + cuDan.getLaCuDan());
-        System.out.println("- Trạng thái tài khoản: " + cuDan.getTrangThaiTaiKhoan());
-        
-        // 1. Cập nhật trạng thái dân cư theo lý do (roi_di hoặc da_chet)
-        cuDan.setTrangThaiDanCu(lyDo); 
+    @Transactional
+    public void xoaCuDan(String cccd, ResidentStatus lyDo) {
+        System.out.println("=== BẮT ĐẦU XÓA CƯ DÂN ===");
+        System.out.println("CCCD: " + cccd);
+        System.out.println("Lý do: " + lyDo);
 
-        // 2. Đánh dấu không phải cư dân hiện tại
-        cuDan.setLaCuDan(false);
-        
-        // 3. Tùy chọn: Đánh dấu tài khoản không hoạt động (nếu có)
-        cuDan.setTrangThaiTaiKhoan(AccountStatus.tam_ngung); 
-        
-        System.out.println("Sau khi set:");
-        System.out.println("- Trạng thái dân cư: " + cuDan.getTrangThaiDanCu());
-        System.out.println("- Là cư dân: " + cuDan.getLaCuDan());
-        System.out.println("- Trạng thái tài khoản: " + cuDan.getTrangThaiTaiKhoan());
-        
-        DoiTuong saved = doiTuongDAO.save(cuDan);
-        
-        System.out.println("Sau khi save:");
-        System.out.println("- Trạng thái dân cư: " + saved.getTrangThaiDanCu());
-        System.out.println("- Là cư dân: " + saved.getLaCuDan());
-        System.out.println("- Trạng thái tài khoản: " + saved.getTrangThaiTaiKhoan());
-        
-        System.out.println("=== HOÀN THÀNH XÓA CƯ DÂN ===");
-    } else {
-        System.out.println("KHÔNG TÌM THẤY CƯ DÂN!");
-        throw new RuntimeException("Không tìm thấy cư dân với CCCD: " + cccd);
+        Optional<DoiTuong> cuDanOptional = doiTuongDAO.findResidentByCccd(cccd);
+
+        System.out.println("Tìm thấy cư dân: " + cuDanOptional.isPresent());
+
+        if (cuDanOptional.isPresent()) {
+            DoiTuong cuDan = cuDanOptional.get();
+
+            System.out.println("Trước khi update:");
+            System.out.println("- Trạng thái dân cư: " + cuDan.getTrangThaiDanCu());
+            System.out.println("- Là cư dân: " + cuDan.getLaCuDan());
+            System.out.println("- Trạng thái tài khoản: " + cuDan.getTrangThaiTaiKhoan());
+
+            // 1. Cập nhật trạng thái dân cư theo lý do (roi_di hoặc da_chet)
+            cuDan.setTrangThaiDanCu(lyDo);
+
+            // 2. Đánh dấu không phải cư dân hiện tại
+            cuDan.setLaCuDan(false);
+
+            // 3. Tùy chọn: Đánh dấu tài khoản không hoạt động (nếu có)
+            cuDan.setTrangThaiTaiKhoan(AccountStatus.tam_ngung);
+
+            System.out.println("Sau khi set:");
+            System.out.println("- Trạng thái dân cư: " + cuDan.getTrangThaiDanCu());
+            System.out.println("- Là cư dân: " + cuDan.getLaCuDan());
+            System.out.println("- Trạng thái tài khoản: " + cuDan.getTrangThaiTaiKhoan());
+
+            DoiTuong saved = doiTuongDAO.save(cuDan);
+
+            System.out.println("Sau khi save:");
+            System.out.println("- Trạng thái dân cư: " + saved.getTrangThaiDanCu());
+            System.out.println("- Là cư dân: " + saved.getLaCuDan());
+            System.out.println("- Trạng thái tài khoản: " + saved.getTrangThaiTaiKhoan());
+
+            System.out.println("=== HOÀN THÀNH XÓA CƯ DÂN ===");
+        } else {
+            System.out.println("KHÔNG TÌM THẤY CƯ DÂN!");
+            throw new RuntimeException("Không tìm thấy cư dân với CCCD: " + cccd);
+        }
     }
-}
+
     /**
      * Lấy danh sách tất cả cư dân đang cư trú
      */
@@ -156,6 +157,7 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
     public Optional<DoiTuong> timCuDanTheoCCCD(String cccd) {
         return doiTuongDAO.findResidentByCccd(cccd);
     }
+
     /**
      * Đăng ký tài khoản mới cho cư dân
      */
@@ -182,25 +184,30 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
 
         return doiTuongDAO.save(cuDan);
     }
+
     private String BCryptPasswordEncoder(String password) {
         BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
         return encoder.encode(password);
     }
+
     public List<DoiTuong> layTatCaNguoiDung() {
         return doiTuongDAO.findAll();
     }
+
     public List<DoiTuong> timKiemvaLoc(String keyword, ResidentStatus trangThaiDanCu) {
         if (trangThaiDanCu != null) {
             return doiTuongDAO.findResidentsInComplex(trangThaiDanCu);
         }
         return doiTuongDAO.searchResidents(keyword);
     }
+
     public List<DoiTuong> timKiemvaLoc(String keyword, ResidentStatus trangThaiDanCu, AccountStatus accountStatus) {
-        if ((keyword != null && !keyword.trim().isEmpty()) || trangThaiDanCu != null|| accountStatus != null) {
+        if ((keyword != null && !keyword.trim().isEmpty()) || trangThaiDanCu != null || accountStatus != null) {
             return doiTuongDAO.searchResidentsAndFilter(keyword, trangThaiDanCu, accountStatus);
         }
         return doiTuongDAO.findResidentsInComplex(ResidentStatus.o_chung_cu);
     }
+
     /**
      * Lấy dữ liệu thống kê cư dân cho biểu đồ
      */
@@ -214,16 +221,17 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
         List<Object[]> genderRaw = doiTuongDAO.countResidentsByGender();
         List<String> genderLabels = new ArrayList<>();
         List<Long> genderData = new ArrayList<>();
-        
+
         for (Object[] row : genderRaw) {
             BlueMoon.bluemoon.utils.Gender g = (BlueMoon.bluemoon.utils.Gender) row[0];
             String label = "Nữ";
-            
+
             if (g != null) {
                 // Kiểm tra theo Enum Name hoặc giá trị
-                if (g.name().equalsIgnoreCase("nam")) label = "Nam";
+                if (g.name().equalsIgnoreCase("nam"))
+                    label = "Nam";
             }
-            
+
             genderLabels.add(label);
             genderData.add((Long) row[1]);
         }
@@ -234,7 +242,7 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
         List<Object[]> statusRaw = doiTuongDAO.countResidentsByStatus();
         List<String> statusLabels = new ArrayList<>();
         List<Long> statusData = new ArrayList<>();
-        
+
         for (Object[] row : statusRaw) {
             BlueMoon.bluemoon.utils.ResidentStatus s = (BlueMoon.bluemoon.utils.ResidentStatus) row[0];
             String label = "Đã rời đi";
@@ -252,12 +260,48 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
                         break;
                 }
             }
-            
+
             statusLabels.add(label);
             statusData.add((Long) row[1]);
         }
         stats.put("resStatusLabels", statusLabels);
         stats.put("resStatusData", statusData);
+
+        // 3. Thống kê theo Độ tuổi
+        List<DoiTuong> allResidents = doiTuongDAO.findResidentsInComplex(ResidentStatus.o_chung_cu);
+        long treEmMamNon = 0; // 0-5 tuổi
+        long hocSinh = 0; // 6-17 tuổi
+        long sinhVien = 0; // 18-22 tuổi
+        long nguoiDiLam = 0; // 23-59 tuổi
+        long nguoiGia = 0; // 60+ tuổi
+
+        int currentYear = java.time.Year.now().getValue();
+
+        for (DoiTuong resident : allResidents) {
+            if (resident.getNgaySinh() != null) {
+                int age = currentYear - resident.getNgaySinh().getYear();
+
+                if (age <= 5) {
+                    treEmMamNon++;
+                } else if (age <= 17) {
+                    hocSinh++;
+                } else if (age <= 22) {
+                    sinhVien++;
+                } else if (age <= 59) {
+                    nguoiDiLam++;
+                } else {
+                    nguoiGia++;
+                }
+            }
+        }
+
+        List<String> ageLabels = List.of("Trẻ em mầm non (0-5)", "Học sinh (6-17)",
+                "Sinh viên (18-22)", "Người đi làm (23-59)",
+                "Người già (60+)");
+        List<Long> ageData = List.of(treEmMamNon, hocSinh, sinhVien, nguoiDiLam, nguoiGia);
+
+        stats.put("ageLabels", ageLabels);
+        stats.put("ageData", ageData);
 
         return stats;
     }

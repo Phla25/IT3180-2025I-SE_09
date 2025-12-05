@@ -20,6 +20,7 @@ public class BaoCaoSuCoDAO {
         Long count = entityManager.createQuery(jpql, Long.class).getSingleResult();
         return count != null ? count : 0;
     }
+
     public Long countByTrangThai(IncidentStatus trangThai) {
         String jpql = "SELECT COUNT(bcs) FROM BaoCaoSuCo bcs WHERE bcs.trangThai = :trangThai";
         Long count = entityManager.createQuery(jpql, Long.class)
@@ -27,6 +28,7 @@ public class BaoCaoSuCoDAO {
                 .getSingleResult();
         return count != null ? count : 0;
     }
+
     public Long countByMucDoUuTien(PriorityLevel mucDoUuTien) {
         String jpql = "SELECT COUNT(bcs) FROM BaoCaoSuCo bcs WHERE bcs.mucDoUuTien = :mucDoUuTien";
         Long count = entityManager.createQuery(jpql, Long.class)
@@ -34,16 +36,19 @@ public class BaoCaoSuCoDAO {
                 .getSingleResult();
         return count != null ? count : 0;
     }
+
     public List<BaoCaoSuCo> findAll() {
         String jpql = "SELECT bcs FROM BaoCaoSuCo bcs";
         return entityManager.createQuery(jpql, BaoCaoSuCo.class).getResultList();
     }
+
     public List<BaoCaoSuCo> findByTrangThai(IncidentStatus trangThai) {
         String jpql = "SELECT bcs FROM BaoCaoSuCo bcs WHERE bcs.trangThai = :trangThai";
         return entityManager.createQuery(jpql, BaoCaoSuCo.class)
                 .setParameter("trangThai", trangThai)
                 .getResultList();
     }
+
     public List<BaoCaoSuCo> findByMucDoUuTien(PriorityLevel mucDoUuTien) {
         String jpql = "SELECT bcs FROM BaoCaoSuCo bcs WHERE bcs.mucDoUuTien = :mucDoUuTien";
         return entityManager.createQuery(jpql, BaoCaoSuCo.class)
@@ -51,6 +56,7 @@ public class BaoCaoSuCoDAO {
                 .setMaxResults(5)
                 .getResultList();
     }
+
     public List<BaoCaoSuCo> findByNguoiBaoCao(String cccdNguoiBaoCao) {
         String jpql = "SELECT bcs FROM BaoCaoSuCo bcs WHERE bcs.cccdNguoiBaoCao = :cccdNguoiBaoCao";
         return entityManager.createQuery(jpql, BaoCaoSuCo.class)

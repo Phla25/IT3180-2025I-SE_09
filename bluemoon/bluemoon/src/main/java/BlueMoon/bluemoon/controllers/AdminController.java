@@ -73,32 +73,46 @@ public class AdminController {
     @Autowired
     private NguoiDungService nguoiDungService;
 
-    @Autowired private HoGiaDinhService hoGiaDinhService;
-    @Autowired private DichVuService dichVuService;
+    @Autowired
+    private HoGiaDinhService hoGiaDinhService;
+    @Autowired
+    private DichVuService dichVuService;
 
     private DoiTuong getCurrentUser(Authentication auth) {
         String id = auth.getName();
         Optional<DoiTuong> userOpt = nguoiDungService.timBanQuanTriTheoID(id);
-        return userOpt.orElse(null); 
+        return userOpt.orElse(null);
     }
 
-    @Autowired private CuDanService cuDanService;
-    @Autowired private HoGiaDinhDAO hoGiaDinhDAO;
-    @Autowired private BaoCaoSuCoDAO suCoDAO;
-    @Autowired private HoaDonDAO hoaDonDAO;
-    @Autowired private TaiSanChungCuService taiSanChungCuService;
-    @Autowired private HoaDonService hoaDonService;
-    @Autowired private DangKyDichVuService dangKyDichVuService;
-    @Autowired private ReportService reportService;
-    @Autowired private ExportService exportService;
-    @Autowired private ThongBaoService thongBaoService;
-    @Autowired private DoiTuongDAO doiTuongDAO;
-    @Autowired private PhanHoiThongBaoService phanHoiThongBaoService;
+    @Autowired
+    private CuDanService cuDanService;
+    @Autowired
+    private HoGiaDinhDAO hoGiaDinhDAO;
+    @Autowired
+    private BaoCaoSuCoDAO suCoDAO;
+    @Autowired
+    private HoaDonDAO hoaDonDAO;
+    @Autowired
+    private TaiSanChungCuService taiSanChungCuService;
+    @Autowired
+    private HoaDonService hoaDonService;
+    @Autowired
+    private DangKyDichVuService dangKyDichVuService;
+    @Autowired
+    private ReportService reportService;
+    @Autowired
+    private ExportService exportService;
+    @Autowired
+    private ThongBaoService thongBaoService;
+    @Autowired
+    private DoiTuongDAO doiTuongDAO;
+    @Autowired
+    private PhanHoiThongBaoService phanHoiThongBaoService;
 
     @SuppressWarnings("unchecked")
     @GetMapping("/dashboard")
     public String showAdminDashboard(Model model, Authentication auth) {
-        
+
         // 1. Xác thực người dùng
         DoiTuong user = getCurrentUser(auth);
         if (user == null) {
@@ -109,25 +123,25 @@ public class AdminController {
         // 2. Thống kê số liệu tổng quan (Cards)
         model.addAttribute("tongCuDan", cuDanService.layDanhSachCuDan().size());
         model.addAttribute("tongHoGiaDinh", hoGiaDinhDAO.countAll());
-        
+
         long suCoChuaXuLy = suCoDAO.countByTrangThai(IncidentStatus.moi_tiep_nhan);
         long suCoDangXuLy = suCoDAO.countByTrangThai(IncidentStatus.dang_xu_ly);
         model.addAttribute("suCoChuaXuLy", suCoChuaXuLy + suCoDangXuLy);
-        
+
         BigDecimal tongThu = hoaDonDAO.sumSoTienByTrangThai(InvoiceStatus.da_thanh_toan);
-        model.addAttribute("doanhThuThang", tongThu); 
+        model.addAttribute("doanhThuThang", tongThu);
 
         // 3. Thống kê tỷ lệ (Progress bars)
-        long tongSuCo = suCoDAO.countAll(); 
+        long tongSuCo = suCoDAO.countAll();
         long suCoDaXuLy = suCoDAO.countByTrangThai(IncidentStatus.da_hoan_thanh);
-        int tyLeSuCoDaXuLy = (tongSuCo > 0) ? (int)((suCoDaXuLy * 100) / tongSuCo) : 0;
+        int tyLeSuCoDaXuLy = (tongSuCo > 0) ? (int) ((suCoDaXuLy * 100) / tongSuCo) : 0;
         model.addAttribute("tyLeSuCoDaXuLy", tyLeSuCoDaXuLy);
-        
+
         // (Giả lập các tỷ lệ khác nếu chưa có logic tính toán)
-        model.addAttribute("tyLeThuPhi", 78); 
+        model.addAttribute("tyLeThuPhi", 78);
         model.addAttribute("tyLeCanHoDaBan", 92);
 
-        // 4. Danh sách sự cố cần xử lý gấp
+        // 4. Danh sách sự cố cần xử lý gấp (lấy từ database thực)
         List<BaoCaoSuCo> suCoCanXuLy = suCoDAO.findByMucDoUuTien(PriorityLevel.cao);
         model.addAttribute("suCoCanXuLy", suCoCanXuLy);
 
@@ -135,12 +149,12 @@ public class AdminController {
         // 5. XỬ LÝ DỮ LIỆU BIỂU ĐỒ (LOGIC MỚI)
         // ========================================================
         Map<String, Object> chartData = taiSanChungCuService.getChartData();
-        
+
         // A. Dữ liệu Tầng
         Map<Integer, Long> floorMap = (Map<Integer, Long>) chartData.get("floorStats");
         List<String> floorLabels = new ArrayList<>();
         List<Long> floorData = new ArrayList<>();
-        
+
         for (Map.Entry<Integer, Long> entry : floorMap.entrySet()) {
             floorLabels.add("Tầng " + entry.getKey());
             floorData.add(entry.getValue());
@@ -164,12 +178,13 @@ public class AdminController {
 
         return "dashboard-admin";
     }
+
     @GetMapping("/profile")
     public String showAdminProfile(Model model, Authentication auth) {
-        
+
         // 1. Lấy thông tin người dùng đang đăng nhập (Ban Quản Trị)
-        DoiTuong user = getCurrentUser(auth); 
-        
+        DoiTuong user = getCurrentUser(auth);
+
         if (user == null) {
             // Trường hợp lỗi (ví dụ: Session hết hạn hoặc không tìm thấy user)
             return "redirect:/login?error=auth";
@@ -186,14 +201,14 @@ public class AdminController {
     // @Autowired private CuDanService cuDanService; // Đã có
 
     @GetMapping("/resident-list")
-    public String showResidentList(Model model, 
-                               @RequestParam(required = false) String keyword,
-                               @RequestParam(required = false) ResidentStatus trangThaiDanCu,
-                               @RequestParam(required = false) AccountStatus accountStatus,
-                               Authentication auth) {
-    
+    public String showResidentList(Model model,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) ResidentStatus trangThaiDanCu,
+            @RequestParam(required = false) AccountStatus accountStatus,
+            Authentication auth) {
+
         // 1. Lấy thông tin người dùng đang đăng nhập (header)
-        DoiTuong user = getCurrentUser(auth); 
+        DoiTuong user = getCurrentUser(auth);
         if (user == null) {
             return "redirect:/login?error=auth";
         }
@@ -210,13 +225,14 @@ public class AdminController {
 
         // 3. Thêm danh sách vào Model
         model.addAttribute("residents", danhSachDoiTuong);
-    
+
         // 4. (Tùy chọn) Thêm thông tin phân trang
         model.addAttribute("totalResidents", danhSachDoiTuong.size()); // Giả định không phân trang
-        
+
         model.addAttribute("accountStatuses", AccountStatus.values());
         return "residents"; // Giả định tên file Thymeleaf là residents-list.html
     }
+
     /**
      * HIỂN THỊ FORM (GET)
      * Đường dẫn: /admin/resident-add
@@ -225,40 +241,42 @@ public class AdminController {
     public String showAddResidentForm(Model model, Authentication auth) {
         // Lấy user cho header
         model.addAttribute("user", getCurrentUser(auth));
-        
+
         // Cần truyền một đối tượng rỗng để binding form (th:object)
         model.addAttribute("newResident", new DoiTuong());
 
         // Truyền các giá trị Enum để hiển thị trong dropdown (nếu cần)
         model.addAttribute("genders", Gender.values());
-        
+
         return "resident-add"; // Tên file Thymeleaf: resident-add.html
     }
 
     @PostMapping("/resident-add")
     public String addNewResident(@ModelAttribute("newResident") DoiTuong newResident,
-                             RedirectAttributes redirectAttributes) {
+            RedirectAttributes redirectAttributes) {
         try {
             // 1. Service phải tự động thiết lập các trường mặc định:
-            //    matKhau (random), vaiTro (khong_dung_he_thong), laCuDan (true), v.v.
-            //    (CuDanService.themCuDan của bạn đã xử lý phần lớn, nhưng cần đảm bảo matKhau được tạo)
-            
-            // 2. Tùy chọn: Đặt Email và SĐT thành null nếu không được nhập, nhưng hiện tại form yêu cầu BẮT BUỘC. 
-            //    Nếu muốn không bắt buộc, ta phải chỉnh form. Hiện tại, hãy để Service xử lý.
+            // matKhau (random), vaiTro (khong_dung_he_thong), laCuDan (true), v.v.
+            // (CuDanService.themCuDan của bạn đã xử lý phần lớn, nhưng cần đảm bảo matKhau
+            // được tạo)
+
+            // 2. Tùy chọn: Đặt Email và SĐT thành null nếu không được nhập, nhưng hiện tại
+            // form yêu cầu BẮT BUỘC.
+            // Nếu muốn không bắt buộc, ta phải chỉnh form. Hiện tại, hãy để Service xử lý.
 
             DoiTuong savedResident = cuDanService.themCuDan(newResident);
 
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Đã thêm thông tin cư dân " + savedResident.getHoVaTen() + " thành công.");
-        
-            return "redirect:/admin/resident-list"; 
-        
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Đã thêm thông tin cư dân " + savedResident.getHoVaTen() + " thành công.");
+
+            return "redirect:/admin/resident-list";
+
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
-            return "redirect:/admin/resident-add"; 
+            return "redirect:/admin/resident-add";
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống khi lưu: " + e.getMessage());
-            return "redirect:/admin/resident-add"; 
+            return "redirect:/admin/resident-add";
         }
     }
 
@@ -268,19 +286,19 @@ public class AdminController {
      * Phương thức: POST (hoặc GET đơn giản)
      */
     @GetMapping("/resident-delete") // Dùng GET cho đơn giản với link href/redirect
-    public String deleteResident(@RequestParam String cccd, 
-                             @RequestParam ResidentStatus lyDo, 
-                             RedirectAttributes redirectAttributes) {
+    public String deleteResident(@RequestParam String cccd,
+            @RequestParam ResidentStatus lyDo,
+            RedirectAttributes redirectAttributes) {
         try {
             // Kiểm tra lý do hợp lệ (chỉ chấp nhận roi_di hoặc da_chet)
             if (lyDo != ResidentStatus.roi_di && lyDo != ResidentStatus.da_chet) {
-             throw new IllegalArgumentException("Lý do xóa không hợp lệ.");
+                throw new IllegalArgumentException("Lý do xóa không hợp lệ.");
             }
-        
+
             cuDanService.xoaCuDan(cccd, lyDo);
 
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Đã cập nhật trạng thái cư dân " + cccd + " thành công (Lý do: " + lyDo.getDbValue() + ").");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Đã cập nhật trạng thái cư dân " + cccd + " thành công (Lý do: " + lyDo.getDbValue() + ").");
 
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi xóa cư dân: " + e.getMessage());
@@ -300,48 +318,49 @@ public class AdminController {
 
         // Lấy thông tin cư dân cần chỉnh sửa
         Optional<DoiTuong> residentOpt = cuDanService.timCuDanTheoCCCD(cccd);
-    
+
         if (residentOpt.isEmpty()) {
             model.addAttribute("errorMessage", "Không tìm thấy cư dân với CCCD: " + cccd);
             return "redirect:/admin/resident-list";
-        }   
-    
+        }
+
         DoiTuong residentToEdit = residentOpt.get();
-    
+
         // Đặt đối tượng vào model để binding form (th:object)
         model.addAttribute("resident", residentToEdit);
-    
+
         // Truyền Enum (cho dropdown)
         model.addAttribute("genders", Gender.values());
         model.addAttribute("roles", UserRole.values());
         model.addAttribute("accountStatuses", AccountStatus.values());
         model.addAttribute("residentStatuses", ResidentStatus.values());
 
-        return "resident-edit"; 
+        return "resident-edit";
     }
-
 
     // 2. POST: Xử lý Cập nhật
     @PostMapping("/resident-edit")
     public String updateResident(@ModelAttribute("resident") DoiTuong residentCapNhat,
-                                 @RequestParam(value = "matKhauMoi", required = false) String matKhauMoi,
-                                 RedirectAttributes redirectAttributes) {
+            @RequestParam(value = "matKhauMoi", required = false) String matKhauMoi,
+            RedirectAttributes redirectAttributes) {
         try {
             // Lấy CCCD từ đối tượng form đã bind (CCCD là trường cố định)
-            String cccd = residentCapNhat.getCccd(); 
+            String cccd = residentCapNhat.getCccd();
 
             // 1. Cập nhật thông tin cơ bản (họ tên, ngày sinh, giới tính, SĐT, email, etc.)
             cuDanService.capNhatCuDan(cccd, residentCapNhat);
-        
+
             // 2. Xử lý đổi mật khẩu (nếu có)
             if (matKhauMoi != null && !matKhauMoi.trim().isEmpty()) {
-                 // LƯU Ý: Cần có phương thức đổi mật khẩu cho Admin trong NguoiDungService (Admin bỏ qua mật khẩu cũ)
-                 nguoiDungService.resetMatKhau(cccd, matKhauMoi); // Giả sử hàm này được overloaded hoặc sử dụng cho Admin
+                // LƯU Ý: Cần có phương thức đổi mật khẩu cho Admin trong NguoiDungService
+                // (Admin bỏ qua mật khẩu cũ)
+                nguoiDungService.resetMatKhau(cccd, matKhauMoi); // Giả sử hàm này được overloaded hoặc sử dụng cho
+                                                                 // Admin
             }
 
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Cập nhật thông tin cư dân " + residentCapNhat.getHoVaTen() + " thành công!");
-        
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Cập nhật thông tin cư dân " + residentCapNhat.getHoVaTen() + " thành công!");
+
             return "redirect:/admin/resident-list";
 
         } catch (RuntimeException e) {
@@ -357,7 +376,7 @@ public class AdminController {
     @GetMapping("/resident-details")
     @Transactional // Đảm bảo Lazy Loading của ThanhVienHo hoạt động
     public String showResidentDetails(@RequestParam("cccd") String cccd, Model model, Authentication auth) {
-        DoiTuong userAdmin = getCurrentUser(auth); 
+        DoiTuong userAdmin = getCurrentUser(auth);
         if (userAdmin == null) {
             return "redirect:/login?error=auth";
         }
@@ -365,8 +384,8 @@ public class AdminController {
 
         // 1. Lấy thông tin cư dân chính
         DoiTuong resident = cuDanService.timCuDanTheoCCCD(cccd)
-            .orElse(null);
-        
+                .orElse(null);
+
         if (resident == null) {
             model.addAttribute("errorMessage", "Không tìm thấy cư dân với CCCD: " + cccd);
             return "redirect:/admin/resident-list";
@@ -376,18 +395,19 @@ public class AdminController {
         // 2. Lấy mối quan hệ hộ gia đình hiện tại (ThanhVienHo)
         // Cần inject ThanhVienHoService
         // ⚠️ GIẢ ĐỊNH: Bạn sẽ inject ThanhVienHoService vào Controller này.
-        // @Autowired private ThanhVienHoService thanhVienHoService; 
-        
+        // @Autowired private ThanhVienHoService thanhVienHoService;
+
         // Dùng HoGiaDinhService để lấy thông tin liên quan đến hộ (nếu có)
         Optional<ThanhVienHo> tvhOpt = hoGiaDinhService.getThanhVienHoCurrentByCccd(cccd);
-        
+
         if (tvhOpt.isPresent()) {
             ThanhVienHo tvh = tvhOpt.get();
             model.addAttribute("currentHousehold", tvh.getHoGiaDinh()); // Hộ gia đình
-            model.addAttribute("memberRelation", tvh);                   // Chi tiết quan hệ (Chủ hộ, Quan hệ, Ngày bắt đầu)
-            
+            model.addAttribute("memberRelation", tvh); // Chi tiết quan hệ (Chủ hộ, Quan hệ, Ngày bắt đầu)
+
             // Lấy thông tin căn hộ (nếu có)
-            Optional<TaiSanChungCu> apartmentOpt = hoGiaDinhService.getApartmentByHousehold(tvh.getHoGiaDinh().getMaHo());
+            Optional<TaiSanChungCu> apartmentOpt = hoGiaDinhService
+                    .getApartmentByHousehold(tvh.getHoGiaDinh().getMaHo());
             model.addAttribute("apartment", apartmentOpt.orElse(null));
         } else {
             model.addAttribute("currentHousehold", null);
@@ -401,27 +421,27 @@ public class AdminController {
     // =======================================================
     // PROFILE EDIT / CHANGE PASSWORD
     // =======================================================
-    
+
     // Hiển thị form Đổi Mật Khẩu
     @GetMapping("/change-password")
     public String showAdminChangePasswordForm(Model model, Authentication auth) {
-        DoiTuong user = getCurrentUser(auth); 
+        DoiTuong user = getCurrentUser(auth);
         if (user == null) {
             return "redirect:/login?error=auth";
         }
         model.addAttribute("user", user);
-        return "change-password-admin"; 
+        return "change-password-admin";
     }
 
     // Xử lý POST request Đổi Mật Khẩu
     @PostMapping("/change-password")
     public String handleAdminChangePassword(@RequestParam("matKhauCu") String matKhauCu,
-                                            @RequestParam("matKhauMoi") String matKhauMoi,
-                                            @RequestParam("xacNhanMatKhau") String xacNhanMatKhau,
-                                            Authentication auth,
-                                            RedirectAttributes redirectAttributes) {
-        
-        DoiTuong currentUser = getCurrentUser(auth); 
+            @RequestParam("matKhauMoi") String matKhauMoi,
+            @RequestParam("xacNhanMatKhau") String xacNhanMatKhau,
+            Authentication auth,
+            RedirectAttributes redirectAttributes) {
+
+        DoiTuong currentUser = getCurrentUser(auth);
         if (currentUser == null) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi xác thực người dùng.");
             return "redirect:/admin/profile";
@@ -431,12 +451,12 @@ public class AdminController {
             redirectAttributes.addFlashAttribute("errorMessage", "Mật khẩu mới và xác nhận mật khẩu không khớp.");
             return "redirect:/admin/change-password";
         }
-        
+
         try {
             nguoiDungService.doiMatKhau(currentUser.getCccd(), matKhauCu, matKhauMoi);
             redirectAttributes.addFlashAttribute("successMessage", "Đổi mật khẩu thành công! Vui lòng đăng nhập lại.");
-            return "redirect:/logout"; 
-            
+            return "redirect:/logout";
+
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             return "redirect:/admin/change-password";
@@ -449,33 +469,33 @@ public class AdminController {
     // Hiển thị form Cập Nhật Thông Tin Cá Nhân
     @GetMapping("/profile/edit")
     public String showAdminEditProfileForm(Model model, Authentication auth) {
-        DoiTuong user = getCurrentUser(auth); 
+        DoiTuong user = getCurrentUser(auth);
         if (user == null) {
             return "redirect:/login?error=auth";
         }
-        model.addAttribute("user", user); 
+        model.addAttribute("user", user);
         model.addAttribute("genders", Gender.values()); // Để hiển thị Enum giới tính
-        return "edit-profile-admin"; 
+        return "edit-profile-admin";
     }
 
     // Xử lý POST request Cập Nhật Thông Tin Cá Nhân
     @PostMapping("/profile/edit")
     public String handleAdminEditProfile(@ModelAttribute("user") DoiTuong doiTuongCapNhat,
-                                        Authentication auth,
-                                        RedirectAttributes redirectAttributes) {
-        
-        DoiTuong currentUser = getCurrentUser(auth); 
+            Authentication auth,
+            RedirectAttributes redirectAttributes) {
+
+        DoiTuong currentUser = getCurrentUser(auth);
         if (currentUser == null || !currentUser.getCccd().equals(doiTuongCapNhat.getCccd())) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi xác thực người dùng.");
             return "redirect:/admin/profile";
         }
-        
+
         try {
             // Sử dụng hàm đã thêm trong NguoiDungService
             nguoiDungService.capNhatThongTinNguoiDung(doiTuongCapNhat);
             redirectAttributes.addFlashAttribute("successMessage", "Cập nhật thông tin cá nhân thành công!");
             return "redirect:/admin/profile";
-            
+
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             return "redirect:/admin/profile/edit";
@@ -492,17 +512,17 @@ public class AdminController {
      * Hiển thị danh sách hộ gia đình
      */
     @GetMapping("/household-list")
-    public String showHouseholdList(Model model, 
-                                    @RequestParam(required = false) String keyword,
-                                    Authentication auth) {
-        
+    public String showHouseholdList(Model model,
+            @RequestParam(required = false) String keyword,
+            Authentication auth) {
+
         model.addAttribute("user", getCurrentUser(auth));
-        
+
         List<HoGiaDinh> households = hoGiaDinhService.getAllHouseholds(keyword);
-        
+
         model.addAttribute("households", households);
         model.addAttribute("keyword", keyword); // Để giữ lại giá trị tìm kiếm trên form
-        
+
         return "household-list"; // Tên file Thymeleaf: household-list.html
     }
 
@@ -516,10 +536,10 @@ public class AdminController {
         model.addAttribute("householdStatuses", HouseholdStatus.values());
         List<String> floors = taiSanChungCuService.getAllApartmentFloors();
         model.addAttribute("apartmentFloors", floors);
-        
+
         // Thêm DTO hoặc RequestParam để nhập CCCD Chủ hộ
         // Giả định dùng RequestParam: chuHoCccd và quanHe
-        
+
         return "household-add"; // Tên file Thymeleaf: household-add.html
     }
 
@@ -528,20 +548,22 @@ public class AdminController {
      */
     @PostMapping("/household-add")
     public String handleAddHousehold(@ModelAttribute("newHousehold") HoGiaDinh hoGiaDinh,
-                                     @RequestParam("chuHoCccd") String chuHoCccd,
-                                     @RequestParam(value = "quanHeVoiChuHo", defaultValue = "Chủ hộ") String quanHe,
-                                     @RequestParam(value = "maCanHoLienKet", required = false) Integer maTaiSan, // <-- THAM SỐ MỚI
-                                     RedirectAttributes redirectAttributes) {
+            @RequestParam("chuHoCccd") String chuHoCccd,
+            @RequestParam(value = "quanHeVoiChuHo", defaultValue = "Chủ hộ") String quanHe,
+            @RequestParam(value = "maCanHoLienKet", required = false) Integer maTaiSan, // <-- THAM SỐ MỚI
+            RedirectAttributes redirectAttributes) {
         try {
             // Cập nhật hàm service: truyền thêm maTaiSan
             hoGiaDinhService.themHoGiaDinh(hoGiaDinh, chuHoCccd, quanHe, maTaiSan);
-            redirectAttributes.addFlashAttribute("successMessage", "Thêm Hộ gia đình " + hoGiaDinh.getTenHo() + " và gán Căn hộ thành công!");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Thêm Hộ gia đình " + hoGiaDinh.getTenHo() + " và gán Căn hộ thành công!");
             return "redirect:/admin/household-list";
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
             return "redirect:/admin/household-add";
         }
     }
+
     /**
      * XỬ LÝ REST API: Lấy danh sách Căn hộ trống theo Tầng
      * URL: GET /admin/apartments/empty-by-floor?viTri=T1
@@ -552,19 +574,20 @@ public class AdminController {
         if (viTri == null || viTri.trim().isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-        
+
         List<TaiSanChungCu> apartments = taiSanChungCuService.getEmptyApartmentsByFloor(viTri);
-        
-        // Chuyển đổi List<TaiSanChungCu> sang List<Map<String, Object>> chỉ chứa MaTaiSan và TenTaiSan
+
+        // Chuyển đổi List<TaiSanChungCu> sang List<Map<String, Object>> chỉ chứa
+        // MaTaiSan và TenTaiSan
         List<Map<String, Object>> simpleApartments = apartments.stream()
-            .map(a -> {
-                Map<String, Object> map = new HashMap<>();
-                map.put("maTaiSan", a.getMaTaiSan());
-                // Hiển thị Tên Căn Hộ và Diện Tích để dễ nhận biết hơn
-                map.put("tenHienThi", a.getTenTaiSan() + " (DT: " + a.getDienTich() + "m2)");
-                return map;
-            })
-            .toList();
+                .map(a -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("maTaiSan", a.getMaTaiSan());
+                    // Hiển thị Tên Căn Hộ và Diện Tích để dễ nhận biết hơn
+                    map.put("tenHienThi", a.getTenTaiSan() + " (DT: " + a.getDienTich() + "m2)");
+                    return map;
+                })
+                .toList();
 
         // Trả về danh sách Căn hộ trống dưới dạng JSON
         return ResponseEntity.ok(simpleApartments);
@@ -577,10 +600,10 @@ public class AdminController {
     @Transactional // Cần thêm @Transactional để đảm bảo lazy loading List<ThanhVienHo> hoạt động
     public String showHouseholdDetail(@RequestParam("maHo") String maHo, Model model, Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
-        
+
         HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo)
-            .orElse(null);
-        
+                .orElse(null);
+
         if (hgd == null) {
             model.addAttribute("errorMessage", "Không tìm thấy Hộ gia đình.");
             return "redirect:/admin/household-list";
@@ -589,20 +612,21 @@ public class AdminController {
         // 1. Tải danh sách thành viên đang hoạt động
         // Dùng Lazy loading List<ThanhVienHo> trên Entity HGD (Cần @Transactional)
         List<ThanhVienHo> thanhVienList = hgd.getThanhVienHoList().stream()
-            .filter(tvh -> tvh.getNgayKetThuc() == null) 
-            .toList();
-        
+                .filter(tvh -> tvh.getNgayKetThuc() == null)
+                .toList();
+
         // 2. Lấy thông tin căn hộ chính
         Optional<TaiSanChungCu> apartmentOpt = hoGiaDinhService.getApartmentByHousehold(maHo);
-        
+
         // 3. Thêm dữ liệu vào Model
         model.addAttribute("household", hgd);
         model.addAttribute("members", thanhVienList);
         model.addAttribute("apartment", apartmentOpt.orElse(null)); // Thêm căn hộ (hoặc null)
         model.addAttribute("terminationReasons", TerminationReason.values());
-        
-        return "household-details"; 
+
+        return "household-details";
     }
+
     /**
      * HIỂN THỊ FORM TÁCH HỘ (GET)
      * Đường dẫn: /admin/household-split
@@ -611,19 +635,19 @@ public class AdminController {
     @GetMapping("/household-split")
     @Transactional
     public String showSplitHouseholdForm(@RequestParam("maHo") String maHoCu, Model model, Authentication auth) {
-        DoiTuong user = getCurrentUser(auth); 
+        DoiTuong user = getCurrentUser(auth);
         if (user == null) {
             return "redirect:/login?error=auth";
         }
-        
+
         HoGiaDinh hgdCu = hoGiaDinhService.getHouseholdById(maHoCu)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình cũ."));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình cũ."));
 
         // Lấy danh sách thành viên hiện tại của hộ cũ
         List<DoiTuong> members = hgdCu.getThanhVienHoList().stream()
-            .filter(tvh -> tvh.getNgayKetThuc() == null)
-            .map(ThanhVienHo::getDoiTuong)
-            .toList();
+                .filter(tvh -> tvh.getNgayKetThuc() == null)
+                .map(ThanhVienHo::getDoiTuong)
+                .toList();
         List<String> floors = taiSanChungCuService.getAllApartmentFloors();
         model.addAttribute("user", user);
         model.addAttribute("household", hgdCu);
@@ -639,29 +663,29 @@ public class AdminController {
      */
     @PostMapping("/household-split")
     public String handleSplitHousehold(@RequestParam("maHoCu") String maHoCu,
-                                       @RequestParam("tenHoMoi") String tenHoMoi,
-                                       @RequestParam("chuHoMoiCccd") String chuHoMoiCccd,
-                                       @RequestParam("cccdDuocTach") List<String> cccdThanhVienDuocTach, // List CCCD được chọn
-                                       @RequestParam(value = "maCanHoLienKet", required = false) Integer maTaiSan, // <-- THAM SỐ MỚI
-                                       RedirectAttributes redirectAttributes) {
+            @RequestParam("tenHoMoi") String tenHoMoi,
+            @RequestParam("chuHoMoiCccd") String chuHoMoiCccd,
+            @RequestParam("cccdDuocTach") List<String> cccdThanhVienDuocTach, // List CCCD được chọn
+            @RequestParam(value = "maCanHoLienKet", required = false) Integer maTaiSan, // <-- THAM SỐ MỚI
+            RedirectAttributes redirectAttributes) {
         try {
             // Kiểm tra số lượng thành viên tối thiểu
             if (cccdThanhVienDuocTach.isEmpty()) {
                 throw new IllegalArgumentException("Vui lòng chọn ít nhất một thành viên để tách hộ.");
             }
-            
+
             // Gọi logic Service Tách Hộ (truyền thêm maTaiSan)
             HoGiaDinh hoGiaDinhMoi = hoGiaDinhService.tachHo(
-                maHoCu, 
-                cccdThanhVienDuocTach, 
-                chuHoMoiCccd, 
-                tenHoMoi,
-                maTaiSan // <-- TRUYỀN THAM SỐ MỚI
+                    maHoCu,
+                    cccdThanhVienDuocTach,
+                    chuHoMoiCccd,
+                    tenHoMoi,
+                    maTaiSan // <-- TRUYỀN THAM SỐ MỚI
             );
-            
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Tách hộ thành công! Đã tạo Hộ gia đình mới: " + hoGiaDinhMoi.getTenHo());
-            
+
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Tách hộ thành công! Đã tạo Hộ gia đình mới: " + hoGiaDinhMoi.getTenHo());
+
             return "redirect:/admin/household-detail?maHo=" + hoGiaDinhMoi.getMaHo();
 
         } catch (IllegalStateException e) {
@@ -673,22 +697,24 @@ public class AdminController {
             return "redirect:/admin/household-split?maHo=" + maHoCu; // Quay lại form Tách Hộ
         }
     }
+
     /**
-    * HIỂN THỊ FORM THÊM THÀNH VIÊN (GET)
+     * HIỂN THỊ FORM THÊM THÀNH VIÊN (GET)
      * Đường dẫn: /admin/household-member-add
      * Yêu cầu: maHo (Mã hộ cần thêm)
-    */
+     */
     @GetMapping("/household-member-add")
     public String showAddMemberForm(@RequestParam("maHo") String maHo, Model model, Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
-    
+
         // Kiểm tra hộ gia đình tồn tại
         HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình với Mã Hộ: " + maHo));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình với Mã Hộ: " + maHo));
 
         model.addAttribute("household", hgd);
-        // Truyền DTO/Form object nếu cần, nhưng ở đây ta dùng @RequestParam đơn giản hơn
-    
+        // Truyền DTO/Form object nếu cần, nhưng ở đây ta dùng @RequestParam đơn giản
+        // hơn
+
         return "household-member-add"; // Trỏ đến file Thymeleaf mới
     }
 
@@ -698,17 +724,17 @@ public class AdminController {
      */
     @PostMapping("/household-member-add")
     public String handleAddMember(@RequestParam("maHo") String maHo,
-                                  @RequestParam("cccdThanhVien") String cccdThanhVien,
-                                  @RequestParam("quanHe") String quanHe,
-                                  RedirectAttributes redirectAttributes) {
+            @RequestParam("cccdThanhVien") String cccdThanhVien,
+            @RequestParam("quanHe") String quanHe,
+            RedirectAttributes redirectAttributes) {
         try {
             // Mặc định laChuHo = false khi thêm mới
             // LyDoKetThuc = chuyen_ho (sẽ được ghi đè nếu thành viên này đang ở hộ khác)
             hoGiaDinhService.themThanhVien(maHo, cccdThanhVien, false, quanHe, null);
-        
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Đã thêm thành viên CCCD " + cccdThanhVien + " vào Hộ " + maHo + " thành công.");
-        
+
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Đã thêm thành viên CCCD " + cccdThanhVien + " vào Hộ " + maHo + " thành công.");
+
             return "redirect:/admin/household-detail?maHo=" + maHo;
 
         } catch (IllegalArgumentException e) {
@@ -729,19 +755,19 @@ public class AdminController {
     @Transactional // Cần load danh sách thành viên
     public String showChangeChuHoForm(@RequestParam("maHo") String maHo, Model model, Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
-    
+
         HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình với Mã Hộ: " + maHo));
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình với Mã Hộ: " + maHo));
 
         // Lấy danh sách thành viên hiện tại (trừ Chủ hộ hiện tại)
         List<DoiTuong> members = hgd.getThanhVienHoList().stream()
-            .filter(tvh -> tvh.getNgayKetThuc() == null && !tvh.getLaChuHo())
-            .map(ThanhVienHo::getDoiTuong)
-            .toList();
+                .filter(tvh -> tvh.getNgayKetThuc() == null && !tvh.getLaChuHo())
+                .map(ThanhVienHo::getDoiTuong)
+                .toList();
 
         model.addAttribute("household", hgd);
         model.addAttribute("members", members);
-    
+
         return "household-change-owner"; // Trỏ đến file Thymeleaf mới
     }
 
@@ -751,14 +777,14 @@ public class AdminController {
      */
     @PostMapping("/household-change-owner")
     public String handleChangeChuHo(@RequestParam("maHo") String maHo,
-                                     @RequestParam("cccdChuHoMoi") String cccdChuHoMoi,
-                                     RedirectAttributes redirectAttributes) {
+            @RequestParam("cccdChuHoMoi") String cccdChuHoMoi,
+            RedirectAttributes redirectAttributes) {
         try {
             hoGiaDinhService.capNhatChuHo(maHo, cccdChuHoMoi);
-        
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Đã chuyển Chủ hộ cho Hộ " + maHo + " thành công (CCCD mới: " + cccdChuHoMoi + ").");
-        
+
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Đã chuyển Chủ hộ cho Hộ " + maHo + " thành công (CCCD mới: " + cccdChuHoMoi + ").");
+
             return "redirect:/admin/household-detail?maHo=" + maHo;
 
         } catch (IllegalArgumentException e) {
@@ -778,20 +804,19 @@ public class AdminController {
      */
     @GetMapping("/apartment-list")
     public String showApartmentList(
-            Model model, 
+            Model model,
             Authentication auth,
             @RequestParam(required = false) String keyword, // Giả định có tìm kiếm theo tên
             @RequestParam(required = false) BlueMoon.bluemoon.utils.AssetStatus status,
             @RequestParam(required = false) BigDecimal minArea,
             @RequestParam(required = false) BigDecimal maxArea,
             @RequestParam(required = false) BigDecimal minValue,
-            @RequestParam(required = false) BigDecimal maxValue
-        ) {
+            @RequestParam(required = false) BigDecimal maxValue) {
         model.addAttribute("user", getCurrentUser(auth));
-        
+
         // Lấy danh sách căn hộ dựa trên các bộ lọc
         List<TaiSanChungCu> apartments;
-        
+
         // Chú ý: Hiện tại DAO chỉ hỗ trợ lọc đơn (Area, Value, Status).
         // Ta ưu tiên lọc phức tạp hơn trước.
         if (minArea != null && maxArea != null && minArea.compareTo(maxArea) <= 0) {
@@ -804,20 +829,21 @@ public class AdminController {
             // Nếu không có bộ lọc nào, trả về tất cả
             apartments = taiSanChungCuService.getAllApartments();
         }
-        
-        // Nếu có keyword, cần thêm logic tìm kiếm theo tên/mã thủ công tại đây nếu Service không hỗ trợ
+
+        // Nếu có keyword, cần thêm logic tìm kiếm theo tên/mã thủ công tại đây nếu
+        // Service không hỗ trợ
         // (Bỏ qua logic keyword để tập trung vào phân loại chính)
 
         model.addAttribute("apartments", apartments);
         // Lưu trữ các giá trị lọc để giữ lại trên form
-        model.addAttribute("currentStatus", status); 
+        model.addAttribute("currentStatus", status);
         model.addAttribute("minArea", minArea);
         model.addAttribute("maxArea", maxArea);
         model.addAttribute("minValue", minValue);
         model.addAttribute("maxValue", maxValue);
         model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
 
-        return "apartment-list-admin"; 
+        return "apartment-list-admin";
     }
 
     /**
@@ -829,7 +855,7 @@ public class AdminController {
         model.addAttribute("newApartment", new TaiSanChungCu());
         model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
         model.addAttribute("households", hoGiaDinhService.getAllHouseholds()); // Lấy danh sách Hộ gia đình để liên kết
-    
+
         return "apartment-add";
     }
 
@@ -838,12 +864,12 @@ public class AdminController {
      */
     @PostMapping("/apartment-add")
     public String handleAddApartment(@ModelAttribute("newApartment") TaiSanChungCu apartment,
-                                     @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
-                                     RedirectAttributes redirectAttributes) {
+            @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
+            RedirectAttributes redirectAttributes) {
         try {
             taiSanChungCuService.themCanHo(apartment, maHoLienKet);
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Thêm Căn hộ " + apartment.getTenTaiSan() + " thành công!");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Thêm Căn hộ " + apartment.getTenTaiSan() + " thành công!");
             return "redirect:/admin/apartment-list";
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
@@ -860,9 +886,9 @@ public class AdminController {
     @GetMapping("/apartment-edit")
     public String showEditApartmentForm(@RequestParam("maTaiSan") Integer maTaiSan, Model model, Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
-    
+
         TaiSanChungCu apartmentToEdit = taiSanChungCuService.getApartmentById(maTaiSan)
-            .orElse(null);
+                .orElse(null);
 
         if (apartmentToEdit == null) {
             model.addAttribute("errorMessage", "Không tìm thấy Căn hộ.");
@@ -871,8 +897,8 @@ public class AdminController {
 
         model.addAttribute("apartment", apartmentToEdit);
         model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
-        model.addAttribute("households", hoGiaDinhService.getAllHouseholds()); 
-    
+        model.addAttribute("households", hoGiaDinhService.getAllHouseholds());
+
         return "apartment-edit";
     }
 
@@ -881,13 +907,13 @@ public class AdminController {
      */
     @PostMapping("/apartment-edit")
     public String handleEditApartment(@ModelAttribute("apartment") TaiSanChungCu apartment,
-                                      @RequestParam("maTaiSan") Integer maTaiSan,
-                                      @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
-                                      RedirectAttributes redirectAttributes) {
+            @RequestParam("maTaiSan") Integer maTaiSan,
+            @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
+            RedirectAttributes redirectAttributes) {
         try {
             taiSanChungCuService.capNhatCanHo(maTaiSan, apartment, maHoLienKet);
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Cập nhật Căn hộ " + apartment.getTenTaiSan() + " thành công!");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Cập nhật Căn hộ " + apartment.getTenTaiSan() + " thành công!");
             return "redirect:/admin/apartment-list";
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
@@ -902,7 +928,8 @@ public class AdminController {
      * Xử lý xóa Căn Hộ (GET cho đơn giản)
      */
     @GetMapping("/apartment-delete")
-    public String handleDeleteApartment(@RequestParam("maTaiSan") Integer maTaiSan, RedirectAttributes redirectAttributes) {
+    public String handleDeleteApartment(@RequestParam("maTaiSan") Integer maTaiSan,
+            RedirectAttributes redirectAttributes) {
         try {
             taiSanChungCuService.xoaCanHo(maTaiSan);
             redirectAttributes.addFlashAttribute("successMessage", "Xóa căn hộ Mã " + maTaiSan + " thành công.");
@@ -915,31 +942,33 @@ public class AdminController {
             return "redirect:/admin/apartment-list";
         }
     }
+
     /**
-    * Xem chi tiết Căn Hộ (GET)
-    */
+     * Xem chi tiết Căn Hộ (GET)
+     */
     @GetMapping("/apartment-details")
-    public String showAdminApartmentDetails(@RequestParam("maTaiSan") Integer maTaiSan, Model model, Authentication auth) {
+    public String showAdminApartmentDetails(@RequestParam("maTaiSan") Integer maTaiSan, Model model,
+            Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
 
         TaiSanChungCu apartment = taiSanChungCuService.getApartmentById(maTaiSan)
-            .orElse(null);
-        
+                .orElse(null);
+
         if (apartment == null) {
             model.addAttribute("errorMessage", "Không tìm thấy Căn hộ với Mã Tài Sản: " + maTaiSan);
             return "redirect:/admin/apartment-list";
         }
 
         model.addAttribute("apartment", apartment);
-    
+
         // Tùy chọn: Thêm danh sách thành viên hộ liên kết (nếu có)
         if (apartment.getHoGiaDinh() != null) {
             List<ThanhVienHo> members = apartment.getHoGiaDinh().getThanhVienHoList().stream()
-                .filter(tvh -> tvh.getNgayKetThuc() == null) 
-                .toList();
+                    .filter(tvh -> tvh.getNgayKetThuc() == null)
+                    .toList();
             model.addAttribute("members", members);
         } else {
-             model.addAttribute("members", List.of());
+            model.addAttribute("members", List.of());
         }
 
         return "apartment-details-admin";
@@ -954,24 +983,25 @@ public class AdminController {
      */
     @GetMapping("/general-asset-list")
     public String showGeneralAssetList(
-            Model model, 
+            Model model,
             Authentication auth,
-            @RequestParam(required = false) String keyword, 
+            @RequestParam(required = false) String keyword,
             @RequestParam(required = false) BlueMoon.bluemoon.utils.AssetType loaiTaiSan // Lọc theo loại
-        ) {
+    ) {
         model.addAttribute("user", getCurrentUser(auth));
-    
+
         // Lấy danh sách tài sản dựa trên các bộ lọc
         List<TaiSanChungCu> assets;
-    
+
         if (keyword != null && !keyword.trim().isEmpty()) {
-            // Nếu có keyword, tìm kiếm theo tên, bỏ qua loaiTaiSan (hoặc bạn có thể thêm logic lọc kép)
-            assets = taiSanChungCuService.findAssetsByFilters(keyword, null); 
+            // Nếu có keyword, tìm kiếm theo tên, bỏ qua loaiTaiSan (hoặc bạn có thể thêm
+            // logic lọc kép)
+            assets = taiSanChungCuService.findAssetsByFilters(keyword, null);
         } else {
             // Nếu không có keyword, lọc theo loại tài sản (loaiTaiSan = null sẽ lấy tất cả)
-            assets = taiSanChungCuService.getAllAssets(loaiTaiSan); 
+            assets = taiSanChungCuService.getAllAssets(loaiTaiSan);
         }
-    
+
         model.addAttribute("assets", assets);
         // Lưu trữ các giá trị lọc để giữ lại trên form
         model.addAttribute("currentAssetType", loaiTaiSan);
@@ -993,9 +1023,9 @@ public class AdminController {
         model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
         model.addAttribute("assetTypes", BlueMoon.bluemoon.utils.AssetType.values());
         // Lấy danh sách hộ gia đình để liên kết
-        model.addAttribute("households", hoGiaDinhService.getAllHouseholds()); 
+        model.addAttribute("households", hoGiaDinhService.getAllHouseholds());
 
-        return "general-asset-add"; 
+        return "general-asset-add";
     }
 
     /**
@@ -1004,12 +1034,13 @@ public class AdminController {
      */
     @PostMapping("/general-asset-add")
     public String handleAddGeneralAsset(@ModelAttribute("newAsset") TaiSanChungCu asset,
-                                     @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
-                                     RedirectAttributes redirectAttributes) {
+            @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
+            RedirectAttributes redirectAttributes) {
         try {
             TaiSanChungCu savedAsset = taiSanChungCuService.themTaiSanChung(asset, maHoLienKet);
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Thêm Tài sản " + savedAsset.getTenTaiSan() + " (Mã: " + savedAsset.getMaTaiSan() + ") thành công!");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Thêm Tài sản " + savedAsset.getTenTaiSan() + " (Mã: " + savedAsset.getMaTaiSan()
+                            + ") thành công!");
             return "redirect:/admin/general-asset-list";
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
@@ -1025,11 +1056,12 @@ public class AdminController {
      * URL: /admin/general-asset-edit?maTaiSan={id}
      */
     @GetMapping("/general-asset-edit")
-    public String showEditGeneralAssetForm(@RequestParam("maTaiSan") Integer maTaiSan, Model model, Authentication auth) {
+    public String showEditGeneralAssetForm(@RequestParam("maTaiSan") Integer maTaiSan, Model model,
+            Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
 
         TaiSanChungCu assetToEdit = taiSanChungCuService.getAssetById(maTaiSan)
-            .orElse(null);
+                .orElse(null);
 
         if (assetToEdit == null) {
             model.addAttribute("errorMessage", "Không tìm thấy Tài Sản.");
@@ -1039,9 +1071,9 @@ public class AdminController {
         model.addAttribute("asset", assetToEdit);
         model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
         model.addAttribute("assetTypes", BlueMoon.bluemoon.utils.AssetType.values());
-        model.addAttribute("households", hoGiaDinhService.getAllHouseholds()); 
+        model.addAttribute("households", hoGiaDinhService.getAllHouseholds());
 
-        return "general-asset-edit"; 
+        return "general-asset-edit";
     }
 
     /**
@@ -1050,13 +1082,13 @@ public class AdminController {
      */
     @PostMapping("/general-asset-edit")
     public String handleEditGeneralAsset(@ModelAttribute("asset") TaiSanChungCu asset,
-                                      @RequestParam("maTaiSan") Integer maTaiSan,
-                                      @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
-                                      RedirectAttributes redirectAttributes) {
+            @RequestParam("maTaiSan") Integer maTaiSan,
+            @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
+            RedirectAttributes redirectAttributes) {
         try {
             taiSanChungCuService.capNhatTaiSanChung(maTaiSan, asset, maHoLienKet);
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Cập nhật Tài sản Mã " + maTaiSan + " thành công!");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Cập nhật Tài sản Mã " + maTaiSan + " thành công!");
             return "redirect:/admin/general-asset-list";
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
@@ -1072,7 +1104,8 @@ public class AdminController {
      * URL: /admin/general-asset-delete?maTaiSan={id}
      */
     @GetMapping("/general-asset-delete")
-    public String handleDeleteGeneralAsset(@RequestParam("maTaiSan") Integer maTaiSan, RedirectAttributes redirectAttributes) {
+    public String handleDeleteGeneralAsset(@RequestParam("maTaiSan") Integer maTaiSan,
+            RedirectAttributes redirectAttributes) {
         try {
             taiSanChungCuService.xoaTaiSanChung(maTaiSan);
             redirectAttributes.addFlashAttribute("successMessage", "Xóa tài sản Mã " + maTaiSan + " thành công.");
@@ -1087,16 +1120,17 @@ public class AdminController {
     }
 
     /**
-    * Xem chi tiết Tài Sản Chung (GET)
-    * URL: /admin/general-asset-details?maTaiSan={id}
-    */
+     * Xem chi tiết Tài Sản Chung (GET)
+     * URL: /admin/general-asset-details?maTaiSan={id}
+     */
     @GetMapping("/general-asset-details")
-    public String showAdminGeneralAssetDetails(@RequestParam("maTaiSan") Integer maTaiSan, Model model, Authentication auth) {
+    public String showAdminGeneralAssetDetails(@RequestParam("maTaiSan") Integer maTaiSan, Model model,
+            Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
 
         TaiSanChungCu asset = taiSanChungCuService.getAssetById(maTaiSan)
-            .orElse(null);
-    
+                .orElse(null);
+
         if (asset == null) {
             model.addAttribute("errorMessage", "Không tìm thấy Tài Sản với Mã Tài Sản: " + maTaiSan);
             return "redirect:/admin/general-asset-list";
@@ -1107,56 +1141,54 @@ public class AdminController {
         // Tùy chọn: Thêm danh sách thành viên hộ liên kết (nếu có)
         if (asset.getHoGiaDinh() != null) {
             List<BlueMoon.bluemoon.entities.ThanhVienHo> members = asset.getHoGiaDinh().getThanhVienHoList().stream()
-                .filter(tvh -> tvh.getNgayKetThuc() == null) 
-                .toList();
+                    .filter(tvh -> tvh.getNgayKetThuc() == null)
+                    .toList();
             model.addAttribute("members", members);
         } else {
-             model.addAttribute("members", List.of());
+            model.addAttribute("members", List.of());
         }
 
-        return "general-asset-details"; 
+        return "general-asset-details";
     }
     // =======================================================
     // QUẢN LÝ HÓA ĐƠN (CRUD)
     // =======================================================
-    
+
     // =======================================================
     // [CẬP NHẬT] QUẢN LÝ HÓA ĐƠN VỚI CHỨC NĂNG CHỌN THÀNH VIÊN
     // =======================================================
-    
+
     /**
      * Admin list: URL: /admin/fees
      */
     @GetMapping("/fees")
     public String showAdminFees(Model model, Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
-        List<HoaDon> hoaDonList = hoaDonService.getAllHoaDon(); 
+        List<HoaDon> hoaDonList = hoaDonService.getAllHoaDon();
         model.addAttribute("hoaDonList", hoaDonList);
-        return "fees-admin"; 
+        return "fees-admin";
     }
-    
+
     /**
      * Admin form: URL: /admin/fee-form
      */
     @GetMapping("/fee-form")
-    public String showAdminFeeForm(@RequestParam(value = "id", required = false) Integer maHoaDon, 
-                              Model model, 
-                              Authentication auth) {
-        
+    public String showAdminFeeForm(@RequestParam(value = "id", required = false) Integer maHoaDon,
+            Model model,
+            Authentication auth) {
+
         model.addAttribute("user", getCurrentUser(auth));
-        HoaDon hoaDon = (maHoaDon != null) ? 
-                        hoaDonService.getHoaDonById(maHoaDon).orElse(new HoaDon()) : 
-                        new HoaDon();
-        
+        HoaDon hoaDon = (maHoaDon != null) ? hoaDonService.getHoaDonById(maHoaDon).orElse(new HoaDon()) : new HoaDon();
+
         model.addAttribute("hoaDon", hoaDon);
         model.addAttribute("pageTitle", (maHoaDon != null) ? "Chỉnh Sửa Hóa Đơn #" + maHoaDon : "Tạo Hóa Đơn Mới");
-        model.addAttribute("invoiceTypes", InvoiceType.values()); 
-        List<HoGiaDinh> allHo = hoGiaDinhService.getAllHouseholds(); 
+        model.addAttribute("invoiceTypes", InvoiceType.values());
+        List<HoGiaDinh> allHo = hoGiaDinhService.getAllHouseholds();
         model.addAttribute("allHo", allHo);
-        
-        return "invoice-add-edit-admin"; 
+
+        return "invoice-add-edit-admin";
     }
-    
+
     /**
      * API JSON: Trả về danh sách thành viên của một hộ cụ thể.
      * Giao diện sẽ gọi cái này khi người dùng chọn Hộ.
@@ -1165,34 +1197,35 @@ public class AdminController {
     public ResponseEntity<List<Map<String, String>>> getHouseholdMembers(@PathVariable String maHo) {
         // 1. Tìm hộ gia đình
         HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo).orElse(null);
-    
+
         if (hgd == null) {
             return ResponseEntity.notFound().build();
         }
 
         // 2. Lấy danh sách thành viên ĐANG Ở (ngayKetThuc == null)
         List<Map<String, String>> members = hgd.getThanhVienHoList().stream()
-            .filter(tvh -> tvh.getNgayKetThuc() == null) 
-            .map(tvh -> {
-                Map<String, String> map = new HashMap<>();
-                map.put("cccd", tvh.getDoiTuong().getCccd());
-            
-                // Đánh dấu ai là Chủ hộ để dễ nhìn
-                String role = tvh.getLaChuHo() ? " (Chủ hộ)" : "";
-                map.put("hoVaTen", tvh.getDoiTuong().getHoVaTen() + role);
-            
-                return map;
-            })
-            .toList();
+                .filter(tvh -> tvh.getNgayKetThuc() == null)
+                .map(tvh -> {
+                    Map<String, String> map = new HashMap<>();
+                    map.put("cccd", tvh.getDoiTuong().getCccd());
+
+                    // Đánh dấu ai là Chủ hộ để dễ nhìn
+                    String role = tvh.getLaChuHo() ? " (Chủ hộ)" : "";
+                    map.put("hoVaTen", tvh.getDoiTuong().getHoVaTen() + role);
+
+                    return map;
+                })
+                .toList();
 
         return ResponseEntity.ok(members);
     }
+
     /**
      * Admin delete: URL: /admin/fee-delete (Tái sử dụng logic Service)
      */
     @PostMapping("/fee-delete")
-    public String handleAdminDeleteFee(@RequestParam("id") Integer maHoaDon, 
-                                  RedirectAttributes redirectAttributes) {
+    public String handleAdminDeleteFee(@RequestParam("id") Integer maHoaDon,
+            RedirectAttributes redirectAttributes) {
         try {
             hoaDonService.deleteHoaDon(maHoaDon);
             redirectAttributes.addFlashAttribute("successMessage", "Xóa Hóa đơn #" + maHoaDon + " thành công.");
@@ -1212,10 +1245,10 @@ public class AdminController {
     @GetMapping("/service-list")
     public String showServiceList(Model model, Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
-    
+
         // 1. Lấy danh sách tất cả dịch vụ
         List<DichVu> dichVuList = dichVuService.getAllDichVu();
-    
+
         model.addAttribute("services", dichVuList);
         model.addAttribute("serviceTypes", BlueMoon.bluemoon.utils.ServiceType.values());
         model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
@@ -1230,10 +1263,10 @@ public class AdminController {
      * URL: /admin/service-form?id={id}
      */
     @GetMapping("/service-form")
-    public String showServiceForm(@RequestParam(value = "id", required = false) Integer maDichVu, 
-                                  Model model, 
-                                  Authentication auth) {
-    
+    public String showServiceForm(@RequestParam(value = "id", required = false) Integer maDichVu,
+            Model model,
+            Authentication auth) {
+
         model.addAttribute("user", getCurrentUser(auth));
         DichVu dichVu = new DichVu();
         String pageTitle = "Tạo Dịch Vụ Mới";
@@ -1241,16 +1274,17 @@ public class AdminController {
         if (maDichVu != null) {
             // Chế độ chỉnh sửa
             dichVu = dichVuService.getDichVuById(maDichVu)
-                       .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Dịch Vụ Mã: " + maDichVu));
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Dịch Vụ Mã: " + maDichVu));
             pageTitle = "Chỉnh Sửa Dịch Vụ #" + maDichVu;
         }
-    
+
         model.addAttribute("dichVu", dichVu);
         model.addAttribute("pageTitle", pageTitle);
         model.addAttribute("serviceTypes", BlueMoon.bluemoon.utils.ServiceType.values());
         model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
         // Thêm Admin/Ban Quản Trị để chọn người phụ trách (nếu cần, tạm bỏ qua)
-        // model.addAttribute("adminList", nguoiDungService.getUsersByRole(UserRole.ADMIN)); 
+        // model.addAttribute("adminList",
+        // nguoiDungService.getUsersByRole(UserRole.ADMIN));
 
         return "service-add-edit-admin"; // Trỏ đến file Thymeleaf mới
     }
@@ -1262,22 +1296,22 @@ public class AdminController {
      * URL: /admin/service-save
      */
     @PostMapping("/service-save")
-    public String handleServiceSave(@ModelAttribute("dichVu") DichVu dichVu, 
-                                    Authentication auth,
-                                    RedirectAttributes redirectAttributes) {
+    public String handleServiceSave(@ModelAttribute("dichVu") DichVu dichVu,
+            Authentication auth,
+            RedirectAttributes redirectAttributes) {
         DoiTuong currentUser = getCurrentUser(auth); // Admin là người tạo/cập nhật
-    
+
         try {
             // Tên Ban Quản Trị (Admin) phải được lấy từ currentUser (CCCD)
             DichVu savedDichVu = dichVuService.saveOrUpdateDichVu(dichVu, currentUser.getCccd());
-        
-            String message = (savedDichVu.getMaDichVu() == null) 
-                             ? "Tạo mới Dịch vụ thành công!" 
-                             : "Cập nhật Dịch vụ #" + savedDichVu.getMaDichVu() + " thành công!";
-        
+
+            String message = (savedDichVu.getMaDichVu() == null)
+                    ? "Tạo mới Dịch vụ thành công!"
+                    : "Cập nhật Dịch vụ #" + savedDichVu.getMaDichVu() + " thành công!";
+
             redirectAttributes.addFlashAttribute("successMessage", message);
             return "redirect:/admin/service-list";
-        
+
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             // Quay lại form với ID (nếu có)
@@ -1296,12 +1330,13 @@ public class AdminController {
      * URL: /admin/service-delete?id={id}
      */
     @GetMapping("/service-delete")
-    public String handleServiceDelete(@RequestParam("id") Integer maDichVu, 
-                                      RedirectAttributes redirectAttributes) {
+    public String handleServiceDelete(@RequestParam("id") Integer maDichVu,
+            RedirectAttributes redirectAttributes) {
         try {
             // Giả định logic xóa/chuyển trạng thái nằm trong Service
             dichVuService.deleteDichVu(maDichVu); // Thực tế nên là thay đổi trạng thái sang KHÔNG HOẠT ĐỘNG
-            redirectAttributes.addFlashAttribute("successMessage", "Đã xóa (hoặc chuyển trạng thái) Dịch vụ #" + maDichVu + " thành công.");
+            redirectAttributes.addFlashAttribute("successMessage",
+                    "Đã xóa (hoặc chuyển trạng thái) Dịch vụ #" + maDichVu + " thành công.");
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
         } catch (Exception e) {
@@ -1309,20 +1344,22 @@ public class AdminController {
         }
         return "redirect:/admin/service-list";
     }
+
     @GetMapping("/service-registrations")
     public String showServiceRegistrations(Model model, Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
-        
+
         // 1. Lấy danh sách tất cả đăng ký dịch vụ
-        List<DangKyDichVu> allRegistrations = dangKyDichVuService.getAllDangKyDichVu(); // CẦN THÊM TRONG DangKyDichVuService
-        
+        List<DangKyDichVu> allRegistrations = dangKyDichVuService.getAllDangKyDichVu(); // CẦN THÊM TRONG
+                                                                                        // DangKyDichVuService
+
         model.addAttribute("allRegistrations", allRegistrations);
         model.addAttribute("registrationStatuses", BlueMoon.bluemoon.utils.RegistrationStatus.values());
-        
+
         return "service-registrations-admin"; // Trỏ đến file Thymeleaf mới
     }
-        // ========== EXPORT REPORTS ==========
-    
+    // ========== EXPORT REPORTS ==========
+
     /**
      * Xuất báo cáo danh sách căn hộ ra file Excel
      */
@@ -1331,11 +1368,11 @@ public class AdminController {
         try {
             List<ApartmentReportDTO> apartments = reportService.getApartmentReportForAdmin();
             byte[] excelData = exportService.exportApartmentsToExcel(apartments);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
             headers.setContentDispositionFormData("attachment", "BaoCao_CanHo_" + System.currentTimeMillis() + ".xlsx");
-            
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
@@ -1343,7 +1380,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất báo cáo TẤT CẢ tài sản ra file Excel (không có bộ lọc)
      * URL: GET /admin/export/assets (không có query parameter)
@@ -1353,11 +1390,12 @@ public class AdminController {
         try {
             List<ApartmentReportDTO> assets = reportService.getAllAssetsReportForAdmin();
             byte[] excelData = exportService.exportApartmentsToExcel(assets);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "BaoCao_TatCaTaiSan_" + System.currentTimeMillis() + ".xlsx");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "BaoCao_TatCaTaiSan_" + System.currentTimeMillis() + ".xlsx");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
@@ -1365,7 +1403,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất báo cáo TẤT CẢ tài sản ra file PDF
      */
@@ -1374,11 +1412,12 @@ public class AdminController {
         try {
             List<ApartmentReportDTO> assets = reportService.getAllAssetsReportForAdmin();
             byte[] pdfData = exportService.exportApartmentsToPdf(assets);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", "BaoCao_TatCaTaiSan_" + System.currentTimeMillis() + ".pdf");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "BaoCao_TatCaTaiSan_" + System.currentTimeMillis() + ".pdf");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
@@ -1386,7 +1425,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất báo cáo danh sách hóa đơn ra file Excel
      */
@@ -1395,11 +1434,12 @@ public class AdminController {
         try {
             List<InvoiceReportDTO> invoices = reportService.getInvoiceReportForAdmin();
             byte[] excelData = exportService.exportInvoicesToExcel(invoices);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "BaoCao_HoaDon_" + System.currentTimeMillis() + ".xlsx");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "BaoCao_HoaDon_" + System.currentTimeMillis() + ".xlsx");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
@@ -1426,12 +1466,12 @@ public class AdminController {
      * URL: /admin/fees/import
      */
     @PostMapping("/fees/import")
-    @SuppressWarnings({"CallToPrintStackTrace", "UseSpecificCatch"})
+    @SuppressWarnings({ "CallToPrintStackTrace", "UseSpecificCatch" })
     public String handleImportFees(@RequestParam("file") MultipartFile file,
-                                   Authentication auth,
-                                   RedirectAttributes redirectAttributes) {
+            Authentication auth,
+            RedirectAttributes redirectAttributes) {
         DoiTuong user = getCurrentUser(auth);
-        
+
         if (file.isEmpty()) {
             redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file Excel.");
             return "redirect:/admin/fees/import";
@@ -1440,25 +1480,25 @@ public class AdminController {
         try {
             // Gọi Service xử lý đọc file và lưu DB
             String result = hoaDonService.importHoaDonFromExcel(file, user);
-            
+
             // Kiểm tra kết quả để hiển thị màu thông báo phù hợp
             if (result.contains("Thất bại") || result.contains("Lỗi")) {
                 // Nếu có lỗi dòng nào đó, hiện thông báo dạng cảnh báo/lỗi
-                redirectAttributes.addFlashAttribute("errorMessage", result); 
+                redirectAttributes.addFlashAttribute("errorMessage", result);
             } else {
                 redirectAttributes.addFlashAttribute("successMessage", result);
             }
-            
+
         } catch (Exception e) {
             e.printStackTrace();
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
             return "redirect:/admin/fees/import";
         }
-        
+
         // Thành công thì quay về danh sách hóa đơn
         return "redirect:/admin/fees";
     }
-    
+
     /**
      * Xuất báo cáo danh sách hộ gia đình ra file Excel
      */
@@ -1467,11 +1507,12 @@ public class AdminController {
         try {
             List<HouseholdReportDTO> households = reportService.getHouseholdReportForAdmin();
             byte[] excelData = exportService.exportHouseholdsToExcel(households);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "BaoCao_HoGiaDinh_" + System.currentTimeMillis() + ".xlsx");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "BaoCao_HoGiaDinh_" + System.currentTimeMillis() + ".xlsx");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
@@ -1479,7 +1520,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất báo cáo tài sản chung ra file Excel (có bộ lọc theo loại)
      * URL: GET /admin/export/assets?assetType=can_ho
@@ -1493,14 +1534,15 @@ public class AdminController {
             if (assetType != null && !assetType.isEmpty()) {
                 type = BlueMoon.bluemoon.utils.AssetType.valueOf(assetType);
             }
-            
+
             List<ApartmentReportDTO> assets = reportService.getAssetReportForAdmin(type);
             byte[] excelData = exportService.exportApartmentsToExcel(assets);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "BaoCao_TaiSan_" + System.currentTimeMillis() + ".xlsx");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "BaoCao_TaiSan_" + System.currentTimeMillis() + ".xlsx");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
@@ -1508,9 +1550,9 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     // ========== PDF EXPORT ENDPOINTS ==========
-    
+
     /**
      * Xuất báo cáo căn hộ ra file PDF
      */
@@ -1519,11 +1561,11 @@ public class AdminController {
         try {
             List<ApartmentReportDTO> apartments = reportService.getApartmentReportForAdmin();
             byte[] pdfData = exportService.exportApartmentsToPdf(apartments);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", "BaoCao_CanHo_" + System.currentTimeMillis() + ".pdf");
-            
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
@@ -1531,7 +1573,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất báo cáo hóa đơn ra file PDF
      */
@@ -1540,11 +1582,11 @@ public class AdminController {
         try {
             List<InvoiceReportDTO> invoices = reportService.getInvoiceReportForAdmin();
             byte[] pdfData = exportService.exportInvoicesToPdf(invoices);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", "BaoCao_HoaDon_" + System.currentTimeMillis() + ".pdf");
-            
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
@@ -1552,7 +1594,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất báo cáo hộ gia đình ra file PDF
      */
@@ -1561,11 +1603,12 @@ public class AdminController {
         try {
             List<HouseholdReportDTO> households = reportService.getHouseholdReportForAdmin();
             byte[] pdfData = exportService.exportHouseholdsToPdf(households);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", "BaoCao_HoGiaDinh_" + System.currentTimeMillis() + ".pdf");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "BaoCao_HoGiaDinh_" + System.currentTimeMillis() + ".pdf");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
@@ -1573,7 +1616,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất báo cáo cư dân ra file Excel
      */
@@ -1582,11 +1625,11 @@ public class AdminController {
         try {
             List<ResidentReportDTO> residents = reportService.getResidentReportForAdmin();
             byte[] excelData = exportService.exportResidentsToExcel(residents);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
             headers.setContentDispositionFormData("attachment", "BaoCao_CuDan_" + System.currentTimeMillis() + ".xlsx");
-            
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
@@ -1594,7 +1637,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất báo cáo cư dân ra file PDF
      */
@@ -1603,11 +1646,11 @@ public class AdminController {
         try {
             List<ResidentReportDTO> residents = reportService.getResidentReportForAdmin();
             byte[] pdfData = exportService.exportResidentsToPdf(residents);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", "BaoCao_CuDan_" + System.currentTimeMillis() + ".pdf");
-            
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
@@ -1615,9 +1658,9 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     // ========== EXPORT DETAIL ENDPOINTS ==========
-    
+
     /**
      * Xuất chi tiết căn hộ ra file Excel
      */
@@ -1629,11 +1672,12 @@ public class AdminController {
                 return ResponseEntity.notFound().build();
             }
             byte[] excelData = exportService.exportApartmentsToExcel(apartment);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "ChiTiet_CanHo_" + maTaiSan + "_" + System.currentTimeMillis() + ".xlsx");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "ChiTiet_CanHo_" + maTaiSan + "_" + System.currentTimeMillis() + ".xlsx");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
@@ -1641,7 +1685,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất chi tiết căn hộ ra file PDF
      */
@@ -1653,11 +1697,12 @@ public class AdminController {
                 return ResponseEntity.notFound().build();
             }
             byte[] pdfData = exportService.exportApartmentsToPdf(apartment);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", "ChiTiet_CanHo_" + maTaiSan + "_" + System.currentTimeMillis() + ".pdf");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "ChiTiet_CanHo_" + maTaiSan + "_" + System.currentTimeMillis() + ".pdf");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
@@ -1665,7 +1710,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất chi tiết cư dân ra file Excel
      */
@@ -1677,11 +1722,12 @@ public class AdminController {
                 return ResponseEntity.notFound().build();
             }
             byte[] excelData = exportService.exportResidentsToExcel(resident);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "ChiTiet_CuDan_" + cccd + "_" + System.currentTimeMillis() + ".xlsx");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "ChiTiet_CuDan_" + cccd + "_" + System.currentTimeMillis() + ".xlsx");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
@@ -1689,7 +1735,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất chi tiết cư dân ra file PDF
      */
@@ -1701,11 +1747,12 @@ public class AdminController {
                 return ResponseEntity.notFound().build();
             }
             byte[] pdfData = exportService.exportResidentsToPdf(resident);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", "ChiTiet_CuDan_" + cccd + "_" + System.currentTimeMillis() + ".pdf");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "ChiTiet_CuDan_" + cccd + "_" + System.currentTimeMillis() + ".pdf");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
@@ -1713,7 +1760,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất chi tiết hóa đơn ra file Excel
      */
@@ -1725,11 +1772,12 @@ public class AdminController {
                 return ResponseEntity.notFound().build();
             }
             byte[] excelData = exportService.exportInvoicesToExcel(invoice);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
-            headers.setContentDispositionFormData("attachment", "ChiTiet_HoaDon_" + maHoaDon + "_" + System.currentTimeMillis() + ".xlsx");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "ChiTiet_HoaDon_" + maHoaDon + "_" + System.currentTimeMillis() + ".xlsx");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(excelData);
@@ -1737,7 +1785,7 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    
+
     /**
      * Xuất chi tiết hóa đơn ra file PDF
      */
@@ -1749,11 +1797,12 @@ public class AdminController {
                 return ResponseEntity.notFound().build();
             }
             byte[] pdfData = exportService.exportInvoicesToPdf(invoice);
-            
+
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
-            headers.setContentDispositionFormData("attachment", "ChiTiet_HoaDon_" + maHoaDon + "_" + System.currentTimeMillis() + ".pdf");
-            
+            headers.setContentDispositionFormData("attachment",
+                    "ChiTiet_HoaDon_" + maHoaDon + "_" + System.currentTimeMillis() + ".pdf");
+
             return ResponseEntity.ok()
                     .headers(headers)
                     .body(pdfData);
@@ -1761,14 +1810,15 @@ public class AdminController {
             return ResponseEntity.internalServerError().build();
         }
     }
-    // THÔNG BÁO 
-        // 📨 Hiển thị danh sách thông báo
+
+    // THÔNG BÁO
+    // 📨 Hiển thị danh sách thông báo
     @GetMapping("/notifications")
     public String hienThiThongBao(Model model, Principal principal) {
         List<ThongBao> thongBaos = thongBaoService.layTatCaThongBaoMoiNhat();
         model.addAttribute("thongBaos", thongBaos);
 
-        //Lấy thông tin người đang đăng nhập
+        // Lấy thông tin người đang đăng nhập
         DoiTuong user = null;
         if (principal != null) {
             user = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
@@ -1783,9 +1833,8 @@ public class AdminController {
     public String guiThongBao(
             @RequestParam("tieuDe") String tieuDe,
             @RequestParam("noiDung") String noiDung,
-            Principal principal
-    ) {
-        //Lấy người gửi thật từ tài khoản đang đăng nhập
+            Principal principal) {
+        // Lấy người gửi thật từ tài khoản đang đăng nhập
         DoiTuong nguoiTao = null;
         if (principal != null) {
             nguoiTao = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
@@ -1798,25 +1847,27 @@ public class AdminController {
             nguoiTao.setHoVaTen("Ban Quản Trị");
         }
 
-        //Gọi service để lưu thông báo
+        // Gọi service để lưu thông báo
         thongBaoService.taoVaGuiThongBao(tieuDe, noiDung, nguoiTao);
 
         return "redirect:/admin/notifications?success=true";
     }
+
     /**
      * Endpoint REST API: Lấy danh sách phản hồi của một thông báo
      * URL: GET /admin/notifications/{maThongBao}/replies
      */
     @GetMapping("/notifications/{maThongBao}/replies")
     public ResponseEntity<List<PhanHoiThongBaoDTO>> getNotificationReplies(@PathVariable Integer maThongBao) {
-        
+
         // 1. Lấy dữ liệu từ Service
         List<PhanHoiThongBaoDTO> replies = phanHoiThongBaoService.getRepliesByMaThongBao(maThongBao);
-        
+
         // 2. Trả về JSON
         // Nếu không có phản hồi, trả về List rỗng (status 200)
         return ResponseEntity.ok(replies);
     }
+
     /**
      * Hiển thị trang báo cáo thống kê tổng hợp
      * URL: /admin/reports
@@ -1833,14 +1884,14 @@ public class AdminController {
         model.addAttribute("assetStatusData", assetStats.get("statusData"));
         model.addAttribute("assetLocationLabels", assetStats.get("locationLabels"));
         model.addAttribute("assetLocationData", assetStats.get("locationData"));
-        
+
         // Danh sách bảng tài sản
         model.addAttribute("assetList", taiSanChungCuService.getGeneralAssetListReport());
 
         // === PHẦN 2: DỮ LIỆU CƯ DÂN ===
         // A. Thống kê theo Tòa/Tầng (Lấy từ TaiSanChungCuService cũ)
         Map<String, Object> buildingStats = taiSanChungCuService.getChartData(); // Hàm cũ bạn đã viết
-        
+
         // Xử lý dữ liệu Tầng
         Map<Integer, Long> floorMap = (Map<Integer, Long>) buildingStats.get("floorStats");
         List<String> floorLabels = new ArrayList<>();
@@ -1858,6 +1909,8 @@ public class AdminController {
         model.addAttribute("genderData", residentStats.get("genderData"));
         model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
         model.addAttribute("resStatusData", residentStats.get("resStatusData"));
+        model.addAttribute("ageLabels", residentStats.get("ageLabels"));
+        model.addAttribute("ageData", residentStats.get("ageData"));
 
         return "reports-dashboard"; // Tên file HTML mới
     }

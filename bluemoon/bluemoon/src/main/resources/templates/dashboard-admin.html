@@ -377,7 +377,7 @@
                                     th:text="|Báo cáo từ: ${suCo.nguoiBaoCao?.hoVaTen ?: 'Cư dân ẩn danh'} - Vị trí: ${suCo.taiSan?.viTri ?: 'N/A'}|">
                                     Báo cáo từ: Hộ Nguyễn Văn A - Căn A-0501
                                 </p>
-                                <span th:class="${isCao} ? 'badge badge-danger' : 'badge badge-warning'" th:text="|Ưu tiên ${suCo.mucDoUuTien?.dbValue} ?: 'N/A'|">Ưu tiên cao</span>
+                                <span th:class="${isCao} ? 'badge badge-danger' : 'badge badge-warning'" th:text="|Ưu tiên ${suCo.mucDoUuTien?.dbValue ?: 'N/A'}|">Ưu tiên cao</span>
                             </div>
                             <button th:class="${isCao} ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-warning'" th:style="${!isCao} ? 'color: white;'">Xử lý ngay</button>
                         </div>

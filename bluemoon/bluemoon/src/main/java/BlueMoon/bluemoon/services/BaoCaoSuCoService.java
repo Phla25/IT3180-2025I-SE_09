@@ -1,4 +1,6 @@
 package BlueMoon.bluemoon.services;
+
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 
@@ -27,7 +29,7 @@ public class BaoCaoSuCoService {
     public Long getSuCoDangXuLy() {
         return suCoDAO.countByTrangThai(IncidentStatus.dang_xu_ly);
     }
-    
+
     public Long getSuCoChuaXuLy() {
         // Sự cố chưa tiếp nhận (moi_tiep_nhan) + Sự cố đang chờ xử lý (dang_xu_ly)
         // Để khớp với Dashboard, ta sẽ tính: Tổng - Đã hoàn thành.
@@ -40,14 +42,14 @@ public class BaoCaoSuCoService {
     public int getTyLeDaXuLy() {
         long tongSuCo = suCoDAO.countAll();
         long suCoDaXuLy = suCoDAO.countByTrangThai(IncidentStatus.da_hoan_thanh);
-        
+
         if (tongSuCo == 0) {
             return 0; // Tránh chia cho 0
         }
         // Tính toán tỷ lệ phần trăm
         return (int) ((suCoDaXuLy * 100) / tongSuCo);
     }
-    
+
     public Long getSuCoTheoMucDo(PriorityLevel mucDo) {
         return suCoDAO.countByMucDoUuTien(mucDo);
     }
@@ -58,11 +60,12 @@ public class BaoCaoSuCoService {
      */
     public List<BaoCaoSuCo> getRecentIncidents(int limit) {
         List<BaoCaoSuCo> allIncidents = suCoDAO.findAll();
-        
+
         // Sắp xếp theo ngày báo cáo giảm dần (mới nhất lên đầu)
-        // Nếu phương thức getNgayBaoCao() không tồn tại, dùng toString() làm phương án thay thế để đảm bảo biên dịch.
-        allIncidents.sort(Comparator.comparing(BaoCaoSuCo::toString).reversed());
-        
+        allIncidents.sort(Comparator.comparing(
+                (BaoCaoSuCo sc) -> sc.getThoiGianBaoCao() != null ? sc.getThoiGianBaoCao() : LocalDateTime.MIN,
+                Comparator.reverseOrder()));
+
         // Giới hạn số lượng
         return allIncidents.size() > limit ? allIncidents.subList(0, limit) : allIncidents;
     }
