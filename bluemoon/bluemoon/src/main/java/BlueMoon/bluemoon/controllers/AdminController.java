@@ -1912,6 +1912,16 @@ public class AdminController {
         model.addAttribute("ageLabels", residentStats.get("ageLabels"));
         model.addAttribute("ageData", residentStats.get("ageData"));
 
+        // === PHẦN 3: DỮ LIỆU HỘ GIA ĐÌNH ===
+        Map<String, Object> householdStats = hoGiaDinhService.getHouseholdStatistics();
+        model.addAttribute("householdFloorLabels", householdStats.get("householdFloorLabels"));
+        model.addAttribute("householdFloorData", householdStats.get("householdFloorData"));
+        model.addAttribute("averageMembers", householdStats.get("averageMembers"));
+        model.addAttribute("totalHouseholds", householdStats.get("totalHouseholds"));
+        model.addAttribute("totalMembers", householdStats.get("totalMembers"));
+        model.addAttribute("householdSizeLabels", householdStats.get("householdSizeLabels"));
+        model.addAttribute("householdSizeData", householdStats.get("householdSizeData"));
+
         return "reports-dashboard"; // Tên file HTML mới
     }
 }
