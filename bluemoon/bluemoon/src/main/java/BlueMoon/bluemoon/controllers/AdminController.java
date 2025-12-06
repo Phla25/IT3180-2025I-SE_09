@@ -3,17 +3,17 @@ package BlueMoon.bluemoon.controllers;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
-import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -27,7 +27,11 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+
 
 import BlueMoon.bluemoon.daos.BaoCaoSuCoDAO;
 import BlueMoon.bluemoon.daos.DoiTuongDAO;
@@ -39,9 +43,11 @@ import BlueMoon.bluemoon.entities.DichVu;
 import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.HoaDon;
+import BlueMoon.bluemoon.entities.PhanHoi;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.entities.ThongBao;
+import BlueMoon.bluemoon.entities.ThongBaoDaDoc;
 import BlueMoon.bluemoon.models.ApartmentReportDTO;
 import BlueMoon.bluemoon.models.HouseholdReportDTO;
 import BlueMoon.bluemoon.models.InvoiceReportDTO;
@@ -55,6 +61,7 @@ import BlueMoon.bluemoon.services.ExportService;
 import BlueMoon.bluemoon.services.HoGiaDinhService;
 import BlueMoon.bluemoon.services.HoaDonService;
 import BlueMoon.bluemoon.services.NguoiDungService;
+import BlueMoon.bluemoon.services.PhanHoiService;
 import BlueMoon.bluemoon.services.PhanHoiThongBaoService;
 import BlueMoon.bluemoon.services.ReportService;
 import BlueMoon.bluemoon.services.TaiSanChungCuService;
@@ -86,7 +93,7 @@ public class AdminController {
         Optional<DoiTuong> userOpt = nguoiDungService.timBanQuanTriTheoID(id);
         return userOpt.orElse(null); 
     }
-    @Autowired private BaoCaoSuCoService baoCaoSuCoService; // instance, không phải class
+
     @Autowired private CuDanService cuDanService;
     @Autowired private HoGiaDinhDAO hoGiaDinhDAO;
     @Autowired private BaoCaoSuCoDAO suCoDAO;
@@ -100,17 +107,18 @@ public class AdminController {
     @Autowired private DoiTuongDAO doiTuongDAO;
     @Autowired private PhanHoiThongBaoService phanHoiThongBaoService;
 
+    @SuppressWarnings("unchecked")
     @GetMapping("/dashboard")
     public String showAdminDashboard(Model model, Authentication auth) {
         
+        // 1. Xác thực người dùng
         DoiTuong user = getCurrentUser(auth);
         if (user == null) {
             return "redirect:/login?error=notfound";
         }
-        // ⚠️ Đảm bảo user không null (Spring Security thường lo phần này)
         model.addAttribute("user", user);
 
-        // 1. Thống kê chung
+        // 2. Thống kê số liệu tổng quan (Cards)
         model.addAttribute("tongCuDan", cuDanService.layDanhSachCuDan().size());
         model.addAttribute("tongHoGiaDinh", hoGiaDinhDAO.countAll());
         
@@ -118,22 +126,53 @@ public class AdminController {
         long suCoDangXuLy = suCoDAO.countByTrangThai(IncidentStatus.dang_xu_ly);
         model.addAttribute("suCoChuaXuLy", suCoChuaXuLy + suCoDangXuLy);
         
-        // Dùng Optional.orElse để tránh NPE nếu Service trả về null
         BigDecimal tongThu = hoaDonDAO.sumSoTienByTrangThai(InvoiceStatus.da_thanh_toan);
         model.addAttribute("doanhThuThang", tongThu); 
 
-        // 2. Thống kê nhanh (Tỷ lệ)
-        long tongSuCo = suCoDAO.count(); // Cần thêm phương thức này
+        // 3. Thống kê tỷ lệ (Progress bars)
+        long tongSuCo = suCoDAO.count(); 
         long suCoDaXuLy = suCoDAO.countByTrangThai(IncidentStatus.da_hoan_thanh);
-        
-        // Tính tỷ lệ an toàn, sử dụng BigDecimal để tránh chia cho 0
         int tyLeSuCoDaXuLy = (tongSuCo > 0) ? (int)((suCoDaXuLy * 100) / tongSuCo) : 0;
         model.addAttribute("tyLeSuCoDaXuLy", tyLeSuCoDaXuLy);
-        // ... Các tỷ lệ khác ...
+        
+        // (Giả lập các tỷ lệ khác nếu chưa có logic tính toán)
+        model.addAttribute("tyLeThuPhi", 78); 
+        model.addAttribute("tyLeCanHoDaBan", 92);
 
-        // 3. Danh sách Sự Cố Cần Xử Lý Gấp (Luôn trả về List, có thể rỗng)
+        // 4. Danh sách sự cố cần xử lý gấp
         List<BaoCaoSuCo> suCoCanXuLy = suCoDAO.findByMucDoUuTien(PriorityLevel.cao);
-        model.addAttribute("suCoCanXuLy", suCoCanXuLy); // Dùng List, Thymeleaf sẽ tự xử lý list rỗng
+        model.addAttribute("suCoCanXuLy", suCoCanXuLy);
+
+        // ========================================================
+        // 5. XỬ LÝ DỮ LIỆU BIỂU ĐỒ (LOGIC MỚI)
+        // ========================================================
+        Map<String, Object> chartData = taiSanChungCuService.getChartData();
+        
+        // A. Dữ liệu Tầng
+        Map<Integer, Long> floorMap = (Map<Integer, Long>) chartData.get("floorStats");
+        List<String> floorLabels = new ArrayList<>();
+        List<Long> floorData = new ArrayList<>();
+        
+        for (Map.Entry<Integer, Long> entry : floorMap.entrySet()) {
+            floorLabels.add("Tầng " + entry.getKey());
+            floorData.add(entry.getValue());
+        }
+
+        // B. Dữ liệu Tòa
+        Map<String, Long> buildingMap = (Map<String, Long>) chartData.get("buildingStats");
+        List<String> buildingLabels = new ArrayList<>();
+        List<Long> buildingData = new ArrayList<>();
+
+        for (Map.Entry<String, Long> entry : buildingMap.entrySet()) {
+            buildingLabels.add("Tòa " + entry.getKey());
+            buildingData.add(entry.getValue());
+        }
+
+        model.addAttribute("floorLabels", floorLabels);
+        model.addAttribute("floorData", floorData);
+        model.addAttribute("buildingLabels", buildingLabels);
+        model.addAttribute("buildingData", buildingData);
+        // ========================================================
 
         return "dashboard-admin";
     }
@@ -1093,6 +1132,10 @@ public class AdminController {
     // QUẢN LÝ HÓA ĐƠN (CRUD)
     // =======================================================
     
+    // =======================================================
+    // [CẬP NHẬT] QUẢN LÝ HÓA ĐƠN VỚI CHỨC NĂNG CHỌN THÀNH VIÊN
+    // =======================================================
+    
     /**
      * Admin list: URL: /admin/fees
      */
@@ -1101,11 +1144,11 @@ public class AdminController {
         model.addAttribute("user", getCurrentUser(auth));
         List<HoaDon> hoaDonList = hoaDonService.getAllHoaDon(); 
         model.addAttribute("hoaDonList", hoaDonList);
-        return "fees-admin"; // Tên file Thymeleaf mới
+        return "fees-admin"; 
     }
     
     /**
-     * Admin form: URL: /admin/fee-form (Sử dụng lại logic của Kế toán)
+     * Admin form: URL: /admin/fee-form
      */
     @GetMapping("/fee-form")
     public String showAdminFeeForm(@RequestParam(value = "id", required = false) Integer maHoaDon, 
@@ -1122,40 +1165,40 @@ public class AdminController {
         model.addAttribute("invoiceTypes", InvoiceType.values()); 
         List<HoGiaDinh> allHo = hoGiaDinhService.getAllHouseholds(); 
         model.addAttribute("allHo", allHo);
-        // model.addAttribute("allHo", hoGiaDinhService.getAllHouseholds()); // Cần Autowired HoGiaDinhService
         
-        // Vẫn trỏ đến file form chung
         return "invoice-add-edit-admin"; 
     }
     
     /**
-     * Admin save: URL: /admin/fee-save (Tái sử dụng logic Service)
+     * API JSON: Trả về danh sách thành viên của một hộ cụ thể.
+     * Giao diện sẽ gọi cái này khi người dùng chọn Hộ.
      */
-    @PostMapping("/fee-save")
-    public String handleAdminFeeSave(@ModelAttribute("hoaDon") HoaDon hoaDon, 
-                                @RequestParam("maHo") String maHo,
-                                Authentication auth,
-                                RedirectAttributes redirectAttributes) {
-        DoiTuong currentUser = getCurrentUser(auth);
-        
-        try {
-            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, currentUser);
-            
-            String message = (hoaDon.getMaHoaDon() == null) 
-                             ? "Tạo mới Hóa đơn thành công (Admin)!" 
-                             : "Cập nhật Hóa đơn #" + hoaDon.getMaHoaDon() + " thành công (Admin)!";
-            
-            redirectAttributes.addFlashAttribute("successMessage", message);
-            return "redirect:/admin/fees";
-        } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            return "redirect:/admin/fee-form?id=" + (hoaDon.getMaHoaDon() != null ? hoaDon.getMaHoaDon() : "");
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
-            return "redirect:/admin/fees";
+    @GetMapping("/api/households/{maHo}/members")
+    public ResponseEntity<List<Map<String, String>>> getHouseholdMembers(@PathVariable String maHo) {
+        // 1. Tìm hộ gia đình
+        HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo).orElse(null);
+    
+        if (hgd == null) {
+            return ResponseEntity.notFound().build();
         }
-    }
 
+        // 2. Lấy danh sách thành viên ĐANG Ở (ngayKetThuc == null)
+        List<Map<String, String>> members = hgd.getThanhVienHoList().stream()
+            .filter(tvh -> tvh.getNgayKetThuc() == null) 
+            .map(tvh -> {
+                Map<String, String> map = new HashMap<>();
+                map.put("cccd", tvh.getDoiTuong().getCccd());
+            
+                // Đánh dấu ai là Chủ hộ để dễ nhìn
+                String role = tvh.getLaChuHo() ? " (Chủ hộ)" : "";
+                map.put("hoVaTen", tvh.getDoiTuong().getHoVaTen() + role);
+            
+                return map;
+            })
+            .toList();
+
+        return ResponseEntity.ok(members);
+    }
     /**
      * Admin delete: URL: /admin/fee-delete (Tái sử dụng logic Service)
      */
@@ -1375,6 +1418,57 @@ public class AdminController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    // =======================================================
+    // IMPORT EXCEL (MỚI)
+    // =======================================================
+
+    /**
+     * 1. Hiển thị trang Import Excel
+     * URL: /admin/fees/import
+     */
+    @GetMapping("/fees/import")
+    public String showImportFeesPage(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        return "fees-import-admin"; // Trỏ đến file HTML sắp tạo
+    }
+
+    /**
+     * 2. Xử lý Upload File Excel
+     * URL: /admin/fees/import
+     */
+    @PostMapping("/fees/import")
+    @SuppressWarnings({"CallToPrintStackTrace", "UseSpecificCatch"})
+    public String handleImportFees(@RequestParam("file") MultipartFile file,
+                                   Authentication auth,
+                                   RedirectAttributes redirectAttributes) {
+        DoiTuong user = getCurrentUser(auth);
+        
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file Excel.");
+            return "redirect:/admin/fees/import";
+        }
+
+        try {
+            // Gọi Service xử lý đọc file và lưu DB
+            String result = hoaDonService.importHoaDonFromExcel(file, user);
+            
+            // Kiểm tra kết quả để hiển thị màu thông báo phù hợp
+            if (result.contains("Thất bại") || result.contains("Lỗi")) {
+                // Nếu có lỗi dòng nào đó, hiện thông báo dạng cảnh báo/lỗi
+                redirectAttributes.addFlashAttribute("errorMessage", result); 
+            } else {
+                redirectAttributes.addFlashAttribute("successMessage", result);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+            return "redirect:/admin/fees/import";
+        }
+        
+        // Thành công thì quay về danh sách hóa đơn
+        return "redirect:/admin/fees";
     }
     
     /**
@@ -1735,14 +1829,58 @@ public class AdminController {
         // Nếu không có phản hồi, trả về List rỗng (status 200)
         return ResponseEntity.ok(replies);
     }
-    
-    // --- HÀM HELPER 2: Lọc dữ liệu thủ công (ĐÃ SỬA LỖI ENUM) ---
     /**
-     * Lọc danh sách sự cố bằng Stream API. Xử lý an toàn các tham số Enum đầu vào.
+     * Hiển thị trang báo cáo thống kê tổng hợp
+     * URL: /admin/reports
      */
+    @GetMapping("/reports") // Endpoint chung cho trang báo cáo
+    public String showUnifiedReport(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
 
-    // --- HÀM HELPER: Lọc dữ liệu thủ công (Đã sửa lỗi final) ---
+        // === PHẦN 1: DỮ LIỆU TÀI SẢN CHUNG ===
+        Map<String, Object> assetStats = taiSanChungCuService.getGeneralAssetStatistics();
+        model.addAttribute("assetTypeLabels", assetStats.get("typeLabels"));
+        model.addAttribute("assetTypeData", assetStats.get("typeData"));
+        model.addAttribute("assetStatusLabels", assetStats.get("statusLabels"));
+        model.addAttribute("assetStatusData", assetStats.get("statusData"));
+        model.addAttribute("assetLocationLabels", assetStats.get("locationLabels"));
+        model.addAttribute("assetLocationData", assetStats.get("locationData"));
+        
+        // Danh sách bảng tài sản
+        model.addAttribute("assetList", taiSanChungCuService.getGeneralAssetListReport());
+
+        // === PHẦN 2: DỮ LIỆU CƯ DÂN ===
+        // A. Thống kê theo Tòa/Tầng (Lấy từ TaiSanChungCuService cũ)
+        Map<String, Object> buildingStats = taiSanChungCuService.getChartData(); // Hàm cũ bạn đã viết
+        
+        // Xử lý dữ liệu Tầng
+        Map<Integer, Long> floorMap = (Map<Integer, Long>) buildingStats.get("floorStats");
+        List<String> floorLabels = new ArrayList<>();
+        List<Long> floorData = new ArrayList<>();
+        for (Map.Entry<Integer, Long> e : floorMap.entrySet()) {
+            floorLabels.add("Tầng " + e.getKey());
+            floorData.add(e.getValue());
+        }
+        model.addAttribute("floorLabels", floorLabels);
+        model.addAttribute("floorData", floorData);
+
+        // B. Thống kê Giới tính & Trạng thái (Lấy từ CuDanService mới)
+        Map<String, Object> residentStats = cuDanService.getResidentStatistics();
+        model.addAttribute("genderLabels", residentStats.get("genderLabels"));
+        model.addAttribute("genderData", residentStats.get("genderData"));
+        model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
+        model.addAttribute("resStatusData", residentStats.get("resStatusData"));
+
+        return "reports-dashboard"; // Tên file HTML mới
+    }
+    
     private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
+
+    @Autowired
+    private BaoCaoSuCoService baoCaoSuCoService;
+
+    @Autowired
+    private PhanHoiService phanHoiService; // [QUAN TRỌNG] Inject service phản hồi
 
     // =================================================================
     // 1. TRANG DANH SÁCH SỰ CỐ
@@ -1759,41 +1897,44 @@ public class AdminController {
         model.addAttribute("user", user);
 
         // Lấy danh sách sự cố
-        List<BaoCaoSuCo> danhSachSuCo = baoCaoSuCoService.getAllIncidents();
-
-        // Lọc thủ công
-        danhSachSuCo = filterIncidents(danhSachSuCo, trangThai, mucDo);
+        List<BaoCaoSuCo> danhSachSuCo = baoCaoSuCoService.filterIncidents(trangThai, mucDo);
 
         // Truyền dữ liệu ra HTML
         model.addAttribute("danhSachSuCo", danhSachSuCo);
         model.addAttribute("trangThai", trangThai);
         model.addAttribute("mucDo", mucDo);
 
-        return "admin-incident";
+        return "incident-admin";
     }
 
     // =================================================================
-    // 2. TẢI CHI TIẾT SỰ CỐ — AJAX
+    // 2. TẢI CHI TIẾT SỰ CỐ + LỊCH SỬ XỬ LÝ (AJAX)
     // =================================================================
+    // [ĐÃ SỬA] Chỉ giữ lại duy nhất hàm này để xử lý URL /incidents/detail/{id}
     @GetMapping("/incidents/detail/{id}")
-    public String getIncidentDetail(@PathVariable Integer id, Model model) {
-
+    public String getIncidentDetails(@PathVariable Integer id, Model model) {
         try {
+            // 1. Lấy thông tin sự cố
             BaoCaoSuCo suCo = baoCaoSuCoService.getIncidentById(id);
+            
+            // 2. [MỚI] Lấy lịch sử phản hồi/cập nhật tiến độ
+            List<PhanHoi> lichSu = phanHoiService.getFeedbackByIncident(suCo);
+            
             model.addAttribute("suCo", suCo);
-        } catch (RuntimeException e) {
-            logger.error("Không tìm thấy sự cố ID: {}", id);
-            model.addAttribute("suCo", null);
+            model.addAttribute("lichSuXuLy", lichSu); // Truyền list này ra view để hiển thị Timeline
+            
+            // Trả về fragment "detailContent" trong file incident-admin.html
+            return "incident-admin :: detailContent"; 
+        } catch (Exception e) {
+            logger.error("Lỗi khi lấy chi tiết sự cố ID: " + id, e);
+            return "incident-admin :: detailContent"; // Trả về fragment rỗng hoặc xử lý lỗi tùy ý
         }
-
-        // Fragment phải tồn tại trong admin-incident.html
-        return "admin-incident :: detailContent";
     }
 
     // =================================================================
-    // 3. CẬP NHẬT TRẠNG THÁI + ƯU TIÊN — AJAX PUT
+    // 3. CẬP NHẬT TRẠNG THÁI + ƯU TIÊN (PUT)
     // =================================================================
-    @PutMapping("/admin/incidents/update/{id}")
+    @PutMapping("/incidents/update/{id}")
     public ResponseEntity<?> updateIncidentStatus(
             @PathVariable Integer id,
             @RequestBody Map<String, String> payload
@@ -1803,13 +1944,12 @@ public class AdminController {
             String priorityString = payload.get("mucDo");
 
             if (statusString == null || priorityString == null) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Thiếu dữ liệu trạng thái hoặc mức độ"));
+                return ResponseEntity.badRequest().body(Map.of("error", "Thiếu dữ liệu"));
             }
 
-            // Chuyển sang enum, nếu không hợp lệ sẽ catch bên dưới
-            IncidentStatus newStatus = IncidentStatus.fromString(statusString);
-            PriorityLevel newPriority = PriorityLevel.fromString(priorityString);
+            // Xử lý Enum
+            IncidentStatus newStatus = IncidentStatus.valueOf(statusString);
+            PriorityLevel newPriority = PriorityLevel.valueOf(priorityString);
 
             BaoCaoSuCo updatedIncident = baoCaoSuCoService.updateIncidentStatus(id, newStatus, newPriority);
 
@@ -1819,70 +1959,72 @@ public class AdminController {
             ));
 
         } catch (IllegalArgumentException e) {
-            // Nếu enum không hợp lệ
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Trạng thái hoặc mức độ không hợp lệ"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Trạng thái hoặc mức độ không hợp lệ"));
         } catch (RuntimeException e) {
-            // Nếu ID không tồn tại
-            return ResponseEntity.status(404)
-                    .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.status(404).body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            // Bắt lỗi bất ngờ
-            return ResponseEntity.status(500)
-                    .body(Map.of("error", "Lỗi máy chủ: " + e.getMessage()));
+            return ResponseEntity.status(500).body(Map.of("error", "Lỗi máy chủ: " + e.getMessage()));
         }
     }
 
+    // =================================================================
+    // 4. GỬI CẬP NHẬT TIẾN ĐỘ MỚI (POST)
+    // =================================================================
+    @PostMapping("/incidents/responses/add")
+    @ResponseBody
+    public ResponseEntity<?> addResponse(@RequestBody Map<String, Object> payload, Authentication auth) {
+        try {
+            Integer incidentId = Integer.parseInt(payload.get("incidentId").toString());
+            String content = payload.get("content").toString();
+            
+            // Lấy user hiện tại (Sử dụng hàm getCurrentUser có sẵn trong AdminController hoặc getLoggedInUser)
+            // Lưu ý: Authentication auth lấy từ SecurityContext
+            DoiTuong admin = getCurrentUser(auth); 
+            
+            BaoCaoSuCo suCo = baoCaoSuCoService.getIncidentById(incidentId);
+
+            // Lưu phản hồi
+            phanHoiService.addAdminUpdate(suCo, admin, content);
+            
+            return ResponseEntity.ok(Map.of("message", "Đã cập nhật tiến độ thành công!"));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
 
     // =================================================================
-    // HELPER: Lấy thông tin người dùng
+    // HELPER
     // =================================================================
     private DoiTuong getLoggedInUser(Principal principal) {
         if (principal == null) return null;
-
         try {
-            return nguoiDungService.timNguoiDungThuongTheoCCCD(principal.getName())
-                    .orElse(null);
+            return nguoiDungService.timNguoiDungThuongTheoCCCD(principal.getName()).orElse(null);
         } catch (Exception e) {
             return null;
         }
     }
-
-    // =================================================================
-    // HELPER: Lọc sự cố
-    // =================================================================
-    private List<BaoCaoSuCo> filterIncidents(List<BaoCaoSuCo> incidents,
-                                             String trangThai,
-                                             String mucDo) {
-
-        IncidentStatus tempStatus = null;
-        PriorityLevel tempPriority = null;
-
+    
+    @GetMapping("/notifications/{id}/readers")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> getNotificationReaders(@PathVariable Integer id) {
         try {
-            if (trangThai != null && !trangThai.isBlank()) {
-                tempStatus = IncidentStatus.fromString(trangThai);
-            }
-            if (mucDo != null && !mucDo.isBlank()) {
-                tempPriority = PriorityLevel.fromString(mucDo);
-            }
-        } catch (IllegalArgumentException e) {
-            logger.warn("Bộ lọc không hợp lệ: trangThai={}, mucDo={}", trangThai, mucDo);
+            long count = thongBaoService.laySoLuongDaDoc(id);
+            List<ThongBaoDaDoc> list = thongBaoService.layDanhSachDaDoc(id);
+
+            // Chuyển đổi sang DTO đơn giản để trả về JSON
+            List<Map<String, String>> readers = list.stream().map(tdd -> Map.of(
+                "hoVaTen", tdd.getNguoiDoc().getHoVaTen(),
+                "thoiGianDoc", tdd.getThoiGianDoc().toString(),
+                "maCanHo", "P.101" // Bạn cần logic lấy mã căn hộ thật ở đây nếu có
+            )).collect(Collectors.toList());
+
+            return ResponseEntity.ok(Map.of(
+                "count", count,
+                "readers", readers
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
         }
-
-        final IncidentStatus filterStatus = tempStatus;
-        final PriorityLevel filterPriority = tempPriority;
-
-        return incidents.stream()
-                .filter(sc -> {
-                    boolean matchStatus =
-                            filterStatus == null || Objects.equals(sc.getTrangThai(), filterStatus);
-
-                    boolean matchPriority =
-                            filterPriority == null || Objects.equals(sc.getMucDoUuTien(), filterPriority);
-
-                    return matchStatus && matchPriority;
-                })
-                .collect(Collectors.toList());
     }
-
 }
