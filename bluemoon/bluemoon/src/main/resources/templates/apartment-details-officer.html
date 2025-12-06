@@ -103,21 +103,17 @@
                 <i class="fas fa-chart-line"></i>
                 <span>Dashboard</span>
             </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>Xem Sự Cố</span>
+            <a th:href="@{/officer/apartments}" class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>Căn Hộ</span>
             </a>
-            <a href="#" class="nav-item">
+            <a href="#" class="nav-item" onclick="showFeatureToggle('Sự Cố', 'Tính năng này đang được phát triển và sẽ sớm ra mắt.')">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Sự Cố</span>
+            </a>
+            <a th:href="@{/officer/reports}" class="nav-item">
                 <i class="fas fa-chart-bar"></i>
                 <span>Báo Cáo</span>
-            </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-file-alt"></i>
-                <span>Tài Liệu</span>
-            </a>
-            <a th:href="@{/officer/apartment-list}" class="nav-item active">
-                <i class="fas fa-home"></i>
-                <span>Xem Căn Hộ</span>
             </a>
         </nav>
         

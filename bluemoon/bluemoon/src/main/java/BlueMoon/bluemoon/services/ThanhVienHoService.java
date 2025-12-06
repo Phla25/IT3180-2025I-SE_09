@@ -11,14 +11,16 @@ import BlueMoon.bluemoon.daos.ThanhVienHoDAO;
 import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
-import BlueMoon.bluemoon.models.HoGiaDinhDTO; 
+import BlueMoon.bluemoon.models.HoGiaDinhDTO;
 import BlueMoon.bluemoon.entities.DoiTuong;
 
 @Service
 public class ThanhVienHoService {
 
-    @Autowired private ThanhVienHoDAO thanhVienHoDAO;
-    @Autowired private TaiSanChungCuDAO taiSanChungCuDAO;
+    @Autowired
+    private ThanhVienHoDAO thanhVienHoDAO;
+    @Autowired
+    private TaiSanChungCuDAO taiSanChungCuDAO;
 
     /**
      * Lấy thông tin chi tiết căn hộ của cư dân, sử dụng HoGiaDinhDTO.
@@ -36,35 +38,42 @@ public class ThanhVienHoService {
         HoGiaDinh hoGiaDinh = tvhOpt.get().getHoGiaDinh();
         // DÒNG NÀY (hoGiaDinh.getMaHo()) giờ an toàn trong Transaction
         String maHo = hoGiaDinh.getMaHo();
-        
+
         // 2. Tìm Chủ hộ (Dùng findChuHoNameByHo)
         String tenChuHo = thanhVienHoDAO.findChuHoNameByHo(maHo).orElse(hoVaTenNguoiDung + " (Chủ hộ chưa xác định)");
 
         // 3. Tìm Căn hộ chính (TaiSanChungCu) thuộc Hộ gia đình này
-        Optional<TaiSanChungCu> canHoOpt = taiSanChungCuDAO.findApartmentByHo(maHo); 
+        Optional<TaiSanChungCu> canHoOpt = taiSanChungCuDAO.findApartmentByHo(maHo);
 
         if (canHoOpt.isEmpty()) {
             // Trường hợp 2: Có hộ nhưng chưa có căn hộ được gán
-             return new HoGiaDinhDTO("Chưa gán", tenChuHo, "Không có căn hộ liên kết");
+            return new HoGiaDinhDTO("Chưa gán", tenChuHo, "Không có căn hộ liên kết");
         }
-        
+
         TaiSanChungCu canHo = canHoOpt.get();
-        
+
         // 4. Trả về DTO hoàn chỉnh
         return new HoGiaDinhDTO(
-            canHo.getTenTaiSan(), 
-            tenChuHo,
-            canHo.getTrangThai().getDbValue() // Lấy giá trị DB của Enum
+                canHo.getTenTaiSan(),
+                tenChuHo,
+                canHo.getTrangThai().getDbValue() // Lấy giá trị DB của Enum
         );
     }
+
     public Optional<HoGiaDinh> getHoGiaDinhByCccd(String cccd) {
         Optional<ThanhVienHo> tvhOpt = thanhVienHoDAO.findCurrentByCccd(cccd);
         return tvhOpt.map(ThanhVienHo::getHoGiaDinh);
     }
-    public Optional<ThanhVienHo> getThanhVienHoByCccd(String cccd){
+
+    public Optional<ThanhVienHo> getThanhVienHoByCccd(String cccd) {
         return thanhVienHoDAO.findCurrentByCccd(cccd);
     }
-    public Optional<DoiTuong> getChuHoByMaHo(String maHo){
+
+    public Optional<DoiTuong> getChuHoByMaHo(String maHo) {
         return thanhVienHoDAO.findChuHoByHo(maHo);
+    }
+
+    public java.util.List<ThanhVienHo> getActiveByMaHo(String maHo) {
+        return thanhVienHoDAO.findActiveByMaHo(maHo);
     }
 }
