@@ -1,20 +1,22 @@
 package BlueMoon.bluemoon.services;
 
-import BlueMoon.bluemoon.daos.ThongBaoDAO;
-import BlueMoon.bluemoon.daos.PhanHoiThongBaoDAO;
-import BlueMoon.bluemoon.entities.ThongBao;
-import BlueMoon.bluemoon.models.PhanHoiThongBaoDTO;
-import BlueMoon.bluemoon.entities.DoiTuong;
-import BlueMoon.bluemoon.entities.PhanHoiThongBao;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+import BlueMoon.bluemoon.daos.PhanHoiThongBaoDAO;
+import BlueMoon.bluemoon.daos.ThongBaoDAO;
+import BlueMoon.bluemoon.daos.ThongBaoDaDocDAO;
+import BlueMoon.bluemoon.entities.DoiTuong;
+import BlueMoon.bluemoon.entities.PhanHoiThongBao;
+import BlueMoon.bluemoon.entities.ThongBao;
+import BlueMoon.bluemoon.entities.ThongBaoDaDoc;
+import BlueMoon.bluemoon.models.PhanHoiThongBaoDTO;
 
 @Service
 public class ThongBaoService {
@@ -25,6 +27,7 @@ public class ThongBaoService {
     @Autowired
     private PhanHoiThongBaoDAO phanHoiThongBaoDAO;
 
+    @Autowired private ThongBaoDaDocDAO thongBaoDaDocDAO; // Inject DAO mới
     @Transactional
     public ThongBao taoVaGuiThongBao(String tieuDe, String noiDung, DoiTuong nguoiTao) {
         ThongBao thongBao = new ThongBao();
@@ -78,6 +81,35 @@ public class ThongBaoService {
         return list.stream()
             .map(ph -> new PhanHoiThongBaoDTO(ph))
             .collect(Collectors.toList());
+    }
+    
+    @Transactional
+    public void danhDauDaDoc(Integer maThongBao, DoiTuong nguoiDoc) {
+        ThongBao thongBao = thongBaoDAO.findById(maThongBao)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy thông báo"));
+
+        // Kiểm tra nếu chưa đọc thì mới lưu
+        if (!thongBaoDaDocDAO.existsByThongBaoAndNguoiDoc(thongBao, nguoiDoc)) {
+            ThongBaoDaDoc daDoc = new ThongBaoDaDoc(thongBao, nguoiDoc);
+            thongBaoDaDocDAO.save(daDoc);
+        }
+    }
+
+    // [MỚI] Lấy số lượng người đã đọc
+    public long laySoLuongDaDoc(Integer maThongBao) {
+        ThongBao thongBao = new ThongBao(); 
+        thongBao.setMaThongBao(maThongBao); // Chỉ cần set ID để tìm kiếm
+        return thongBaoDaDocDAO.countByThongBao(thongBao);
+    }
+
+    // [MỚI] Lấy danh sách chi tiết người đã đọc
+    public List<ThongBaoDaDoc> layDanhSachDaDoc(Integer maThongBao) {
+        return thongBaoDaDocDAO.findByThongBaoIdWithUser(maThongBao);
+    }
+    
+ // [MỚI] Lấy số lượng thông báo chưa đọc
+    public long demSoThongBaoChuaDoc(DoiTuong nguoiDoc) {
+        return thongBaoDAO.countUnreadByNguoiDoc(nguoiDoc);
     }
 
 
