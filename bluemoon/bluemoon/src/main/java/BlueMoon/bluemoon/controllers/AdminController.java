@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
@@ -43,6 +44,7 @@ import BlueMoon.bluemoon.models.HouseholdReportDTO;
 import BlueMoon.bluemoon.models.InvoiceReportDTO;
 import BlueMoon.bluemoon.models.PhanHoiThongBaoDTO;
 import BlueMoon.bluemoon.models.ResidentReportDTO;
+import BlueMoon.bluemoon.services.BaoCaoSuCoService;
 import BlueMoon.bluemoon.services.CuDanService;
 import BlueMoon.bluemoon.services.DangKyDichVuService;
 import BlueMoon.bluemoon.services.DichVuService;
@@ -94,6 +96,7 @@ public class AdminController {
     @Autowired private ThongBaoService thongBaoService;
     @Autowired private DoiTuongDAO doiTuongDAO;
     @Autowired private PhanHoiThongBaoService phanHoiThongBaoService;
+    @Autowired private BaoCaoSuCoService baoCaoSuCoService;
 
     @SuppressWarnings("unchecked")
     @GetMapping("/dashboard")
@@ -943,6 +946,72 @@ public class AdminController {
         }
 
         return "apartment-details-admin";
+    }
+    // === CÁC API JSON CHO DROPDOWN (AJAX) ===
+
+    @GetMapping("/api/buildings")
+    public ResponseEntity<List<String>> getAvailableBuildings() {
+        return ResponseEntity.ok(taiSanChungCuService.getAvailableBuildings());
+    }
+
+    @GetMapping("/api/floors")
+    public ResponseEntity<List<Integer>> getAvailableFloors(@RequestParam String building) {
+        return ResponseEntity.ok(taiSanChungCuService.getAvailableFloorsByBuilding(building));
+    }
+
+    @GetMapping("/api/apartments")
+    public ResponseEntity<List<Map<String, Object>>> getAvailableApartments(@RequestParam String building, @RequestParam Integer floor) {
+        List<TaiSanChungCu> apts = taiSanChungCuService.getEmptyApartmentsByBuildingAndFloor(building, floor);
+        
+        // Map sang object đơn giản để trả về JSON
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (TaiSanChungCu a : apts) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("maTaiSan", a.getMaTaiSan());
+            map.put("tenTaiSan", a.getTenTaiSan());
+            map.put("dienTich", a.getDienTich());
+            result.add(map);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    // === CHỨC NĂNG EDIT HỘ ===
+
+    /**
+     * GET: Hiển thị form chỉnh sửa
+     */
+    @GetMapping("/household-edit")
+    public String showEditHouseholdForm(@RequestParam("maHo") String maHo, Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        
+        HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hộ gia đình"));
+        
+        model.addAttribute("household", hgd);
+        model.addAttribute("householdStatuses", HouseholdStatus.values());
+        
+        // Lấy căn hộ hiện tại (để hiển thị)
+        Optional<TaiSanChungCu> currentApt = hoGiaDinhService.getApartmentByHousehold(maHo);
+        model.addAttribute("currentApartment", currentApt.orElse(null));
+
+        return "household-edit"; // File HTML mới
+    }
+
+    /**
+     * POST: Lưu chỉnh sửa
+     */
+    @PostMapping("/household-edit")
+    public String handleEditHousehold(@ModelAttribute("household") HoGiaDinh hgd,
+                                      @RequestParam(value = "maCanHoMoi", required = false) Integer maCanHoMoi,
+                                      RedirectAttributes redirectAttributes) {
+        try {
+            hoGiaDinhService.capNhatHoGiaDinh(hgd.getMaHo(), hgd, maCanHoMoi);
+            redirectAttributes.addFlashAttribute("successMessage", "Cập nhật hộ gia đình thành công.");
+            return "redirect:/admin/household-list";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/admin/household-edit?maHo=" + hgd.getMaHo();
+        }
     }
     // =======================================================
     // QUẢN LÝ TẤT CẢ TÀI SẢN (GENERAL ASSETS) - Bao gồm cả Căn Hộ
@@ -1860,5 +1929,122 @@ public class AdminController {
         model.addAttribute("resStatusData", residentStats.get("resStatusData"));
 
         return "reports-dashboard"; // Tên file HTML mới
+    }
+    // =======================================================
+    // XỬ LÝ SỰ CỐ
+    // =======================================================
+    // 1. Hiển thị danh sách sự cố (Đã có trong code cũ, đảm bảo trỏ đúng view)
+    // 1. Hiển thị danh sách sự cố
+    @GetMapping("/incidents")
+    public String showAdminIncidents(Model model, 
+                                     @RequestParam(required = false) String keyword,
+                                     @RequestParam(required = false) String reporterName, // <--- THÊM MỚI
+                                     @RequestParam(required = false) IncidentStatus trangThai,
+                                     @RequestParam(required = false) PriorityLevel mucDo,
+                                     @RequestParam(required = false) BlueMoon.bluemoon.utils.IncidentType loai,
+                                     @RequestParam(required = false) java.time.LocalDate ngayBao,
+                                     @RequestParam(required = false) Integer gioBao,
+                                     Authentication auth) {
+        
+        model.addAttribute("user", getCurrentUser(auth));
+
+        // Gọi Service lọc dữ liệu (truyền thêm reporterName)
+        List<BaoCaoSuCo> suCoList = baoCaoSuCoService.filterSuCoAdmin(
+            keyword, reporterName, trangThai, mucDo, loai, ngayBao, gioBao
+        );
+        
+        model.addAttribute("danhSachSuCo", suCoList);
+        
+        // Truyền lại giá trị để giữ trạng thái trên Form
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("currentReporter", reporterName); // <--- Đưa vào Model
+        model.addAttribute("currentStatus", trangThai);
+        model.addAttribute("currentPriority", mucDo);
+        model.addAttribute("currentType", loai);
+        model.addAttribute("currentDate", ngayBao);
+        model.addAttribute("currentHour", gioBao);
+
+        model.addAttribute("incidentStatuses", IncidentStatus.values());
+        model.addAttribute("priorityLevels", PriorityLevel.values());
+        model.addAttribute("incidentTypes", BlueMoon.bluemoon.utils.IncidentType.values());
+
+        return "incident-admin"; 
+    }
+
+    // 2. Hiển thị Form tạo sự cố cho Admin
+    @GetMapping("/incident-create")
+    public String showAdminIncidentCreateForm(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        model.addAttribute("newIncident", new BaoCaoSuCo());
+        model.addAttribute("incidentTypes", BlueMoon.bluemoon.utils.IncidentType.values());
+        return "incident-create-admin"; 
+    }
+
+    // 3. Xử lý Admin tạo sự cố (POST)
+    @PostMapping("/incident-create")
+    @SuppressWarnings("CallToPrintStackTrace")
+    public String handleAdminCreateIncident(@ModelAttribute("newIncident") BaoCaoSuCo incident,
+                                            Authentication auth,
+                                            RedirectAttributes redirectAttributes) {
+        DoiTuong adminUser = getCurrentUser(auth);
+        if (adminUser == null) return "redirect:/login?error=auth";
+
+        try {
+            // Gọi Service để tạo (đã có @Transactional trong Service)
+            baoCaoSuCoService.taoBaoCaoTuAdmin(incident, adminUser);
+            
+            redirectAttributes.addFlashAttribute("successMessage", "Đã tạo hồ sơ sự cố thành công.");
+            return "redirect:/admin/incidents";
+        } catch (Exception e) {
+            e.printStackTrace(); // In lỗi ra console để debug
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi tạo sự cố: " + e.getMessage());
+            return "redirect:/admin/incident-create";
+        }
+    }
+    // 4. MỚI: API Lấy chi tiết sự cố (Trả về Fragment HTML cho Modal)
+    @GetMapping("/incidents/detail/{id}")
+    public String getIncidentDetail(@PathVariable Integer id, Model model) {
+        // Tìm sự cố theo ID
+        BaoCaoSuCo suCo = suCoDAO.findById(id).orElse(null);
+        
+        // Đưa vào Model
+        model.addAttribute("suCo", suCo);
+        
+        // Trả về Fragment "detailContent" trong file "incident-admin.html"
+        // Cú pháp: "tên_file_view :: tên_fragment"
+        return "incident-admin :: detailContent";
+    }
+    
+    // 5. MỚI: API Cập nhật trạng thái sự cố (Dùng cho Modal)
+    @org.springframework.web.bind.annotation.PutMapping("/incidents/update/{id}")
+    @org.springframework.web.bind.annotation.ResponseBody // Trả về JSON
+    public ResponseEntity<?> updateIncidentStatus(@PathVariable Integer id, 
+                                                  @RequestBody Map<String, String> payload) {
+        try {
+            BaoCaoSuCo suCo = suCoDAO.findById(id).orElse(null);
+            if (suCo == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy sự cố!"));
+            }
+
+            // Lấy dữ liệu từ JSON gửi lên
+            String trangThaiStr = payload.get("trangThai");
+            String mucDoStr = payload.get("mucDo");
+
+            if (trangThaiStr != null) {
+                suCo.setTrangThai(IncidentStatus.valueOf(trangThaiStr));
+            }
+            if (mucDoStr != null) {
+                suCo.setMucDoUuTien(PriorityLevel.valueOf(mucDoStr));
+            }
+            
+            // Cập nhật thời gian
+            suCo.setThoiGianCapNhat(java.time.LocalDateTime.now());
+
+            suCoDAO.save(suCo); // Lưu thay đổi
+
+            return ResponseEntity.ok(Map.of("message", "Cập nhật thành công!"));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
     }
 }

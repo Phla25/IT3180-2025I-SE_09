@@ -101,7 +101,10 @@
                 <span>Quản Lý Đăng Ký Dịch Vụ</span>
                 <span class="feature-badge">MỚI</span>
             </a>            
-            <a href="#" class="nav-item"> <i class="fas fa-exclamation-triangle"></i> <span>Xử Lý Sự Cố</span> </a>
+            <a th:href="@{/admin/incidents}" class="nav-item">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
@@ -188,9 +191,14 @@
                             <small class="text-muted">Hộ đang sở hữu hiện tại: <span th:text="${apartment.hoGiaDinh?.tenHo} ?: 'N/A'"></span></small>
                         </div>
                         
+                        <div class="form-group">
+                            <label for="viTri" class="form-label">Vị Trí (Tầng/Khu):</label>
+                            <input type="text" id="viTri" th:field="*{viTri}" class="form-control" placeholder="Ví dụ: Tầng 5, Tòa A">
+                        </div>
+
                         <div class="form-group" style="grid-column: 1 / -1;">
-                            <label for="viTri" class="form-label">Vị Trí Cụ Thể / Mô tả:</label>
-                            <textarea id="viTri" th:field="*{viTri}" class="form-textarea" rows="2"></textarea>
+                            <label for="moTa" class="form-label">Mô Tả Chi Tiết:</label>
+                            <textarea id="moTa" th:field="*{moTa}" class="form-textarea" rows="3" placeholder="Ví dụ: Căn góc, view hồ, nội thất cơ bản..."></textarea>
                         </div>
                     </div>
                     

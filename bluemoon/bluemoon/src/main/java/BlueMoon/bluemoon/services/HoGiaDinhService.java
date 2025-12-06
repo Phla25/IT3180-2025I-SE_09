@@ -284,6 +284,47 @@ public class HoGiaDinhService {
         
         return savedHoMoi;
     }
+    /**
+     * Cập nhật thông tin Hộ gia đình và đổi Căn hộ (nếu chọn).
+     */
+    @Transactional
+    public void capNhatHoGiaDinh(String maHo, HoGiaDinh thongTinMoi, Integer maCanHoMoi) {
+        HoGiaDinh hgd = hoGiaDinhDAO.findById(maHo)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình: " + maHo));
+
+        // 1. Cập nhật thông tin cơ bản
+        hgd.setTenHo(thongTinMoi.getTenHo());
+        hgd.setTrangThai(thongTinMoi.getTrangThai());
+        hgd.setGhiChu(thongTinMoi.getGhiChu());
+        
+        hoGiaDinhDAO.save(hgd);
+
+        // 2. Xử lý đổi Căn hộ (Nếu có chọn căn hộ mới)
+        if (maCanHoMoi != null) {
+            // A. Tìm căn hộ cũ (nếu có) và gỡ bỏ
+            taiSanChungCuDAO.findApartmentByHo(maHo).ifPresent(canHoCu -> {
+                // Nếu căn mới khác căn cũ thì mới gỡ
+                if (!canHoCu.getMaTaiSan().equals(maCanHoMoi)) {
+                    canHoCu.setHoGiaDinh(null);
+                    canHoCu.setTrangThai(BlueMoon.bluemoon.utils.AssetStatus.hoat_dong); // Trả về trạng thái trống
+                    taiSanChungCuDAO.save(canHoCu);
+                }
+            });
+
+            // B. Gán căn hộ mới
+            TaiSanChungCu canHoMoi = taiSanChungCuDAO.findByID(maCanHoMoi)
+                .orElseThrow(() -> new IllegalArgumentException("Căn hộ mới không tồn tại."));
+            
+            // Kiểm tra lại xem căn mới có ai nhanh tay thuê mất chưa
+            if (canHoMoi.getHoGiaDinh() != null && !canHoMoi.getHoGiaDinh().getMaHo().equals(maHo)) {
+                throw new IllegalStateException("Căn hộ này vừa được người khác chọn. Vui lòng chọn căn khác.");
+            }
+
+            canHoMoi.setHoGiaDinh(hgd);
+            canHoMoi.setTrangThai(BlueMoon.bluemoon.utils.AssetStatus.da_duoc_thue);
+            taiSanChungCuDAO.save(canHoMoi);
+        }
+    }
     // =======================================================
     // 3. LOGIC HIỂN THỊ THÔNG TIN CĂN HỘ (NEW)
     // =======================================================

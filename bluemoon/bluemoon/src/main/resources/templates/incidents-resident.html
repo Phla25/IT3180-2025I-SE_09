@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Lịch Sử Sự Cố - Cư Dân</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS Cũ giữ nguyên */
+        .incident-card {
+            background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 5px solid #ddd;
+            transition: transform 0.2s;
+        }
+        .incident-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .priority-cao { border-left-color: #ef4444; }
+        .priority-khan_cap { border-left-color: #b91c1c; }
+        .priority-binh_thuong { border-left-color: #3b82f6; }
+        .priority-thap { border-left-color: #10b981; }
+        .badge { padding: 5px 10px; border-radius: 15px; font-size: 0.8em; font-weight: bold; }
+        .bg-pending { background: #f59e0b; color: white; }
+        .bg-process { background: #3b82f6; color: white; }
+        .bg-done { background: #10b981; color: white; }
+        .bg-cancel { background: #6b7280; color: white; }
+        .btn-create {
+            background-color: #4F46E5; color: white; padding: 10px 20px; border-radius: 8px;
+            text-decoration: none; display: inline-flex; align-items: center; gap: 8px; font-weight: 600;
+        }
+
+        /* --- CSS MỚI CHO BỘ LỌC --- */
+        .filter-container {
+            background: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px;
+            border: 1px solid #e2e8f0;
+        }
+        .filter-form {
+            display: flex; gap: 15px; flex-wrap: wrap; align-items: flex-end;
+        }
+        .filter-group { flex: 1; min-width: 150px; }
+        .filter-group label { display: block; font-size: 0.85em; font-weight: 600; color: #64748b; margin-bottom: 5px; }
+        .filter-control {
+            width: 100%; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95em;
+        }
+        .btn-filter {
+            background-color: #3b82f6; color: white; padding: 9px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;
+        }
+        .btn-reset {
+            background-color: #94a3b8; color: white; padding: 9px 15px; border-radius: 6px; text-decoration: none; font-size: 0.95em;
+        }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-building"></i>
+                <span>BlueMoon Portal</span>
+            </div>
+        
+            <div class="user-profile-desktop" th:if="${user != null}">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen}">Nguyễn Văn Cư Dân</span>
+                    <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
+            </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a th:href="@{/resident/dashboard}" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a th:href="@{/resident/fees}" class="nav-item">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Hóa Đơn Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/my-services}" class="nav-item">
+                <i class="fas fa-handshake"></i>
+                <span>Dịch Vụ Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/services}" class="nav-item">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Đăng Ký Dịch Vụ</span>
+            </a>
+            
+            <a th:href="@{/resident/incidents}" class="nav-item active">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Báo Cáo Sự Cố</span>
+            </a>
+            <a th:href="@{/resident/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i>
+                <span>Thông Báo</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1>Báo cáo sự cố</h1>
+        </div>
+        
+        <div class="header-right">
+
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
+                    <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
+                </div>
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="dropdown-menu"> 
+                    <a th:href="@{/resident/profile}">
+                        <i class="fas fa-user"></i> Thông Tin Cá Nhân
+                    </a>
+                    <a th:href="@{/resident/settings}">
+                        <i class="fas fa-cog"></i> Cài Đặt
+                    </a>
+                    <hr>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                <h2 style="color: #1F2937;">📝 Danh sách sự cố của tôi</h2>
+                <a th:href="@{/resident/incident-report}" class="btn-create">
+                    <i class="fas fa-plus"></i> Tạo Báo Cáo Mới
+                </a>
+            </div>
+
+            <div class="filter-container">
+                <form th:action="@{/resident/incidents}" method="get" class="filter-form">
+                    
+                    <div class="filter-group" style="flex: 2;">
+                        <label>Từ khóa (Tiêu đề/Nội dung)</label>
+                        <input type="text" name="keyword" class="filter-control" placeholder="Nhập nội dung tìm kiếm..." th:value="${keyword}">
+                    </div>
+
+                    <div class="filter-group">
+                        <label>Loại sự cố</label>
+                        <select name="type" class="filter-control">
+                            <option value="">-- Tất cả --</option>
+                            <option th:each="type : ${incidentTypes}" 
+                                    th:value="${type}" 
+                                    th:text="${type.dbValue}"
+                                    th:selected="${type == currentType}"></option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>Độ ưu tiên</label>
+                        <select name="priority" class="filter-control">
+                            <option value="">-- Tất cả --</option>
+                            <option th:each="p : ${priorities}" 
+                                    th:value="${p}" 
+                                    th:text="${p.dbValue}"
+                                    th:selected="${p == currentPriority}"></option>
+                        </select>
+                    </div>
+
+                    <div class="filter-group">
+                        <label>Ngày báo cáo</label>
+                        <input type="date" name="date" class="filter-control" th:value="${currentDate}">
+                    </div>
+
+                    <div class="filter-group" style="max-width: 100px;">
+                        <label>Giờ (0-23)</label>
+                        <input type="number" name="hour" class="filter-control" min="0" max="23" placeholder="Giờ" th:value="${currentHour}">
+                    </div>
+
+                    <div style="padding-bottom: 2px;">
+                        <button type="submit" class="btn-filter"><i class="fas fa-search"></i> Tìm</button>
+                        <a th:href="@{/resident/incidents}" class="btn-reset" title="Xóa bộ lọc"><i class="fas fa-sync-alt"></i></a>
+                    </div>
+                </form>
+            </div>
+
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}" style="margin-bottom: 20px; padding: 15px; background: #d1fae5; color: #065f46; border-radius: 8px;"></div>
+
+            <div th:if="${incidents.empty}" style="text-align: center; padding: 40px; background: white; border-radius: 12px; color: #6b7280;">
+                <i class="fas fa-search" style="font-size: 3em; margin-bottom: 15px; color: #cbd5e1;"></i>
+                <p>Không tìm thấy sự cố nào phù hợp với tiêu chí lọc.</p>
+            </div>
+
+            <div class="incident-list">
+                <div th:each="suCo : ${incidents}" class="incident-card" th:classappend="'priority-' + ${suCo.mucDoUuTien}">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h3 th:text="${suCo.tieuDe}" style="margin: 0 0 5px 0; color: #111827;">Tiêu đề</h3>
+                            <small style="color: #6b7280;">
+                                <i class="far fa-clock"></i> <span th:text="${#temporals.format(suCo.thoiGianBaoCao, 'dd/MM/yyyy HH:mm')}"></span>
+                                &nbsp;|&nbsp; Loại: <strong th:text="${suCo.loaiSuCo.dbValue}"></strong>
+                                &nbsp;|&nbsp; Mức độ: <strong th:text="${suCo.mucDoUuTien.dbValue}"></strong>
+                            </small>
+                        </div>
+                        <span th:switch="${suCo.trangThai.name()}">
+                            <span th:case="'cho_phe_duyet'" class="badge bg-pending">Chờ duyệt</span>
+                            <span th:case="'moi_tiep_nhan'" class="badge bg-pending">Đã tiếp nhận</span>
+                            <span th:case="'dang_xu_ly'" class="badge bg-process">Đang xử lý</span>
+                            <span th:case="'da_hoan_thanh'" class="badge bg-done">Hoàn thành</span>
+                            <span th:case="'da_huy'" class="badge bg-cancel">Đã hủy</span>
+                        </span>
+                    </div>
+                    <div style="margin-top: 15px; background: #f9fafb; padding: 12px; border-radius: 6px; color: #374151;">
+                        <p th:text="${suCo.noiDung}" style="margin: 0; line-height: 1.5;">Nội dung...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

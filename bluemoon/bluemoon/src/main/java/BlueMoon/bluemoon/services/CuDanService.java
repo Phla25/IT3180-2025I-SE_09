@@ -241,15 +241,9 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
 
             if (s != null) {
                 switch (s) {
-                    case o_chung_cu:
-                        label = "Đang sinh sống";
-                        break;
-                    case roi_di:
-                        label = "Đã rời đi";
-                        break;
-                    case da_chet:
-                        label = "Đã mất";
-                        break;
+                    case o_chung_cu -> label = "Đang sinh sống";
+                    case roi_di -> label = "Đã rời đi";
+                    case da_chet -> label = "Đã mất";
                 }
             }
             

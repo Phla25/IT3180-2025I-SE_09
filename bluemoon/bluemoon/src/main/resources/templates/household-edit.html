@@ -1,33 +1,20 @@
 <!DOCTYPE html>
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
-
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tách Hộ Gia Đình - Ban Quản Trị - BlueMoon Portal</title>
-
-    <link rel="stylesheet" href="/css/main.css"> 
+    <title>Chỉnh Sửa Hộ Gia Đình - Admin</title>
+    <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* CSS cũ giữ nguyên */
-        .form-card { background-color: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); padding: 30px; margin-top: 20px; max-width: 900px; margin-left: auto; margin-right: auto; }
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
-        .feature-badge { background: linear-gradient(45deg, #FF6B6B, #4ECDC4); color: white; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 8px; margin-left: auto; animation: pulse 2s infinite; }        
-        .form-group { margin-bottom: 15px; }
-        .form-label { display: block; font-weight: 500; color: #1F2937; margin-bottom: 8px; }
-        .form-control, .form-select { width: 100%; padding: 10px 15px; border: 1px solid #D1D5DB; border-radius: 8px; box-sizing: border-box; }
-        .form-control:focus, .form-select:focus { outline: none; border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
-        .btn-submit { background-color: #EF4444; color: white; padding: 12px 25px; border-radius: 8px; font-weight: 600; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; margin-top: 20px; }
-        .btn-submit:hover { background-color: #DC2626; }
-        .member-selection { max-height: 250px; overflow-y: auto; border: 1px solid #D1D5DB; border-radius: 8px; padding: 10px; background-color: #F9FAFB; }
-        .member-item { display: flex; align-items: center; padding: 8px 0; border-bottom: 1px dashed #E5E7EB; }
-        .member-item:last-child { border-bottom: none; }
-        .member-item input[type="checkbox"] { margin-right: 15px; transform: scale(1.3); }
-        .info-old-household { background-color: #FEF2F2; padding: 15px; border: 1px solid #FCA5A5; border-radius: 8px; margin-bottom: 20px; }
+        /* CSS Form giống các trang khác */
+        .form-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 800px; margin: 20px auto; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 8px; }
+        .form-control, .form-select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .current-info { background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #4F46E5; }
+        .btn-save { background: #10B981; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
     </style>
 </head>
-
 <body>
     <aside class="sidebar">
         <div class="sidebar-header">
@@ -78,44 +65,46 @@
 
     <main class="main-content">
         <div class="container">
-            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
-            
-            <div class="info-old-household">
-                Đang thực hiện **TÁCH HỘ** từ: **<span th:text="${household.tenHo}"></span>** (Mã: <span th:text="${household.maHo}"></span>).
-            </div>
+            <a th:href="@{/admin/household-list}" class="btn btn-sm btn-secondary" style="margin-bottom: 20px; display: inline-block; text-decoration: none; color: #555;">
+                <i class="fas fa-arrow-left"></i> Quay lại
+            </a>
+
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
             <div class="form-card">
-                <form th:action="@{/admin/household-split}" method="post">
-                    <input type="hidden" name="maHoCu" th:value="${household.maHo}">
+                <form th:action="@{/admin/household-edit}" method="post" th:object="${household}">
                     
-                    <h3 style="margin-bottom: 20px; border-bottom: 1px solid #E5E7EB; padding-bottom: 10px; color: #EF4444;">1. Chọn Thành Viên Sẽ Tách Sang Hộ Mới (*)</h3>
-                    
-                    <div class="member-selection">
-                        <div th:each="member : ${members}" class="member-item">
-                            <input type="checkbox" name="cccdDuocTach" th:id="'member-' + ${member.cccd}" th:value="${member.cccd}">
-                            <label th:for="'member-' + ${member.cccd}" th:text="${member.hoVaTen} + ' (' + ${member.cccd} + ')'"></label>
-                        </div>
-                        <div th:if="${members.isEmpty()}" class="alert alert-info">
-                            Hộ gia đình không có thành viên nào đang hoạt động để tách.
-                        </div>
-                    </div>
-                    
-                    <h3 style="margin-top: 30px; margin-bottom: 20px; border-bottom: 1px solid #E5E7EB; padding-bottom: 10px;">2. Thông Tin Hộ Mới</h3>
-                    
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="tenHoMoi" class="form-label">Số Sổ Hộ Khẩu Hộ Mới (*):</label>
-                            <input type="text" id="tenHoMoi" name="tenHoMoi" class="form-control" required maxlength="100">
-                        </div>
+                    <input type="hidden" th:field="*{maHo}">
 
-                        <div class="form-group">
-                            <label for="chuHoMoiCccd" class="form-label">CCCD Chủ Hộ Mới (*):</label>
-                            <input type="text" id="chuHoMoiCccd" name="chuHoMoiCccd" class="form-control" required maxlength="12" placeholder="CCCD phải nằm trong danh sách được chọn">
-                        </div>
+                    <h3 style="margin-top: 0;">1. Thông Tin Chung</h3>
+                    <div class="form-group">
+                        <label class="form-label">Tên Hộ / Số Sổ:</label>
+                        <input type="text" th:field="*{tenHo}" class="form-control" required>
                     </div>
                     
-                    <h3 style="margin-top: 30px; margin-bottom: 20px; border-bottom: 1px solid #E5E7EB; padding-bottom: 10px; color: #4F46E5;">3. Gán Căn Hộ cho Hộ Mới (Tùy chọn)</h3>
+                    <div class="form-group">
+                        <label class="form-label">Trạng Thái:</label>
+                        <select th:field="*{trangThai}" class="form-select">
+                            <option th:each="st : ${householdStatuses}" th:value="${st}" th:text="${st.dbValue}"></option>
+                        </select>
+                    </div>
                     
+                    <div class="form-group">
+                        <label class="form-label">Ghi Chú:</label>
+                        <textarea th:field="*{ghiChu}" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <hr style="margin: 30px 0; border: 0; border-top: 1px dashed #ddd;">
+
+                    <h3 style="color: #4F46E5;">2. Cập Nhật Căn Hộ (Chuyển nhà)</h3>
+                    
+                    <div class="current-info">
+                        <strong>Căn hộ hiện tại:</strong> 
+                        <span th:text="${currentApartment != null ? currentApartment.tenTaiSan : 'Chưa có'}">A-101</span>
+                        <br>
+                        <small style="color: #666;">Chọn bên dưới nếu muốn chuyển sang căn hộ khác. Để trống nếu giữ nguyên.</small>
+                    </div>
+
                     <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 15px;">
                         <div class="form-group">
                             <label class="form-label">Chọn Tòa:</label>
@@ -133,51 +122,27 @@
 
                         <div class="form-group">
                             <label class="form-label">Căn Hộ Trống:</label>
-                            <select id="apartmentSelect" name="maCanHoLienKet" class="form-select" disabled>
+                            <select id="apartmentSelect" name="maCanHoMoi" class="form-select" disabled>
                                 <option value="">-- Chọn Căn Hộ Mới --</option>
                             </select>
                         </div>
                     </div>
 
                     <div style="text-align: right; margin-top: 20px;">
-                        <button type="submit" class="btn-submit">
-                            <i class="fas fa-exchange-alt"></i> Thực Hiện Tách Hộ
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-save"></i> Lưu Thay Đổi
                         </button>
                     </div>
                 </form>
             </div>
-            
-            <p style="text-align: center; margin-top: 20px;">
-                <a th:href="@{/admin/household-detail(maHo=${household.maHo})}" style="color: #4F46E5; text-decoration: none;">
-                    <i class="fas fa-arrow-left"></i> Hủy và Quay lại Chi Tiết Hộ
-                </a>
-            </p>
-
         </div>
     </main>
 
     <script src="/js/main.js"></script>
     <script>
-        // Toggle Sidebar
-        function toggleSidebar() {
-            document.querySelector('.sidebar').classList.toggle('collapsed');
-            document.querySelector('.main-content').classList.toggle('shifted');
-            document.querySelector('.header').classList.toggle('shifted');
-        }
-        document.querySelector('.user-menu').addEventListener('click', function() {
-            this.querySelector('.dropdown-menu').classList.toggle('show');
-        });
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.user-menu')) {
-                document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                    menu.classList.remove('show');
-                });
-            }
-        });
+        // === LOGIC CASCADING DROPDOWN ===
         
-        // === LOGIC CASCADING DROPDOWN (TÒA -> TẦNG -> CĂN) ===
-        
-        // 1. Load danh sách Tòa khi trang tải xong
+        // 1. Khi trang tải xong -> Load danh sách Tòa
         document.addEventListener('DOMContentLoaded', function() {
             fetch('/admin/api/buildings')
                 .then(res => res.json())
@@ -189,8 +154,7 @@
                         opt.text = "Tòa " + b;
                         select.add(opt);
                     });
-                })
-                .catch(err => console.error("Lỗi tải tòa nhà:", err));
+                });
         });
 
         // 2. Khi chọn Tòa -> Load Tầng
@@ -199,7 +163,7 @@
             const floorSelect = document.getElementById('floorSelect');
             const aptSelect = document.getElementById('apartmentSelect');
             
-            // Reset dropdown con
+            // Reset
             floorSelect.innerHTML = '<option value="">-- Tầng --</option>';
             aptSelect.innerHTML = '<option value="">-- Chọn Căn Hộ Mới --</option>';
             floorSelect.disabled = true;
@@ -240,7 +204,7 @@
                         } else {
                             data.forEach(apt => {
                                 let opt = document.createElement('option');
-                                opt.value = apt.maTaiSan; // Gửi mã tài sản (maCanHoLienKet)
+                                opt.value = apt.maTaiSan;
                                 opt.text = `${apt.tenTaiSan} (${apt.dienTich} m²)`;
                                 aptSelect.add(opt);
                             });

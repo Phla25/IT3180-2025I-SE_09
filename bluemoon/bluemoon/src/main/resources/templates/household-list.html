@@ -56,7 +56,10 @@
                 <span>Quản Lý Đăng Ký Dịch Vụ</span>
                 <span class="feature-badge">MỚI</span>
             </a>            
-            <a href="#" class="nav-item"> <i class="fas fa-exclamation-triangle"></i> <span>Xử Lý Sự Cố</span> </a>
+            <a th:href="@{/admin/incidents}" class="nav-item">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
@@ -124,7 +127,10 @@
                         </td>
                         <td th:text="${hgd.ghiChu} ?: 'Không có'">Ghi chú...</td>
                         <td>
-                            <a th:href="@{/admin/household-detail(maHo=${hgd.maHo})}" class="btn-action" title="Xem Chi Tiết"><i class="fas fa-eye"></i></a>
+                            <a th:href="@{/admin/household-detail(maHo=${hgd.maHo})}" class="btn-action" title="Xem Chi Tiết"><i class="fas fa-eye"></i></a> 
+                            <a th:href="@{/admin/household-edit(maHo=${hgd.maHo})}" class="btn-action" title="Chỉnh sửa">
+                                <i class="fas fa-edit"></i>
+                            </a>
                         </td>
                     </tr>
                 </tbody>

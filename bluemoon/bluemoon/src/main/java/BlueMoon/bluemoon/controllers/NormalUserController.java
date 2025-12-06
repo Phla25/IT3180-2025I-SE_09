@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import BlueMoon.bluemoon.entities.BaoCaoSuCo;
 import BlueMoon.bluemoon.entities.DangKyDichVu;
 import BlueMoon.bluemoon.entities.DichVu;
 import BlueMoon.bluemoon.entities.DoiTuong;
@@ -37,6 +38,7 @@ import BlueMoon.bluemoon.models.PhanHoiThongBaoDTO;
 import BlueMoon.bluemoon.models.SuCoStatsDTO;
 import BlueMoon.bluemoon.models.ThongBaoDTO;
 import BlueMoon.bluemoon.models.ThongBaoStatsDTO;
+import BlueMoon.bluemoon.services.BaoCaoSuCoService;
 import BlueMoon.bluemoon.services.DangKyDichVuService;
 import BlueMoon.bluemoon.services.DichVuService;
 import BlueMoon.bluemoon.services.ExportService;
@@ -60,6 +62,8 @@ public class NormalUserController {
     @Autowired private ReportService reportService;
     @Autowired private ExportService exportService;
     @Autowired private ThongBaoService thongBaoService;
+    @Autowired
+    private BaoCaoSuCoService baoCaoSuCoService;
 
     /**
      * Helper: Lấy đối tượng DoiTuong hiện tại
@@ -719,5 +723,79 @@ public class NormalUserController {
         
         // Quay lại trang danh sách thông báo
         return "redirect:/resident/notifications"; 
+    }
+
+    //=======================================
+    // BÁO CÁO SỰ CỐ CƯ DÂN (MỚI)
+    //=======================================
+    // 1. Xem danh sách sự cố của cư dân
+    @GetMapping("/resident/incidents")
+    public String showResidentIncidents(Model model, Authentication auth,
+                                        @RequestParam(required = false) String keyword,
+                                        @RequestParam(required = false) BlueMoon.bluemoon.utils.IncidentType type,
+                                        @RequestParam(required = false) BlueMoon.bluemoon.utils.PriorityLevel priority,
+                                        @RequestParam(required = false) java.time.LocalDate date,
+                                        @RequestParam(required = false) Integer hour) {
+        
+        DoiTuong currentUser = getCurrentUser(auth);
+        if (currentUser == null) return "redirect:/login?error=auth";
+        model.addAttribute("user", currentUser);
+
+        // Gọi Service lọc dữ liệu thay vì lấy tất cả
+        List<BaoCaoSuCo> myIncidents = baoCaoSuCoService.filterSuCoCuDan(
+            currentUser.getCccd(), keyword, type, priority, date, hour
+        );
+        
+        model.addAttribute("incidents", myIncidents);
+
+        // Truyền lại các giá trị lọc để hiển thị trên form (giữ trạng thái)
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("currentType", type);
+        model.addAttribute("currentPriority", priority);
+        model.addAttribute("currentDate", date);
+        model.addAttribute("currentHour", hour);
+
+        // Truyền Enum để đổ vào dropdown
+        model.addAttribute("incidentTypes", BlueMoon.bluemoon.utils.IncidentType.values());
+        model.addAttribute("priorities", BlueMoon.bluemoon.utils.PriorityLevel.values());
+
+        return "incidents-resident"; 
+    }
+
+    // 2. Hiển thị Form báo cáo sự cố
+    @GetMapping("/resident/incident-report")
+    public String showIncidentReportForm(Model model, Authentication auth) {
+        DoiTuong currentUser = getCurrentUser(auth);
+        if (currentUser == null) return "redirect:/login?error=auth";
+        model.addAttribute("user", currentUser);
+
+        // Tạo đối tượng rỗng để binding form
+        model.addAttribute("newIncident", new BaoCaoSuCo());
+        
+        // Truyền Enum IncidentType để hiển thị Dropdown
+        model.addAttribute("incidentTypes", BlueMoon.bluemoon.utils.IncidentType.values());
+
+        return "incident-report-resident"; // File HTML form
+    }
+
+    // 3. Xử lý Submit báo cáo
+@PostMapping("/resident/incident-report")
+    public String submitIncidentReport(@ModelAttribute("newIncident") BaoCaoSuCo incident,
+                                       Authentication auth,
+                                       RedirectAttributes redirectAttributes) {
+        DoiTuong currentUser = getCurrentUser(auth);
+        if (currentUser == null) return "redirect:/login?error=auth";
+
+        try {
+            // CẬP NHẬT: Chỉ truyền incident và user, không cần tìm căn hộ nữa
+            baoCaoSuCoService.taoBaoCaoTuCuDan(incident, currentUser);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Gửi báo cáo sự cố thành công! Đang chờ BQT phê duyệt.");
+            return "redirect:/resident/incidents";
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi gửi báo cáo: " + e.getMessage());
+            return "redirect:/resident/incident-report";
+        }
     }
 }

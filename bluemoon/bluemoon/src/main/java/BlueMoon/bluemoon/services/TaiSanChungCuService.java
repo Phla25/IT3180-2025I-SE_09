@@ -2,9 +2,12 @@ package BlueMoon.bluemoon.services;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -221,6 +224,7 @@ public class TaiSanChungCuService {
         taiSanHienTai.setDienTich(taiSanCapNhat.getDienTich());
         taiSanHienTai.setGiaTri(taiSanCapNhat.getGiaTri());
         taiSanHienTai.setViTri(taiSanCapNhat.getViTri());
+        taiSanHienTai.setMoTa(taiSanCapNhat.getMoTa());
     
         // 2. Cập nhật Hộ gia đình liên kết
         if (maHo != null && !maHo.trim().isEmpty()) {
@@ -259,7 +263,7 @@ public class TaiSanChungCuService {
         canHoHienTai.setDienTich(canHoCapNhat.getDienTich());
         canHoHienTai.setGiaTri(canHoCapNhat.getGiaTri());
         canHoHienTai.setViTri(canHoCapNhat.getViTri());
-        
+        canHoHienTai.setMoTa(canHoCapNhat.getMoTa());
         // 2. Cập nhật Hộ gia đình liên kết
         if (maHo != null && !maHo.trim().isEmpty()) {
             HoGiaDinh hgd = hoGiaDinhDAO.findById(maHo)
@@ -415,5 +419,72 @@ public class TaiSanChungCuService {
      */
     public List<TaiSanChungCu> getGeneralAssetListReport() {
         return taiSanChungCuDAO.findAllGeneralAssets();
+    }
+    /**
+     * Lấy danh sách các TÒA NHÀ có căn hộ trống.
+     * Logic: Quét toàn bộ căn trống, cắt chuỗi lấy ký tự đầu (A, B...).
+     */
+    public List<String> getAvailableBuildings() {
+        List<TaiSanChungCu> emptyApts = taiSanChungCuDAO.findAllEmptyApartments();
+        Set<String> buildings = new HashSet<>();
+
+        for (TaiSanChungCu apt : emptyApts) {
+            String name = apt.getTenTaiSan(); // VD: "A-101"
+            if (name.contains("-")) {
+                String building = name.split("-")[0]; // Lấy "A"
+                buildings.add(building);
+            }
+        }
+        return new ArrayList<>(buildings).stream().sorted().collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy danh sách TẦNG có căn hộ trống thuộc Tòa cụ thể.
+     * Logic: A-101 -> Tầng 1, A-1205 -> Tầng 12.
+     */
+    @SuppressWarnings("UnnecessaryContinue")
+    public List<Integer> getAvailableFloorsByBuilding(String building) {
+        List<TaiSanChungCu> emptyApts = taiSanChungCuDAO.findAllEmptyApartments();
+        Set<Integer> floors = new HashSet<>();
+
+        for (TaiSanChungCu apt : emptyApts) {
+            String name = apt.getTenTaiSan(); // VD: "A-101"
+            if (name.startsWith(building + "-")) {
+                try {
+                    String numberPart = name.split("-")[1]; // "101"
+                    int roomNum = Integer.parseInt(numberPart);
+                    int floor = roomNum / 100; // 101/100 = 1
+                    if (floor == 0) floor = 1; // Xử lý tầng trệt nếu cần
+                    floors.add(floor);
+                } catch (NumberFormatException e) { continue; }
+            }
+        }
+        return new ArrayList<>(floors).stream().sorted().collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy danh sách CĂN HỘ trống thuộc Tòa và Tầng cụ thể.
+     */
+    @SuppressWarnings("UnnecessaryContinue")
+    public List<TaiSanChungCu> getEmptyApartmentsByBuildingAndFloor(String building, Integer floor) {
+        List<TaiSanChungCu> emptyApts = taiSanChungCuDAO.findAllEmptyApartments();
+        List<TaiSanChungCu> result = new ArrayList<>();
+
+        for (TaiSanChungCu apt : emptyApts) {
+            String name = apt.getTenTaiSan(); // VD: "A-101"
+            try {
+                if (name.startsWith(building + "-")) {
+                    String numberPart = name.split("-")[1];
+                    int roomNum = Integer.parseInt(numberPart);
+                    int calculatedFloor = roomNum / 100;
+                    if (calculatedFloor == 0) calculatedFloor = 1;
+
+                    if (calculatedFloor == floor) {
+                        result.add(apt);
+                    }
+                }
+            } catch (NumberFormatException e) { continue; }
+        }
+        return result;
     }
 }

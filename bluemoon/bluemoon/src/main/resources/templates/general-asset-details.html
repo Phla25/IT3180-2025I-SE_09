@@ -106,7 +106,10 @@
                 <span>Quản Lý Đăng Ký Dịch Vụ</span>
                 <span class="feature-badge">MỚI</span>
             </a>            
-            <a href="#" class="nav-item"> <i class="fas fa-exclamation-triangle"></i> <span>Xử Lý Sự Cố</span> </a>
+            <a th:href="@{/admin/incidents}" class="nav-item">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
@@ -194,8 +197,13 @@
                             <span class="detail-value" th:text="${asset.giaTri != null ? #numbers.formatInteger(asset.giaTri, 0, 'POINT') + ' ₫' : 'N/A'}">5,500,000,000 ₫</span>
                         </div>
                         <div class="detail-item">
-                            <span class="detail-label"><i class="fas fa-map-marker-alt"></i> Vị Trí/Mô Tả:</span>
-                            <span class="detail-value" th:text="${asset.viTri}">Tầng 1, Khu A</span>
+                            <span class="detail-label"><i class="fas fa-map-marker-alt"></i> Vị Trí:</span>
+                            <span class="detail-value" th:text="${asset.viTri} ?: 'N/A'">Sảnh A</span>
+                        </div>
+
+                        <div class="detail-item">
+                            <span class="detail-label"><i class="fas fa-info-circle"></i> Mô Tả:</span>
+                            <span class="detail-value" th:text="${asset.moTa} ?: 'N/A'">Máy điều hòa...</span>
                         </div>
                         <div class="detail-item">
                             <span class="detail-label"><i class="fas fa-clock"></i> Ngày Thêm:</span>

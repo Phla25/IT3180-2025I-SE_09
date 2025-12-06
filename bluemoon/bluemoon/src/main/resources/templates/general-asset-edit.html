@@ -77,7 +77,10 @@
                 <span>Quản Lý Đăng Ký Dịch Vụ</span>
                 <span class="feature-badge">MỚI</span>
             </a>            
-            <a href="#" class="nav-item"> <i class="fas fa-exclamation-triangle"></i> <span>Xử Lý Sự Cố</span> </a>
+            <a th:href="@{/admin/incidents}" class="nav-item">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
@@ -176,10 +179,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="viTri">Vị Trí/Mô Tả</label>
-                        <textarea th:field="*{viTri}" id="viTri" class="form-input" rows="3" placeholder="Ví dụ: Tầng hầm B1, vị trí P102; hoặc: Máy bơm nước chính khu A"></textarea>
+                        <label for="viTri">Vị Trí (*)</label>
+                        <input type="text" th:field="*{viTri}" id="viTri" class="form-input" placeholder="Ví dụ: Sảnh chính, Tầng hầm B1" required>
                     </div>
 
+                    <div class="form-group" style="grid-column: 1 / -1;"> <label for="moTa">Mô Tả Chi Tiết</label>
+                        <textarea th:field="*{moTa}" id="moTa" class="form-input" rows="3" placeholder="Ví dụ: Máy phát điện dự phòng model X, công suất Y..."></textarea>
+                    </div>
                     <div class="form-actions">
                         <button type="submit" class="btn-search" style="background-color: #F59E0B;"><i class="fas fa-sync-alt"></i> Cập Nhật Tài Sản</button>
                         <a th:href="@{/admin/general-asset-list}" class="btn-reset" style="background-color: #EF4444;">
