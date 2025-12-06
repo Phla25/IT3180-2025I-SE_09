@@ -63,4 +63,23 @@ public class BaoCaoSuCoDAO {
                 .setParameter("cccdNguoiBaoCao", cccdNguoiBaoCao)
                 .getResultList();
     }
+
+    /**
+     * Lấy danh sách sự cố sắp xếp theo mức độ ưu tiên (cao → bình thường → thấp)
+     * và thời gian báo cáo mới nhất
+     */
+    public List<BaoCaoSuCo> findAllOrderedByPriority() {
+        String jpql = "SELECT bcs FROM BaoCaoSuCo bcs " +
+                "ORDER BY " +
+                "CASE bcs.mucDoUuTien " +
+                "  WHEN BlueMoon.bluemoon.utils.PriorityLevel.cao THEN 1 " +
+                "  WHEN BlueMoon.bluemoon.utils.PriorityLevel.binh_thuong THEN 2 " +
+                "  WHEN BlueMoon.bluemoon.utils.PriorityLevel.thap THEN 3 " +
+                "  ELSE 4 " +
+                "END, " +
+                "bcs.thoiGianBaoCao DESC";
+        return entityManager.createQuery(jpql, BaoCaoSuCo.class)
+                .setMaxResults(10)
+                .getResultList();
+    }
 }

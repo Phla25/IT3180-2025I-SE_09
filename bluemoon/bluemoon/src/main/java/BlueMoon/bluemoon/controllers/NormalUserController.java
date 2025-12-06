@@ -687,7 +687,10 @@ public class NormalUserController {
     }
 
     @GetMapping("/resident/notifications")
-    public String hienThiThongBaoChoCuDan(Model model, Authentication auth) {
+    public String hienThiThongBaoChoCuDan(Model model, Authentication auth,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
         DoiTuong currentUser = getCurrentUser(auth);
         if (currentUser == null) {
             return "redirect:/login?error=auth";
@@ -699,6 +702,37 @@ public class NormalUserController {
         // Lấy danh sách thông báo Entity từ service
         List<ThongBao> thongBaos = thongBaoService.layTatCaThongBaoMoiNhat();
 
+        // ✅ LỌC THEO TÌM KIẾM VÀ NGÀY THÁNG
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String keywordLower = keyword.toLowerCase().trim();
+            thongBaos = thongBaos.stream()
+                    .filter(tb -> tb.getTieuDe().toLowerCase().contains(keywordLower) ||
+                            tb.getNoiDung().toLowerCase().contains(keywordLower))
+                    .collect(Collectors.toList());
+        }
+
+        if (fromDate != null && !fromDate.isEmpty()) {
+            try {
+                java.time.LocalDate startDate = java.time.LocalDate.parse(fromDate);
+                thongBaos = thongBaos.stream()
+                        .filter(tb -> !tb.getThoiGianGui().toLocalDate().isBefore(startDate))
+                        .collect(Collectors.toList());
+            } catch (Exception e) {
+                // Bỏ qua nếu format ngày không hợp lệ
+            }
+        }
+
+        if (toDate != null && !toDate.isEmpty()) {
+            try {
+                java.time.LocalDate endDate = java.time.LocalDate.parse(toDate);
+                thongBaos = thongBaos.stream()
+                        .filter(tb -> !tb.getThoiGianGui().toLocalDate().isAfter(endDate))
+                        .collect(Collectors.toList());
+            } catch (Exception e) {
+                // Bỏ qua nếu format ngày không hợp lệ
+            }
+        }
+
         // ✅ CHUYỂN ĐỔI Entity sang DTO
         List<ThongBaoDTO> thongBaoDTOs = thongBaos.stream()
                 .map(ThongBaoDTO::new) // Sử dụng constructor DTO
@@ -706,6 +740,9 @@ public class NormalUserController {
 
         // Truyền danh sách DTO vào model
         model.addAttribute("thongBaos", thongBaoDTOs);
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("fromDate", fromDate);
+        model.addAttribute("toDate", toDate);
 
         return "notifications-resident";
     }

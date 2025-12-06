@@ -102,6 +102,25 @@
         .close-btn:hover {
             color: #111827;
         }
+
+        /* Search & Filter Responsive */
+        @media (max-width: 1024px) {
+            .search-filter-section form > div {
+                grid-template-columns: 1fr 1fr !important;
+            }
+            .search-filter-section form > div > div:last-child {
+                grid-column: span 2;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .search-filter-section form > div {
+                grid-template-columns: 1fr !important;
+            }
+            .search-filter-section form > div > div:last-child {
+                grid-column: span 1;
+            }
+        }
     </style>
 </head>
 
@@ -201,6 +220,71 @@
         <div class="content-card">
             <div class="content-card-header">
                 <h2 class="content-card-title">Danh Sách Thông Báo</h2>
+            </div>
+
+            <!-- Search & Filter Section -->
+            <div class="search-filter-section" style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <form th:action="@{/resident/notifications}" method="get" id="filterForm">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
+                        <!-- Search by Title -->
+                        <div class="form-group" style="margin: 0;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #374151; font-size: 14px;">
+                                <i class="fas fa-search"></i> Tìm Kiếm Theo Tiêu Đề
+                            </label>
+                            <input type="text" 
+                                   name="keyword" 
+                                   th:value="${keyword}"
+                                   placeholder="Nhập từ khóa tìm kiếm..."
+                                   style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                        </div>
+
+                        <!-- From Date -->
+                        <div class="form-group" style="margin: 0;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #374151; font-size: 14px;">
+                                <i class="fas fa-calendar-alt"></i> Từ Ngày
+                            </label>
+                            <input type="date" 
+                                   name="fromDate" 
+                                   th:value="${fromDate}"
+                                   style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                        </div>
+
+                        <!-- To Date -->
+                        <div class="form-group" style="margin: 0;">
+                            <label style="display: block; margin-bottom: 5px; font-weight: 500; color: #374151; font-size: 14px;">
+                                <i class="fas fa-calendar-check"></i> Đến Ngày
+                            </label>
+                            <input type="date" 
+                                   name="toDate" 
+                                   th:value="${toDate}"
+                                   style="width: 100%; padding: 10px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+                        </div>
+
+                        <!-- Buttons -->
+                        <div style="display: flex; gap: 8px;">
+                            <button type="submit" 
+                                    class="btn btn-primary" 
+                                    style="background: #4F46E5; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 500; white-space: nowrap;">
+                                <i class="fas fa-filter"></i> Lọc
+                            </button>
+                            <button type="button" 
+                                    onclick="clearFilters()"
+                                    class="btn btn-secondary" 
+                                    style="background: #6b7280; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 500; white-space: nowrap;">
+                                <i class="fas fa-times"></i> Xóa
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Results Info -->
+            <div style="margin-bottom: 15px; color: #6b7280; font-size: 14px;">
+                <i class="fas fa-info-circle"></i> 
+                Tìm thấy <strong th:text="${#lists.size(thongBaos)}">0</strong> thông báo
+                <span th:if="${keyword != null and !#strings.isEmpty(keyword)}" style="color: #4F46E5;">
+                    với từ khóa "<span th:text="${keyword}"></span>"
+                </span>
             </div>
 
             <div class="notification-list">
@@ -395,6 +479,16 @@
                 text: 'Phản hồi của bạn đã được gửi.',
                 confirmButtonColor: '#4F46E5'
             });
+        }
+        
+        // ------------------- FILTER FUNCTIONS -------------------
+        function clearFilters() {
+            // Xóa tất cả giá trị input và submit form
+            document.querySelector('input[name="keyword"]').value = '';
+            document.querySelector('input[name="fromDate"]').value = '';
+            document.querySelector('input[name="toDate"]').value = '';
+            // Redirect về trang không có params
+            window.location.href = '/resident/notifications';
         }
         
     </script>

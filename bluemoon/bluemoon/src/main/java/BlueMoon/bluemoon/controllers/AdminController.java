@@ -141,8 +141,8 @@ public class AdminController {
         model.addAttribute("tyLeThuPhi", 78);
         model.addAttribute("tyLeCanHoDaBan", 92);
 
-        // 4. Danh sách sự cố cần xử lý gấp (lấy từ database thực)
-        List<BaoCaoSuCo> suCoCanXuLy = suCoDAO.findByMucDoUuTien(PriorityLevel.cao);
+        // 4. Danh sách sự cố sắp xếp theo mức độ ưu tiên (cao → thấp)
+        List<BaoCaoSuCo> suCoCanXuLy = suCoDAO.findAllOrderedByPriority();
         model.addAttribute("suCoCanXuLy", suCoCanXuLy);
 
         // ========================================================
@@ -1814,9 +1814,47 @@ public class AdminController {
     // THÔNG BÁO
     // 📨 Hiển thị danh sách thông báo
     @GetMapping("/notifications")
-    public String hienThiThongBao(Model model, Principal principal) {
+    public String hienThiThongBao(Model model, Principal principal,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String fromDate,
+            @RequestParam(required = false) String toDate) {
         List<ThongBao> thongBaos = thongBaoService.layTatCaThongBaoMoiNhat();
+
+        // ✅ LỌC THEO TÌM KIẾM VÀ NGÀY THÁNG
+        if (keyword != null && !keyword.trim().isEmpty()) {
+            String keywordLower = keyword.toLowerCase().trim();
+            thongBaos = thongBaos.stream()
+                    .filter(tb -> tb.getTieuDe().toLowerCase().contains(keywordLower) ||
+                            tb.getNoiDung().toLowerCase().contains(keywordLower))
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
+        if (fromDate != null && !fromDate.isEmpty()) {
+            try {
+                java.time.LocalDate startDate = java.time.LocalDate.parse(fromDate);
+                thongBaos = thongBaos.stream()
+                        .filter(tb -> !tb.getThoiGianGui().toLocalDate().isBefore(startDate))
+                        .collect(java.util.stream.Collectors.toList());
+            } catch (Exception e) {
+                // Bỏ qua nếu format ngày không hợp lệ
+            }
+        }
+
+        if (toDate != null && !toDate.isEmpty()) {
+            try {
+                java.time.LocalDate endDate = java.time.LocalDate.parse(toDate);
+                thongBaos = thongBaos.stream()
+                        .filter(tb -> !tb.getThoiGianGui().toLocalDate().isAfter(endDate))
+                        .collect(java.util.stream.Collectors.toList());
+            } catch (Exception e) {
+                // Bỏ qua nếu format ngày không hợp lệ
+            }
+        }
+
         model.addAttribute("thongBaos", thongBaos);
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("fromDate", fromDate);
+        model.addAttribute("toDate", toDate);
 
         // Lấy thông tin người đang đăng nhập
         DoiTuong user = null;
@@ -1923,5 +1961,152 @@ public class AdminController {
         model.addAttribute("householdSizeData", householdStats.get("householdSizeData"));
 
         return "reports-dashboard"; // Tên file HTML mới
+    }
+
+    /**
+     * TEST ENDPOINT: Kiểm tra dữ liệu sự cố trong database
+     * URL: /admin/test-incidents
+     */
+    @GetMapping("/test-incidents")
+    @ResponseBody
+    public String testIncidents() {
+        StringBuilder result = new StringBuilder();
+        result.append("<html><head><meta charset='UTF-8'><title>Kiểm Tra Dữ Liệu Sự Cố</title></head><body>");
+        result.append("<h1>📊 KIỂM TRA DỮ LIỆU SỰ CỐ TRONG DATABASE</h1>");
+        result.append("<hr>");
+
+        // 1. Thống kê tổng quan
+        result.append("<h2>1. Thống Kê Tổng Quan</h2>");
+        result.append("<table border='1' cellpadding='10' style='border-collapse: collapse;'>");
+        result.append("<tr style='background: #4F46E5; color: white;'>");
+        result.append("<th>Tiêu Chí</th><th>Số Lượng</th></tr>");
+
+        Long totalIncidents = suCoDAO.countAll();
+        result.append("<tr><td><strong>Tổng số sự cố</strong></td><td>").append(totalIncidents).append("</td></tr>");
+
+        Long newIncidents = suCoDAO.countByTrangThai(IncidentStatus.moi_tiep_nhan);
+        result.append("<tr><td>Mới tiếp nhận</td><td>").append(newIncidents).append("</td></tr>");
+
+        Long processingIncidents = suCoDAO.countByTrangThai(IncidentStatus.dang_xu_ly);
+        result.append("<tr><td>Đang xử lý</td><td>").append(processingIncidents).append("</td></tr>");
+
+        Long completedIncidents = suCoDAO.countByTrangThai(IncidentStatus.da_hoan_thanh);
+        result.append("<tr><td>Đã hoàn thành</td><td>").append(completedIncidents).append("</td></tr>");
+
+        Long highPriority = suCoDAO.countByMucDoUuTien(PriorityLevel.cao);
+        result.append("<tr style='background: #fee;'><td><strong>Ưu tiên CAO</strong></td><td><strong>")
+                .append(highPriority).append("</strong></td></tr>");
+
+        Long normalPriority = suCoDAO.countByMucDoUuTien(PriorityLevel.binh_thuong);
+        result.append("<tr><td>Ưu tiên BÌNH THƯỜNG</td><td>").append(normalPriority).append("</td></tr>");
+
+        Long lowPriority = suCoDAO.countByMucDoUuTien(PriorityLevel.thap);
+        result.append("<tr><td>Ưu tiên THẤP</td><td>").append(lowPriority).append("</td></tr>");
+
+        result.append("</table>");
+
+        // 2. Danh sách sự cố ưu tiên cao
+        result.append("<h2>2. Chi Tiết Sự Cố Ưu Tiên CAO (Hiển thị trên Dashboard)</h2>");
+        List<BaoCaoSuCo> highPriorityIncidents = suCoDAO.findByMucDoUuTien(PriorityLevel.cao);
+
+        if (highPriorityIncidents.isEmpty()) {
+            result.append("<p style='color: green;'>✅ Không có sự cố ưu tiên cao cần xử lý gấp.</p>");
+        } else {
+            result.append("<table border='1' cellpadding='10' style='border-collapse: collapse; width: 100%;'>");
+            result.append("<tr style='background: #EF4444; color: white;'>");
+            result.append(
+                    "<th>Mã</th><th>Tiêu Đề</th><th>Người Báo Cáo</th><th>Vị Trí</th><th>Trạng Thái</th><th>Thời Gian</th></tr>");
+
+            for (BaoCaoSuCo incident : highPriorityIncidents) {
+                result.append("<tr>");
+                result.append("<td>").append(incident.getMaBaoCao()).append("</td>");
+                result.append("<td><strong>").append(incident.getTieuDe()).append("</strong></td>");
+                result.append("<td>")
+                        .append(incident.getNguoiBaoCao() != null ? incident.getNguoiBaoCao().getHoVaTen() : "N/A")
+                        .append("</td>");
+                result.append("<td>").append(incident.getTaiSan() != null ? incident.getTaiSan().getViTri() : "N/A")
+                        .append("</td>");
+                result.append("<td>")
+                        .append(incident.getTrangThai() != null ? incident.getTrangThai().getDbValue() : "N/A")
+                        .append("</td>");
+                result.append("<td>").append(incident.getThoiGianBaoCao()).append("</td>");
+                result.append("</tr>");
+            }
+            result.append("</table>");
+        }
+
+        // 3. Tất cả sự cố trong database
+        result.append("<h2>3. Tất Cả Sự Cố Trong Database</h2>");
+        List<BaoCaoSuCo> allIncidents = suCoDAO.findAll();
+
+        if (allIncidents.isEmpty()) {
+            result.append("<p style='color: red;'>❌ Database không có dữ liệu sự cố nào!</p>");
+            result.append("<p><strong>Hướng dẫn thêm dữ liệu test:</strong></p>");
+            result.append(
+                    "<pre>INSERT INTO bao_cao_su_co (cccd_nguoi_bao_cao, ma_tai_san, tieu_de, mo_ta_su_co, muc_do_uu_tien, trang_thai, thoi_gian_bao_cao) VALUES\n");
+            result.append(
+                    "('123456789012', 1, 'Hỏng thang máy Tòa A', 'Thang máy tầng 5 bị kẹt', 'cao', 'moi_tiep_nhan', NOW()),\n");
+            result.append(
+                    "('123456789012', 2, '[Chỗ đỗ xe] Quá tải', 'Chỗ đỗ xe tầng hầm đầy', 'cao', 'moi_tiep_nhan', NOW());</pre>");
+        } else {
+            result.append("<p>Tổng cộng: <strong>").append(allIncidents.size()).append("</strong> sự cố</p>");
+            result.append("<table border='1' cellpadding='10' style='border-collapse: collapse; width: 100%;'>");
+            result.append("<tr style='background: #4F46E5; color: white;'>");
+            result.append(
+                    "<th>Mã</th><th>Tiêu Đề</th><th>Mô Tả</th><th>Ưu Tiên</th><th>Trạng Thái</th><th>Người BC</th><th>Tài Sản</th><th>Thời Gian</th></tr>");
+
+            for (BaoCaoSuCo incident : allIncidents) {
+                String bgColor = "";
+                if (incident.getMucDoUuTien() == PriorityLevel.cao) {
+                    bgColor = "background: #fee;";
+                }
+                result.append("<tr style='").append(bgColor).append("'>");
+                result.append("<td>").append(incident.getMaBaoCao()).append("</td>");
+                result.append("<td><strong>").append(incident.getTieuDe()).append("</strong></td>");
+                result.append("<td>").append(incident.getNoiDung() != null ? incident.getNoiDung() : "")
+                        .append("</td>");
+                result.append("<td>")
+                        .append(incident.getMucDoUuTien() != null ? incident.getMucDoUuTien().getDbValue() : "N/A")
+                        .append("</td>");
+                result.append("<td>")
+                        .append(incident.getTrangThai() != null ? incident.getTrangThai().getDbValue() : "N/A")
+                        .append("</td>");
+                result.append("<td>")
+                        .append(incident.getNguoiBaoCao() != null ? incident.getNguoiBaoCao().getHoVaTen() : "N/A")
+                        .append("</td>");
+                result.append("<td>")
+                        .append(incident.getTaiSan() != null
+                                ? incident.getTaiSan().getTenTaiSan() + " (" + incident.getTaiSan().getViTri() + ")"
+                                : "N/A")
+                        .append("</td>");
+                result.append("<td>").append(incident.getThoiGianBaoCao()).append("</td>");
+                result.append("</tr>");
+            }
+            result.append("</table>");
+        }
+
+        // 4. Thông tin bảng database
+        result.append("<h2>4. Thông Tin Cấu Trúc Bảng</h2>");
+        result.append("<p><strong>Tên bảng:</strong> <code>bao_cao_su_co</code></p>");
+        result.append("<p><strong>Các cột:</strong></p>");
+        result.append("<ul>");
+        result.append("<li><code>ma_bao_cao</code> - ID tự động tăng (Primary Key)</li>");
+        result.append("<li><code>cccd_nguoi_bao_cao</code> - CCCD người báo cáo (Foreign Key → doi_tuong)</li>");
+        result.append("<li><code>ma_tai_san</code> - Mã tài sản bị sự cố (Foreign Key → tai_san_chung_cu)</li>");
+        result.append("<li><code>tieu_de</code> - Tiêu đề sự cố (VARCHAR 255)</li>");
+        result.append("<li><code>mo_ta_su_co</code> - Mô tả chi tiết (TEXT)</li>");
+        result.append("<li><code>muc_do_uu_tien</code> - Mức độ: 'cao', 'binh_thuong', 'thap'</li>");
+        result.append(
+                "<li><code>trang_thai</code> - Trạng thái: 'moi_tiep_nhan', 'dang_xu_ly', 'da_hoan_thanh', 'da_huy'</li>");
+        result.append("<li><code>thoi_gian_bao_cao</code> - Thời gian tạo (TIMESTAMP)</li>");
+        result.append("<li><code>thoi_gian_cap_nhat</code> - Thời gian cập nhật (TIMESTAMP)</li>");
+        result.append("<li><code>chi_phi_xu_ly</code> - Chi phí xử lý (DECIMAL)</li>");
+        result.append("</ul>");
+
+        result.append("<hr>");
+        result.append("<p><a href='/admin/dashboard'>← Quay lại Dashboard</a></p>");
+        result.append("</body></html>");
+
+        return result.toString();
     }
 }
