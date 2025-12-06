@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Danh Sách Sự Cố - Cơ Quan Chức Năng</title>
+    
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* ==================== STYLES CƠ BẢN ==================== */
+        :root {
+            --primary-color: #7C3AED;
+            --primary-dark: #5B21B6;
+            --bg-light: #F9FAFB;
+        }
+
+        .main-content {
+            background-color: var(--bg-light);
+            min-height: 100vh;
+        }
+
+        /* Sidebar styles (giữ nguyên từ main.css hoặc định nghĩa lại) */
+        .feature-badge {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            color: white; font-size: 10px; font-weight: 600; padding: 2px 6px;
+            border-radius: 8px; margin-left: auto; animation: pulse 2s infinite;
+        }
+        
+        /* ==================== BỘ LỌC (FILTER BAR) ==================== */
+        .filter-card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 24px;
+        }
+
+        .filter-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            align-items: end;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #4B5563;
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #D1D5DB;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+        }
+
+        .btn-filter {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 11px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            height: 42px; /* Khớp chiều cao với input */
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-filter:hover { background: var(--primary-dark); }
+
+        /* ==================== BẢNG DỮ LIỆU ==================== */
+        .table-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .table-responsive { overflow-x: auto; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        
+        th { 
+            text-align: left; padding: 16px; color: #6B7280; font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;
+            border-bottom: 1px solid #E5E7EB; background: #F9FAFB; white-space: nowrap;
+        }
+        
+        td { 
+            padding: 16px; border-bottom: 1px solid #E5E7EB; color: #1F2937; vertical-align: middle; font-size: 14px;
+        }
+
+        /* Hàng có thể click */
+        tbody tr {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        tbody tr:hover {
+            background-color: #F5F3FF; /* Màu tím nhạt khi hover */
+        }
+
+        /* Badges Status & Priority */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        
+        .badge-moi_tiep_nhan { background: #FEF3C7; color: #D97706; }
+        .badge-dang_xu_ly { background: #DBEAFE; color: #2563EB; }
+        .badge-da_hoan_thanh { background: #D1FAE5; color: #059669; }
+        .badge-da_huy { background: #F3F4F6; color: #6B7280; }
+
+        .priority-dot {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px;
+        }
+        .priority-thap { background-color: #9CA3AF; }
+        .priority-binh_thuong { background-color: #3B82F6; }
+        .priority-cao { background-color: #F59E0B; }
+        .priority-khan_cap { background-color: #EF4444; }
+
+        /* Modal Styles */
+        .modal { display: none; position: fixed; z-index: 1000; inset: 0; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background-color: #fff; padding: 24px; border-radius: 12px; width: 700px; max-width: 95%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto; position: relative; }
+        
+        /* Timeline */
+        .timeline { margin-top: 20px; padding-left: 10px; border-left: 2px solid #e5e7eb; margin-left: 10px; }
+        .timeline-item { position: relative; padding-left: 25px; margin-bottom: 24px; }
+        .timeline-item::before { 
+            content: ''; position: absolute; left: -6px; top: 0; width: 10px; height: 10px; 
+            border-radius: 50%; background: #7C3AED; border: 2px solid white; box-shadow: 0 0 0 2px #7C3AED;
+        }
+        .timeline-time { font-size: 12px; color: #6b7280; margin-bottom: 4px; font-weight: 500; }
+        .timeline-content { background: #F5F3FF; padding: 12px; border-radius: 8px; font-size: 14px; color: #1f2937; border: 1px solid #DDD6FE; }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-building"></i>
+                <span>BlueMoon Portal</span>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a th:href="@{/officer/dashboard}" class="nav-item">
+                <i class="fas fa-chart-line"></i><span>Dashboard</span>
+            </a>
+            <a th:href="@{/officer/incidents}" class="nav-item active">
+                <i class="fas fa-exclamation-triangle"></i><span>Xem Sự Cố</span>
+            </a>
+            <a th:href="@{/officer/reports}" class="nav-item">
+                <i class="fas fa-chart-bar"></i><span>Báo Cáo</span>
+            </a>
+            <a th:href="@{/officer/documents}" class="nav-item">
+                <i class="fas fa-file-alt"></i><span>Tài Liệu</span>
+            </a>
+            <a th:href="@{/officer/apartment-list}" class="nav-item">
+                <i class="fas fa-home"></i><span>Xem Căn Hộ</span>
+            </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1>Quản Lý Sự Cố</h1>
+        </div>
+        
+        <div class="header-right">
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
+                    <span class="user-role" style="color: #7C3AED;">CƠ QUAN CHỨC NĂNG</span>
+                </div>
+                <div class="user-avatar"> <i class="fas fa-user-circle"></i> </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        
+        <div style="margin-bottom: 20px;">
+            <h2 style="font-size: 24px; color: #111827; margin-bottom: 5px;">📋 Danh sách sự cố</h2>
+            <p style="color: #6B7280; font-size: 14px;">Xem và theo dõi tiến độ xử lý các sự cố trong tòa nhà.</p>
+        </div>
+
+        <div class="filter-card">
+            <form th:action="@{/officer/incidents}" method="get" class="filter-form">
+                
+                <div class="form-group">
+                    <label for="keyword">Tiêu đề / Nội dung</label>
+                    <input type="text" id="keyword" name="keyword" th:value="${keyword}" class="form-control" placeholder="Nhập từ khóa...">
+                </div>
+
+                <div class="form-group">
+                    <label for="asset">Tài sản / Khu vực</label>
+                    <input type="text" id="asset" name="assetName" th:value="${assetName}" class="form-control" placeholder="Tên tài sản...">
+                </div>
+
+                <div class="form-group">
+                    <label for="priority">Mức độ ưu tiên</label>
+                    <select id="priority" name="priority" class="form-control">
+                        <option value="">-- Tất cả --</option>
+                        <option value="thap" th:selected="${priority == 'thap'}">Thấp</option>
+                        <option value="binh_thuong" th:selected="${priority == 'binh_thuong'}">Bình thường</option>
+                        <option value="cao" th:selected="${priority == 'cao'}">Cao</option>
+                        <option value="khan_cap" th:selected="${priority == 'khan_cap'}">Khẩn cấp</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="date">Ngày báo cáo</label>
+                    <input type="date" id="date" name="reportDate" th:value="${reportDate}" class="form-control">
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Trạng thái</label>
+                    <select id="status" name="status" class="form-control">
+                        <option value="">-- Tất cả --</option>
+                        <option value="moi_tiep_nhan" th:selected="${status == 'moi_tiep_nhan'}">Mới tiếp nhận</option>
+                        <option value="dang_xu_ly" th:selected="${status == 'dang_xu_ly'}">Đang xử lý</option>
+                        <option value="da_hoan_thanh" th:selected="${status == 'da_hoan_thanh'}">Đã hoàn thành</option>
+                        <option value="da_huy" th:selected="${status == 'da_huy'}">Đã hủy</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn-filter">
+                    <i class="fas fa-filter"></i> Lọc
+                </button>
+            </form>
+        </div>
+
+        <div class="table-card">
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 80px;">Mã SC</th>
+                            <th style="width: 250px;">Tiêu Đề</th>
+                            <th style="width: 150px;">Người Báo</th>
+                            <th style="width: 150px;">Tài Sản / Vị Trí</th>
+                            <th style="width: 120px;">Mức Độ</th>
+                            <th style="width: 120px;">Ngày Báo</th>
+                            <th style="width: 120px;">Trạng Thái</th>
+                            </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(danhSachSuCo)}">
+                            <td colspan="7" style="text-align: center; padding: 40px; color: #6B7280;">
+                                <i class="fas fa-search" style="font-size: 40px; margin-bottom: 15px; color: #E5E7EB; display: block;"></i>
+                                Không tìm thấy sự cố nào phù hợp.
+                            </td>
+                        </tr>
+
+                        <tr th:each="sc : ${danhSachSuCo}" 
+                            th:attr="data-id=${sc.maBaoCao}" 
+                            onclick="openDetailModal(this)"
+                            title="Nhấn để xem chi tiết">
+                            
+                            <td th:text="${'#SC' + sc.maBaoCao}" style="font-weight: 700; color: #7C3AED;"></td>
+                            
+                            <td>
+                                <span th:text="${#strings.abbreviate(sc.tieuDe, 40)}" style="font-weight: 500; display: block;"></span>
+                                <small style="color: #9CA3AF;" th:text="${#strings.abbreviate(sc.noiDung, 50)}"></small>
+                            </td>
+                            
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <div style="width: 24px; height: 24px; background: #F3F4F6; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #6B7280;">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <span th:text="${sc.nguoiBaoCao != null ? sc.nguoiBaoCao.hoVaTen : 'Ẩn danh'}"></span>
+                                </div>
+                            </td>
+                            
+                            <td th:text="${sc.taiSan != null ? sc.taiSan.tenTaiSan : 'Khu vực chung'}"></td>
+                            
+                            <td>
+                                <span class="priority-dot" 
+                                      th:classappend="'priority-' + ${sc.mucDoUuTien.name()}"></span>
+                                <span th:switch="${sc.mucDoUuTien.name()}">
+                                    <span th:case="'thap'">Thấp</span>
+                                    <span th:case="'binh_thuong'">Bình thường</span>
+                                    <span th:case="'cao'">Cao</span>
+                                    <span th:case="'khan_cap'">Khẩn cấp</span>
+                                </span>
+                            </td>
+                            
+                            <td th:text="${#temporals.format(sc.thoiGianBaoCao, 'dd/MM/yyyy')}"></td>
+                            
+                            <td>
+                                <span th:class="'badge badge-' + ${sc.trangThai.name()}"
+                                      th:text="${sc.trangThai.dbValue}">
+                                </span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+    
+    <div id="detailIncidentModal" class="modal">
+        <div class="modal-content">
+            <button onclick="closeDetailModal()" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: #9CA3AF;">&times;</button>
+            <div id="detail-modal-body">
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-circle-notch fa-spin fa-2x" style="color: #7C3AED;"></i>
+                    <p style="margin-top: 15px; color: #6B7280;">Đang tải dữ liệu chi tiết...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/main.js"></script>
+    
+    <script>
+        // Sidebar Toggle
+        function toggleSidebar() {
+            $('aside.sidebar').toggleClass('active');
+            $('header.header').toggleClass('sidebar-open');
+        }
+
+        // Modal Logic
+        function openDetailModal(row) {
+            const id = row.getAttribute('data-id');
+            const modal = document.getElementById('detailIncidentModal');
+            const modalBody = document.getElementById('detail-modal-body');
+            
+            modal.classList.add('show');
+            
+            modalBody.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-circle-notch fa-spin fa-2x" style="color: #7C3AED;"></i>
+                    <p style="margin-top: 15px; color: #6B7280;">Đang tải dữ liệu chi tiết...</p>
+                </div>
+            `;
+
+            fetch(`/officer/incidents/detail/${id}`)
+                .then(response => {
+                    if(!response.ok) throw new Error("Lỗi tải dữ liệu");
+                    return response.text();
+                })
+                .then(html => {
+                    modalBody.innerHTML = html;
+                })
+                .catch(err => {
+                    console.error(err);
+                    modalBody.innerHTML = `
+                        <div style="text-align: center; color: #EF4444; padding: 20px;">
+                            <i class="fas fa-exclamation-circle" style="font-size: 30px;"></i>
+                            <p>Không thể tải chi tiết sự cố này.</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailIncidentModal').classList.remove('show');
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('detailIncidentModal');
+            if (event.target == modal) {
+                closeDetailModal();
+            }
+        }
+    </script>
+</body>
+</html>
