@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gửi Thông Báo - Ban Quản Trị - BlueMoon Portal</title>
+    <title>Quản Lý Thông Báo - Ban Quản Trị - BlueMoon Portal</title>
 
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -144,6 +144,167 @@
             font-size: 14px;
             margin-top: 10px;
         }
+
+        /* Tabs cho thông báo thường và định kỳ */
+        .notification-tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .tab-btn {
+            background: none;
+            border: none;
+            padding: 12px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            color: #6b7280;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .btn-secondary {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-tertiary {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        /* Scheduled notification form */
+        .schedule-config {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .schedule-config select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 15px;
+        }
+
+        .time-inputs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .time-inputs input {
+            width: 80px;
+        }
+
+        .scheduled-item {
+            background: #f9fafb;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .scheduled-item h4 {
+            margin: 0 0 8px 0;
+            color: var(--text-color);
+        }
+
+        .scheduled-item .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 8px;
+        }
+
+        .badge-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .badge-inactive {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-weekly {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-monthly {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .badge-yearly {
+            background: #e9d5ff;
+            color: #6b21a8;
+        }
+
+        .scheduled-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 13px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        .btn-edit {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .btn-toggle {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+        }
     </style>
 </head>
 
@@ -178,7 +339,7 @@
             </a>
             <a href="#" class="nav-item"> <i class="fas fa-exclamation-triangle"></i> <span>Xử Lý Sự Cố</span> </a>
             <a th:href="@{/admin/notifications}" class="nav-item active">
-                <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
+                <i class="fas fa-bell"></i><span>Quản Lý Thông Báo</span>
             </a>
             <a th:href="@{/admin/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
         </nav>
@@ -198,7 +359,7 @@
             <button class="menu-toggle" onclick="toggleSidebar()">
                 <i class="fas fa-bars"></i>
             </button>
-            <h1>Gửi Thông Báo</h1>
+            <h1>Quản Lý Thông Báo</h1>
         </div>
         <div class="header-right">
             <div class="user-menu">
@@ -214,39 +375,159 @@
     <!-- MAIN CONTENT -->
     <main class="main-content">
         <section class="notification-page">
-            <!-- FORM GỬI THÔNG BÁO -->
-            <div class="notification-form">
-                <h2>📢 Gửi Thông Báo Mới</h2>
-                <form th:action="@{/admin/notifications/send}" method="post">
-                    <div class="notification-form-group">
-                        <label for="tieuDe">Tiêu đề</label>
-                        <input type="text" id="tieuDe" name="tieuDe" placeholder="Nhập tiêu đề thông báo..." required>
-                    </div>
-                    <div class="notification-form-group">
-                        <label for="noiDung">Nội dung</label>
-                        <textarea id="noiDung" name="noiDung" rows="5" placeholder="Nhập nội dung thông báo..." required></textarea>
-                    </div>
-                    <button type="submit"><i class="fas fa-paper-plane"></i> Gửi Thông Báo</button>
-                </form>
+            <!-- TABS -->
+            <div class="notification-tabs">
+                <button class="tab-btn active" onclick="switchTab('normal')">
+                    <i class="fas fa-bell"></i> Thông Báo Thường
+                </button>
+                <button class="tab-btn" onclick="switchTab('scheduled')">
+                    <i class="fas fa-clock"></i> Thông Báo Định Kỳ
+                </button>
             </div>
 
-            <!-- DANH SÁCH THÔNG BÁO -->
-            <div class="notification-list">
-                <h2>📜 Danh Sách Thông Báo Gần Đây</h2>
-
-                <div th:if="${#lists.isEmpty(thongBaos)}" style="text-align: center; color: var(--gray); padding: 20px;">
-                    Hiện chưa có thông báo nào.
+            <!-- TAB THÔNG BÁO THƯỜNG -->
+            <div id="normalTab" class="tab-content active">
+                <!-- FORM GỬI THÔNG BÁO THƯỜNG -->
+                <div class="notification-form">
+                    <h2>📢 Gửi Thông Báo Mới</h2>
+                    <form th:action="@{/admin/notifications/send}" method="post">
+                        <div class="notification-form-group">
+                            <label for="tieuDe">Tiêu đề</label>
+                            <input type="text" id="tieuDe" name="tieuDe" placeholder="Nhập tiêu đề thông báo..." required>
+                        </div>
+                        <div class="notification-form-group">
+                            <label for="noiDung">Nội dung</label>
+                            <textarea id="noiDung" name="noiDung" rows="5" placeholder="Nhập nội dung thông báo..." required></textarea>
+                        </div>
+                        <button type="submit"><i class="fas fa-paper-plane"></i> Gửi Thông Báo Ngay</button>
+                    </form>
                 </div>
 
-                <div th:each="tb : ${thongBaos}" class="notification-item">
-                    <h3 th:text="${tb.tieuDe}">Tiêu đề thông báo</h3>
-                    <p th:text="${tb.noiDung}">Nội dung thông báo...</p>
-                    <small>
-                        🕒 <span th:text="${#temporals.format(tb.thoiGianGui, 'dd/MM/yyyy HH:mm')}">01/10/2025</span> -
-                        👤 <span th:text="${tb.nguoiGui != null ? tb.nguoiGui.hoVaTen : 'Hệ thống'}">Ban Quản Trị</span>
-                    </small>
-                    <br>
-                    <button class="view-reply-btn" th:attr="data-id=${tb.maThongBao}" onclick="openRepliesModal(this)">💬 Xem phản hồi</button>
+                <!-- DANH SÁCH THÔNG BÁO THƯỜNG -->
+                <div class="notification-list">
+                    <h2>📜 Danh Sách Thông Báo Gần Đây</h2>
+
+                    <div th:if="${#lists.isEmpty(thongBaos)}" style="text-align: center; color: var(--gray); padding: 20px;">
+                        Hiện chưa có thông báo nào.
+                    </div>
+
+                    <div th:each="tb : ${thongBaos}" class="notification-item">
+                        <h3 th:text="${tb.tieuDe}">Tiêu đề thông báo</h3>
+                        <p th:text="${tb.noiDung}">Nội dung thông báo...</p>
+                        <small>
+                            🕒 <span th:text="${#temporals.format(tb.thoiGianGui, 'dd/MM/yyyy HH:mm')}">01/10/2025</span> -
+                            👤 <span th:text="${tb.nguoiGui != null ? tb.nguoiGui.hoVaTen : 'Hệ thống'}">Ban Quản Trị</span>
+                        </small>
+                        <br>
+                        <button class="view-reply-btn" th:attr="data-id=${tb.maThongBao}" onclick="openRepliesModal(this)">💬 Xem phản hồi</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB THÔNG BÁO ĐỊNH KỲ -->
+            <div id="scheduledTab" class="tab-content">
+                <!-- FORM TẠO THÔNG BÁO ĐỊNH KỲ -->
+                <div class="notification-form">
+                    <h2>🔄 Tạo Thông Báo Định Kỳ</h2>
+                    <form id="scheduledNotificationForm">
+                        <div class="notification-form-group">
+                            <label for="tieuDeDinhKy">Tiêu đề</label>
+                            <input type="text" id="tieuDeDinhKy" name="tieuDe" placeholder="Nhập tiêu đề thông báo định kỳ..." required>
+                        </div>
+                        
+                        <div class="notification-form-group">
+                            <label for="loaiThongBaoDinhKy">Loại thông báo</label>
+                            <select id="loaiThongBaoDinhKy" name="loaiThongBao" required>
+                                <option value="">-- Chọn loại thông báo --</option>
+                                <option value="bao_tri_tai_san">🔧 Bảo trì tài sản</option>
+                                <option value="bao_tri_dich_vu">🛠️ Bảo trì dịch vụ</option>
+                                <option value="bao_tri_chung_cu">🏢 Bảo trì chung cư</option>
+                                <option value="thong_bao_chung">📢 Thông báo chung</option>
+                            </select>
+                        </div>
+                        
+                        <div class="notification-form-group">
+                            <label for="noiDungDinhKy">Nội dung</label>
+                            <textarea id="noiDungDinhKy" name="noiDung" rows="5" placeholder="Nhập nội dung thông báo định kỳ..." required></textarea>
+                        </div>
+
+                        <div class="schedule-config">
+                            <div class="notification-form-group">
+                                <label for="chuKy">Chu kỳ</label>
+                                <select id="chuKy" name="chuKy" required onchange="updateScheduleFields()">
+                                    <option value="">-- Chọn chu kỳ --</option>
+                                    <option value="HANG_TUAN">Hàng tuần</option>
+                                    <option value="HANG_THANG">Hàng tháng</option>
+                                    <option value="HANG_NAM">Hàng năm</option>
+                                </select>
+                            </div>
+
+                            <!-- Cấu hình cho từng chu kỳ -->
+                            <div id="weeklyConfig" class="notification-form-group" style="display: none;">
+                                <label for="thuTrongTuan">Thứ trong tuần</label>
+                                <select id="thuTrongTuan" name="thuTrongTuan">
+                                    <option value="1">Chủ nhật</option>
+                                    <option value="2" selected>Thứ 2</option>
+                                    <option value="3">Thứ 3</option>
+                                    <option value="4">Thứ 4</option>
+                                    <option value="5">Thứ 5</option>
+                                    <option value="6">Thứ 6</option>
+                                    <option value="7">Thứ 7</option>
+                                </select>
+                            </div>
+
+                            <div id="monthlyConfig" class="notification-form-group" style="display: none;">
+                                <label for="ngayTrongThang">Ngày trong tháng</label>
+                                <input type="number" id="ngayTrongThang" name="ngayTrongThang" min="1" max="31" value="1">
+                            </div>
+
+                            <div id="yearlyConfig" class="notification-form-group" style="display: none;">
+                                <label for="thangTrongNam">Tháng</label>
+                                <select id="thangTrongNam" name="thangTrongNam">
+                                    <option value="1" selected>Tháng 1</option>
+                                    <option value="2">Tháng 2</option>
+                                    <option value="3">Tháng 3</option>
+                                    <option value="4">Tháng 4</option>
+                                    <option value="5">Tháng 5</option>
+                                    <option value="6">Tháng 6</option>
+                                    <option value="7">Tháng 7</option>
+                                    <option value="8">Tháng 8</option>
+                                    <option value="9">Tháng 9</option>
+                                    <option value="10">Tháng 10</option>
+                                    <option value="11">Tháng 11</option>
+                                    <option value="12">Tháng 12</option>
+                                </select>
+                            </div>
+
+                            <div id="yearlyDayConfig" class="notification-form-group" style="display: none;">
+                                <label for="ngayTrongNam">Ngày</label>
+                                <input type="number" id="ngayTrongNam" name="ngayTrongNam" min="1" max="31" value="1">
+                            </div>
+
+                            <div class="notification-form-group">
+                                <label>Thời gian gửi</label>
+                                <div class="time-inputs">
+                                    <input type="number" id="gioGui" name="gioGui" min="0" max="23" value="9" placeholder="Giờ" required>
+                                    <span>:</span>
+                                    <input type="number" id="phutGui" name="phutGui" min="0" max="59" value="0" placeholder="Phút" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="action-buttons">
+                            <button type="submit" class="notification-form button">
+                                <i class="fas fa-save"></i> Tạo Thông Báo Định Kỳ
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- DANH SÁCH THÔNG BÁO ĐỊNH KỲ -->
+                <div class="notification-list">
+                    <h2>📋 Danh Sách Thông Báo Định Kỳ</h2>
+                    <div id="scheduledNotificationsList">
+                        <p style="text-align: center; color: var(--gray); padding: 20px;">Đang tải...</p>
+                    </div>
                 </div>
             </div>
         </section>
@@ -271,18 +552,292 @@
 
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
+        // Check for success/error messages from redirect
         const urlParams = new URLSearchParams(window.location.search);
         if (urlParams.get('success') === 'true') {
             Swal.fire({
                 icon: 'success',
-                title: 'Đã gửi thông báo!',
-                text: 'Thông báo đã được lưu vào hệ thống và gửi đến cư dân.',
+                title: 'Thành công!',
+                text: 'Thông báo đã được gửi đến cư dân.',
                 confirmButtonColor: '#4F46E5'
+            }).then(() => {
+                // Remove query params from URL
+                window.history.replaceState({}, document.title, window.location.pathname);
+            });
+        }
+        
+        // Check for flash attributes (error messages)
+        const errorMsg = /*[[${error}]]*/ null;
+        if (errorMsg) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Lỗi!',
+                text: errorMsg,
+                confirmButtonColor: '#ef4444'
             });
         }
 
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('active');
+        }
+
+        // === TAB SWITCHING ===
+        function switchTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+
+            // Show selected tab
+            if (tabName === 'normal') {
+                document.getElementById('normalTab').classList.add('active');
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            } else if (tabName === 'scheduled') {
+                document.getElementById('scheduledTab').classList.add('active');
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                loadScheduledNotifications();
+            }
+        }
+
+        // === SCHEDULED NOTIFICATION FORM ===
+        function updateScheduleFields() {
+            const chuKy = document.getElementById('chuKy').value;
+            
+            // Hide all config fields
+            document.getElementById('weeklyConfig').style.display = 'none';
+            document.getElementById('monthlyConfig').style.display = 'none';
+            document.getElementById('yearlyConfig').style.display = 'none';
+            document.getElementById('yearlyDayConfig').style.display = 'none';
+
+            // Show relevant fields
+            if (chuKy === 'HANG_TUAN') {
+                document.getElementById('weeklyConfig').style.display = 'block';
+            } else if (chuKy === 'HANG_THANG') {
+                document.getElementById('monthlyConfig').style.display = 'block';
+            } else if (chuKy === 'HANG_NAM') {
+                document.getElementById('yearlyConfig').style.display = 'block';
+                document.getElementById('yearlyDayConfig').style.display = 'block';
+            }
+        }
+
+        // Submit scheduled notification form
+        document.getElementById('scheduledNotificationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = {
+                tieuDe: document.getElementById('tieuDeDinhKy').value,
+                noiDung: document.getElementById('noiDungDinhKy').value,
+                loaiThongBao: document.getElementById('loaiThongBaoDinhKy').value,
+                chuKy: document.getElementById('chuKy').value,
+                gioGui: parseInt(document.getElementById('gioGui').value),
+                phutGui: parseInt(document.getElementById('phutGui').value),
+                laDinhKy: true
+            };
+
+            // Add cycle-specific fields
+            if (formData.chuKy === 'HANG_TUAN') {
+                formData.thuTrongTuan = parseInt(document.getElementById('thuTrongTuan').value);
+            } else if (formData.chuKy === 'HANG_THANG') {
+                formData.ngayTrongThang = parseInt(document.getElementById('ngayTrongThang').value);
+            } else if (formData.chuKy === 'HANG_NAM') {
+                formData.thangTrongNam = parseInt(document.getElementById('thangTrongNam').value);
+                formData.ngayTrongNam = parseInt(document.getElementById('ngayTrongNam').value);
+            }
+
+            console.log('Sending scheduled notification:', formData);
+            
+            fetch('/admin/notifications/scheduled/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json().then(data => ({
+                    status: response.status,
+                    ok: response.ok,
+                    data: data
+                }));
+            })
+            .then(result => {
+                console.log('Response data:', result);
+                if (!result.ok) {
+                    throw new Error(result.data.error || 'Không thể tạo thông báo định kỳ');
+                }
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: 'Đã tạo thông báo định kỳ',
+                    confirmButtonColor: '#4F46E5'
+                });
+                document.getElementById('scheduledNotificationForm').reset();
+                loadScheduledNotifications();
+            })
+            .catch(error => {
+                console.error('Error creating scheduled notification:', error);
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    text: error.message || 'Không thể tạo thông báo định kỳ',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        });
+
+        // Load scheduled notifications
+        function loadScheduledNotifications() {
+            const container = document.getElementById('scheduledNotificationsList');
+            container.innerHTML = '<p style="text-align: center; color: var(--gray); padding: 20px;">Đang tải...</p>';
+
+            fetch('/admin/notifications/scheduled/list')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.length === 0) {
+                        container.innerHTML = '<p style="text-align: center; color: var(--gray); padding: 20px;">Chưa có thông báo định kỳ nào.</p>';
+                        return;
+                    }
+
+                    container.innerHTML = data.map(item => {
+                        const chuKyBadge = getChuKyBadge(item.chuKy);
+                        const loaiBadge = getLoaiBadge(item.loaiThongBao);
+                        const statusBadge = item.trangThaiHoatDong ? 
+                            '<span class="badge badge-active">Đang hoạt động</span>' : 
+                            '<span class="badge badge-inactive">Tạm dừng</span>';
+                        
+                        const scheduleInfo = getScheduleInfo(item);
+                        const nextSend = item.ngayGuiTiepTheo ? 
+                            new Date(item.ngayGuiTiepTheo).toLocaleString('vi-VN') : 
+                            'Chưa xác định';
+
+                        return `
+                            <div class="scheduled-item">
+                                <h4>${item.tieuDe}</h4>
+                                <p>${item.noiDung}</p>
+                                <div style="margin: 8px 0;">
+                                    ${statusBadge}
+                                    ${chuKyBadge}
+                                    ${loaiBadge}
+                                </div>
+                                <small>
+                                    📅 ${scheduleInfo} | 
+                                    ⏰ ${item.gioGui}:${String(item.phutGui).padStart(2, '0')} | 
+                                    🔔 Lần gửi tiếp: ${nextSend}
+                                </small>
+                                <div class="scheduled-actions">
+                                    <button class="btn-small btn-toggle" onclick="toggleScheduledNotification(${item.maThongBao})">
+                                        ${item.trangThaiHoatDong ? 'Tạm dừng' : 'Kích hoạt'}
+                                    </button>
+                                    <button class="btn-small btn-delete" onclick="deleteScheduledNotification(${item.maThongBao})">
+                                        Xóa
+                                    </button>
+                                </div>
+                            </div>
+                        `;
+                    }).join('');
+                })
+                .catch(error => {
+                    container.innerHTML = '<p style="text-align: center; color: red; padding: 20px;">Lỗi khi tải danh sách</p>';
+                });
+        }
+
+        function getChuKyBadge(chuKy) {
+            const badges = {
+                'HANG_TUAN': '<span class="badge badge-weekly">Hàng tuần</span>',
+                'HANG_THANG': '<span class="badge badge-monthly">Hàng tháng</span>',
+                'HANG_NAM': '<span class="badge badge-yearly">Hàng năm</span>'
+            };
+            return badges[chuKy] || '';
+        }
+        
+        function getLoaiBadge(loai) {
+            const badges = {
+                'bao_tri_tai_san': '<span class="badge" style="background: #F59E0B;">🔧 Bảo trì tài sản</span>',
+                'bao_tri_dich_vu': '<span class="badge" style="background: #10B981;">🛠️ Bảo trì dịch vụ</span>',
+                'bao_tri_chung_cu': '<span class="badge" style="background: #3B82F6;">🏢 Bảo trì chung cư</span>',
+                'thong_bao_chung': '<span class="badge" style="background: #6B7280;">📢 Thông báo chung</span>',
+                'binh_thuong': '<span class="badge" style="background: #6B7280;">📢 Bình thường</span>',
+                'quan_trong': '<span class="badge" style="background: #EF4444;">⚠️ Quan trọng</span>',
+                'khan_cap': '<span class="badge" style="background: #DC2626;">🚨 Khẩn cấp</span>'
+            };
+            return badges[loai] || '';
+        }
+
+        function getScheduleInfo(item) {
+            if (item.chuKy === 'HANG_TUAN') {
+                const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+                return `Mỗi ${days[item.thuTrongTuan - 1]}`;
+            } else if (item.chuKy === 'HANG_THANG') {
+                return `Ngày ${item.ngayTrongThang} hàng tháng`;
+            } else if (item.chuKy === 'HANG_NAM') {
+                return `Ngày ${item.ngayTrongNam}/${item.thangTrongNam} hàng năm`;
+            }
+            return '';
+        }
+
+        function toggleScheduledNotification(id) {
+            fetch(`/admin/notifications/scheduled/${id}/toggle`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                Swal.fire({
+                    icon: 'success',
+                    title: 'Thành công!',
+                    text: data.trangThaiHoatDong ? 'Đã kích hoạt thông báo' : 'Đã tạm dừng thông báo',
+                    confirmButtonColor: '#4F46E5'
+                });
+                loadScheduledNotifications();
+            })
+            .catch(error => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Lỗi!',
+                    text: 'Không thể thay đổi trạng thái',
+                    confirmButtonColor: '#ef4444'
+                });
+            });
+        }
+
+        function deleteScheduledNotification(id) {
+            Swal.fire({
+                title: 'Xác nhận xóa?',
+                text: 'Bạn có chắc muốn xóa thông báo định kỳ này?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ef4444',
+                cancelButtonColor: '#6b7280',
+                confirmButtonText: 'Xóa',
+                cancelButtonText: 'Hủy'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/admin/notifications/scheduled/${id}/delete`, {
+                        method: 'DELETE'
+                    })
+                    .then(response => {
+                        if (!response.ok) throw new Error('Delete failed');
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Đã xóa!',
+                            text: 'Thông báo định kỳ đã được xóa',
+                            confirmButtonColor: '#4F46E5'
+                        });
+                        loadScheduledNotifications();
+                    })
+                    .catch(error => {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Lỗi!',
+                            text: 'Không thể xóa thông báo',
+                            confirmButtonColor: '#ef4444'
+                        });
+                    });
+                }
+            });
         }
 
         // === Modal phản hồi ===
@@ -301,10 +856,8 @@
                         replyList.innerHTML = "<p style='color:gray;'>Chưa có phản hồi nào.</p>";
                     } else {
                         replyList.innerHTML = data.map(r => {
-                            // CHÚ Ý: Chuyển đổi LocalDateTime (ví dụ: 2025-10-28T15:30:00) sang định dạng hiển thị
                             const formattedDate = r.thoiGianGui ? r.thoiGianGui.replace('T', ' ').substring(0, 16) : 'N/A';
                             
-                            // SỬ DỤNG TÊN THUỘC TÍNH DTO ĐÃ SỬA
                             return `
                                 <div class='reply-item'>
                                     <p><strong>${r.hoVaTenNguoiGui}</strong> (${r.vaiTroNguoiGui})</p>

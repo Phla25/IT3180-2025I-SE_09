@@ -3,6 +3,7 @@ package BlueMoon.bluemoon.controllers;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -16,12 +17,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -29,6 +33,7 @@ import BlueMoon.bluemoon.daos.BaoCaoSuCoDAO;
 import BlueMoon.bluemoon.daos.DoiTuongDAO;
 import BlueMoon.bluemoon.daos.HoGiaDinhDAO;
 import BlueMoon.bluemoon.daos.HoaDonDAO;
+import BlueMoon.bluemoon.daos.ThongBaoDAO;
 import BlueMoon.bluemoon.entities.BaoCaoSuCo;
 import BlueMoon.bluemoon.entities.DangKyDichVu;
 import BlueMoon.bluemoon.entities.DichVu;
@@ -44,6 +49,8 @@ import BlueMoon.bluemoon.models.InvoiceReportDTO;
 import BlueMoon.bluemoon.models.PhanHoiThongBaoDTO;
 import BlueMoon.bluemoon.models.ResidentReportDTO;
 import BlueMoon.bluemoon.services.CuDanService;
+import BlueMoon.bluemoon.utils.NotificationType;
+import BlueMoon.bluemoon.utils.RecipientType;
 import BlueMoon.bluemoon.services.DangKyDichVuService;
 import BlueMoon.bluemoon.services.DichVuService;
 import BlueMoon.bluemoon.services.ExportService;
@@ -94,6 +101,7 @@ public class AdminController {
     @Autowired private ThongBaoService thongBaoService;
     @Autowired private DoiTuongDAO doiTuongDAO;
     @Autowired private PhanHoiThongBaoService phanHoiThongBaoService;
+    @Autowired private ThongBaoDAO thongBaoDAO;
 
     @SuppressWarnings("unchecked")
     @GetMapping("/dashboard")
@@ -878,14 +886,19 @@ public class AdminController {
 
     /**
      * Xử lý cập nhật Căn Hộ (POST)
+     * Tự động gửi thông báo khi trạng thái căn hộ thay đổi
      */
     @PostMapping("/apartment-edit")
     public String handleEditApartment(@ModelAttribute("apartment") TaiSanChungCu apartment,
                                       @RequestParam("maTaiSan") Integer maTaiSan,
                                       @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
+                                      Authentication auth,
                                       RedirectAttributes redirectAttributes) {
         try {
-            taiSanChungCuService.capNhatCanHo(maTaiSan, apartment, maHoLienKet);
+            // Lấy người dùng hiện tại để gửi thông báo nếu trạng thái thay đổi
+            DoiTuong currentUser = getCurrentUser(auth);
+            
+            taiSanChungCuService.capNhatCanHo(maTaiSan, apartment, maHoLienKet, currentUser);
             redirectAttributes.addFlashAttribute("successMessage", 
                 "Cập nhật Căn hộ " + apartment.getTenTaiSan() + " thành công!");
             return "redirect:/admin/apartment-list";
@@ -1047,14 +1060,19 @@ public class AdminController {
     /**
      * Xử lý cập nhật Tài Sản Chung (POST)
      * URL: /admin/general-asset-edit
+     * Tự động gửi thông báo khi trạng thái tài sản thay đổi
      */
     @PostMapping("/general-asset-edit")
     public String handleEditGeneralAsset(@ModelAttribute("asset") TaiSanChungCu asset,
                                       @RequestParam("maTaiSan") Integer maTaiSan,
                                       @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
+                                      Authentication auth,
                                       RedirectAttributes redirectAttributes) {
         try {
-            taiSanChungCuService.capNhatTaiSanChung(maTaiSan, asset, maHoLienKet);
+            // Lấy người dùng hiện tại để gửi thông báo nếu trạng thái thay đổi
+            DoiTuong currentUser = getCurrentUser(auth);
+            
+            taiSanChungCuService.capNhatTaiSanChung(maTaiSan, asset, maHoLienKet, currentUser);
             redirectAttributes.addFlashAttribute("successMessage", 
                 "Cập nhật Tài sản Mã " + maTaiSan + " thành công!");
             return "redirect:/admin/general-asset-list";
@@ -1783,25 +1801,32 @@ public class AdminController {
     public String guiThongBao(
             @RequestParam("tieuDe") String tieuDe,
             @RequestParam("noiDung") String noiDung,
-            Principal principal
+            Principal principal,
+            RedirectAttributes redirectAttributes
     ) {
-        //Lấy người gửi thật từ tài khoản đang đăng nhập
-        DoiTuong nguoiTao = null;
-        if (principal != null) {
-            nguoiTao = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
+        try {
+            //Lấy người gửi thật từ tài khoản đang đăng nhập
+            DoiTuong nguoiTao = null;
+            if (principal != null) {
+                nguoiTao = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
+            }
+
+            // Nếu không có người đăng nhập, báo lỗi
+            if (nguoiTao == null) {
+                redirectAttributes.addFlashAttribute("error", "Không tìm thấy người dùng");
+                return "redirect:/admin/notifications";
+            }
+
+            //Gọi service để lưu thông báo
+            thongBaoService.taoVaGuiThongBao(tieuDe, noiDung, nguoiTao);
+
+            redirectAttributes.addFlashAttribute("success", "Đã gửi thông báo thành công!");
+            return "redirect:/admin/notifications?success=true";
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("error", "Lỗi khi gửi thông báo: " + e.getMessage());
+            return "redirect:/admin/notifications";
         }
-
-        // Nếu không có người đăng nhập (trường hợp test), dùng giả lập
-        if (nguoiTao == null) {
-            nguoiTao = new DoiTuong();
-            nguoiTao.setCccd("BQT");
-            nguoiTao.setHoVaTen("Ban Quản Trị");
-        }
-
-        //Gọi service để lưu thông báo
-        thongBaoService.taoVaGuiThongBao(tieuDe, noiDung, nguoiTao);
-
-        return "redirect:/admin/notifications?success=true";
     }
     /**
      * Endpoint REST API: Lấy danh sách phản hồi của một thông báo
@@ -1817,6 +1842,225 @@ public class AdminController {
         // Nếu không có phản hồi, trả về List rỗng (status 200)
         return ResponseEntity.ok(replies);
     }
+
+    // ==================== THÔNG BÁO ĐỊNH KỲ ====================
+    
+    /**
+     * Tạo thông báo định kỳ mới
+     * URL: POST /admin/notifications/scheduled/create
+     */
+    @PostMapping("/notifications/scheduled/create")
+    @ResponseBody
+    public ResponseEntity<?> taoThongBaoDinhKy(
+            @RequestBody Map<String, Object> payload,
+            Principal principal) {
+        
+        try {
+            // Lấy người tạo
+            DoiTuong nguoiTao = null;
+            if (principal != null) {
+                nguoiTao = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
+            }
+            
+            if (nguoiTao == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Người dùng không hợp lệ"));
+            }
+            
+            // Tạo thông báo định kỳ
+            ThongBao thongBao = new ThongBao();
+            thongBao.setTieuDe((String) payload.get("tieuDe"));
+            thongBao.setNoiDung((String) payload.get("noiDung"));
+            thongBao.setNguoiGui(nguoiTao);
+            thongBao.setLaDinhKy(true);
+            thongBao.setTrangThaiHoatDong(true);
+            thongBao.setTrangThaiHienThi(true);
+            thongBao.setThoiGianGui(LocalDateTime.now()); // Set thời gian tạo
+            
+            // Set loại thông báo (mặc định là thong_bao_chung nếu không có)
+            String loaiThongBaoStr = (String) payload.get("loaiThongBao");
+            if (loaiThongBaoStr != null && !loaiThongBaoStr.isEmpty()) {
+                try {
+                    thongBao.setLoaiThongBao(NotificationType.valueOf(loaiThongBaoStr));
+                } catch (IllegalArgumentException e) {
+                    thongBao.setLoaiThongBao(NotificationType.thong_bao_chung);
+                }
+            } else {
+                thongBao.setLoaiThongBao(NotificationType.thong_bao_chung);
+            }
+            
+            // Set đối tượng nhận (mặc định là tất cả)
+            thongBao.setDoiTuongNhan(RecipientType.tat_ca);
+            
+            // Set chu kỳ
+            String chuKyStr = (String) payload.get("chuKy");
+            if (chuKyStr == null || chuKyStr.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Chu kỳ không được để trống"));
+            }
+            thongBao.setChuKy(BlueMoon.bluemoon.utils.ChuKyThongBao.valueOf(chuKyStr));
+            
+            // Set thời gian gửi
+            Object gioGuiObj = payload.get("gioGui");
+            Object phutGuiObj = payload.get("phutGui");
+            
+            if (gioGuiObj == null || phutGuiObj == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Giờ và phút gửi không được để trống"));
+            }
+            
+            thongBao.setGioGui(gioGuiObj instanceof Integer ? (Integer) gioGuiObj : Integer.parseInt(gioGuiObj.toString()));
+            thongBao.setPhutGui(phutGuiObj instanceof Integer ? (Integer) phutGuiObj : Integer.parseInt(phutGuiObj.toString()));
+            
+            // Set cấu hình theo chu kỳ
+            if ("HANG_TUAN".equals(chuKyStr)) {
+                Object thuTrongTuanObj = payload.get("thuTrongTuan");
+                if (thuTrongTuanObj != null) {
+                    thongBao.setThuTrongTuan(thuTrongTuanObj instanceof Integer ? (Integer) thuTrongTuanObj : Integer.parseInt(thuTrongTuanObj.toString()));
+                }
+            } else if ("HANG_THANG".equals(chuKyStr)) {
+                Object ngayTrongThangObj = payload.get("ngayTrongThang");
+                if (ngayTrongThangObj != null) {
+                    thongBao.setNgayTrongThang(ngayTrongThangObj instanceof Integer ? (Integer) ngayTrongThangObj : Integer.parseInt(ngayTrongThangObj.toString()));
+                }
+            } else if ("HANG_NAM".equals(chuKyStr)) {
+                Object thangTrongNamObj = payload.get("thangTrongNam");
+                Object ngayTrongNamObj = payload.get("ngayTrongNam");
+                if (thangTrongNamObj != null) {
+                    thongBao.setThangTrongNam(thangTrongNamObj instanceof Integer ? (Integer) thangTrongNamObj : Integer.parseInt(thangTrongNamObj.toString()));
+                }
+                if (ngayTrongNamObj != null) {
+                    thongBao.setNgayTrongNam(ngayTrongNamObj instanceof Integer ? (Integer) ngayTrongNamObj : Integer.parseInt(ngayTrongNamObj.toString()));
+                }
+            }
+            
+            // Tính ngày gửi tiếp theo
+            thongBao.setNgayGuiTiepTheo(tinhNgayGuiTiepTheo(thongBao));
+            
+            // Lưu vào database
+            ThongBao saved = thongBaoDAO.save(thongBao);
+            
+            return ResponseEntity.ok(saved);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Lỗi khi tạo thông báo: " + e.getMessage()));
+        }
+    }
+    
+    /**
+     * Lấy danh sách thông báo định kỳ
+     * URL: GET /admin/notifications/scheduled/list
+     */
+    @GetMapping("/notifications/scheduled/list")
+    @ResponseBody
+    public ResponseEntity<List<ThongBao>> layDanhSachThongBaoDinhKy() {
+        List<ThongBao> scheduledNotifications = thongBaoDAO.findAllDinhKyWithNguoiGuiEagerly();
+        return ResponseEntity.ok(scheduledNotifications);
+    }
+    
+    /**
+     * Bật/tắt thông báo định kỳ
+     * URL: POST /admin/notifications/scheduled/{id}/toggle
+     */
+    @PostMapping("/notifications/scheduled/{id}/toggle")
+    @ResponseBody
+    public ResponseEntity<ThongBao> toggleThongBaoDinhKy(@PathVariable Integer id) {
+        try {
+            ThongBao thongBao = thongBaoDAO.findById(id).orElse(null);
+            if (thongBao == null || !Boolean.TRUE.equals(thongBao.getLaDinhKy())) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Đảo trạng thái
+            thongBao.setTrangThaiHoatDong(!Boolean.TRUE.equals(thongBao.getTrangThaiHoatDong()));
+            
+            // Nếu kích hoạt lại, tính lại ngày gửi tiếp theo
+            if (Boolean.TRUE.equals(thongBao.getTrangThaiHoatDong())) {
+                thongBao.setNgayGuiTiepTheo(tinhNgayGuiTiepTheo(thongBao));
+            }
+            
+            ThongBao saved = thongBaoDAO.save(thongBao);
+            return ResponseEntity.ok(saved);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    /**
+     * Xóa thông báo định kỳ
+     * URL: DELETE /admin/notifications/scheduled/{id}/delete
+     */
+    @DeleteMapping("/notifications/scheduled/{id}/delete")
+    @ResponseBody
+    public ResponseEntity<Void> xoaThongBaoDinhKy(@PathVariable Integer id) {
+        try {
+            ThongBao thongBao = thongBaoDAO.findById(id).orElse(null);
+            if (thongBao == null || !Boolean.TRUE.equals(thongBao.getLaDinhKy())) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            thongBaoDAO.delete(thongBao);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    
+    /**
+     * Tính ngày gửi tiếp theo cho thông báo định kỳ
+     */
+    private java.time.LocalDateTime tinhNgayGuiTiepTheo(ThongBao thongBao) {
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime next = now;
+        
+        // Set giờ và phút
+        next = next.withHour(thongBao.getGioGui() != null ? thongBao.getGioGui() : 9);
+        next = next.withMinute(thongBao.getPhutGui() != null ? thongBao.getPhutGui() : 0);
+        next = next.withSecond(0);
+        next = next.withNano(0);
+        
+        // Nếu thời gian đã qua hôm nay, chuyển sang chu kỳ tiếp theo
+        if (next.isBefore(now) || next.isEqual(now)) {
+            if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_TUAN) {
+                next = next.plusWeeks(1);
+            } else if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_THANG) {
+                next = next.plusMonths(1);
+            } else if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_NAM) {
+                next = next.plusYears(1);
+            }
+        }
+        
+        // Điều chỉnh theo chu kỳ cụ thể
+        if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_TUAN && thongBao.getThuTrongTuan() != null) {
+            // Tìm ngày trong tuần tiếp theo
+            int targetDay = thongBao.getThuTrongTuan(); // 1=CN, 2=T2, ..., 7=T7
+            int currentDay = next.getDayOfWeek().getValue() % 7 + 1; // Chuyển sang 1=CN
+            
+            int daysToAdd = (targetDay - currentDay + 7) % 7;
+            if (daysToAdd == 0 && next.isBefore(now)) {
+                daysToAdd = 7;
+            }
+            next = next.plusDays(daysToAdd);
+            
+        } else if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_THANG && thongBao.getNgayTrongThang() != null) {
+            next = next.withDayOfMonth(Math.min(thongBao.getNgayTrongThang(), next.toLocalDate().lengthOfMonth()));
+            if (next.isBefore(now)) {
+                next = next.plusMonths(1);
+                next = next.withDayOfMonth(Math.min(thongBao.getNgayTrongThang(), next.toLocalDate().lengthOfMonth()));
+            }
+            
+        } else if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_NAM && 
+                   thongBao.getThangTrongNam() != null && thongBao.getNgayTrongNam() != null) {
+            next = next.withMonth(thongBao.getThangTrongNam());
+            next = next.withDayOfMonth(Math.min(thongBao.getNgayTrongNam(), 
+                    java.time.YearMonth.of(next.getYear(), thongBao.getThangTrongNam()).lengthOfMonth()));
+            if (next.isBefore(now)) {
+                next = next.plusYears(1);
+            }
+        }
+        
+        return next;
+    }
+    
     /**
      * Hiển thị trang báo cáo thống kê tổng hợp
      * URL: /admin/reports

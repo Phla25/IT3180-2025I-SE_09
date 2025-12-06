@@ -3,9 +3,11 @@ package BlueMoon.bluemoon;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @SpringBootApplication
+@EnableScheduling
 @ComponentScan(basePackages = {"BlueMoon", "BlueMoon.bluemoon"})
 public class BluemoonApplication {
 

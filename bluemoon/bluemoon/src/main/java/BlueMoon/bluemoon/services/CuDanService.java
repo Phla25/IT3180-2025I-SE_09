@@ -189,14 +189,9 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
     public List<DoiTuong> layTatCaNguoiDung() {
         return doiTuongDAO.findAll();
     }
+
     public List<DoiTuong> timKiemvaLoc(String keyword, ResidentStatus trangThaiDanCu, AccountStatus accountStatus) {
-        if ((keyword != null && !keyword.trim().isEmpty()) || trangThaiDanCu != null|| accountStatus != null) {
-            return doiTuongDAO.searchResidentsAndFilter(keyword, trangThaiDanCu, accountStatus);
-        }
-        return doiTuongDAO.findResidentsInComplex(ResidentStatus.o_chung_cu);
-    }
-    public List<DoiTuong> timKiemvaLoc(String keyword, ResidentStatus trangThaiDanCu, AccountStatus accountStatus) {
-        if ((keyword != null && !keyword.trim().isEmpty()) || trangThaiDanCu != null|| accountStatus != null) {
+        if ((keyword != null && !keyword.trim().isEmpty()) || trangThaiDanCu != null || accountStatus != null) {
             return doiTuongDAO.searchResidentsAndFilter(keyword, trangThaiDanCu, accountStatus);
         }
         return doiTuongDAO.findResidentsInComplex(ResidentStatus.o_chung_cu);
