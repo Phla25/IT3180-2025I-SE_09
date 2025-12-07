@@ -33,6 +33,8 @@ import BlueMoon.bluemoon.services.TaiSanChungCuService; // Import TaiSanChungCuS
 import BlueMoon.bluemoon.utils.Gender; // Cần thiết nếu dùng Enum trực tiếp
 import BlueMoon.bluemoon.utils.IncidentStatus;
 import BlueMoon.bluemoon.utils.PriorityLevel;
+import BlueMoon.bluemoon.services.CuDanService;
+import BlueMoon.bluemoon.services.HoGiaDinhService;
 
 @Controller
 @RequestMapping("/officer")
@@ -40,6 +42,12 @@ public class OfficerController {
 
     @Autowired
     private NguoiDungService nguoiDungService;
+
+    @Autowired 
+    private CuDanService cuDanService;
+
+    @Autowired
+    private HoGiaDinhService hoGiaDinhService;
     
     @Autowired
     private BaoCaoSuCoService suCoService; 
@@ -472,5 +480,66 @@ public class OfficerController {
         
         // Trả về Fragment
         return "incident-officer :: detailContent";
+    }
+
+    // =======================================================
+    // BÁO CÁO THỐNG KÊ TỔNG HỢP
+    // =======================================================
+
+    /**
+     * Hiển thị trang báo cáo thống kê tổng hợp cho Cơ quan chức năng
+     * URL: /officer/reports
+     */
+    @GetMapping("/reports")
+    public String showUnifiedReport(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+
+        // === PHẦN 1: DỮ LIỆU TÀI SẢN CHUNG ===
+        java.util.Map<String, Object> assetStats = taiSanChungCuService.getGeneralAssetStatistics();
+        model.addAttribute("assetTypeLabels", assetStats.get("typeLabels"));
+        model.addAttribute("assetTypeData", assetStats.get("typeData"));
+        model.addAttribute("assetStatusLabels", assetStats.get("statusLabels"));
+        model.addAttribute("assetStatusData", assetStats.get("statusData"));
+        model.addAttribute("assetLocationLabels", assetStats.get("locationLabels"));
+        model.addAttribute("assetLocationData", assetStats.get("locationData"));
+
+        // Danh sách bảng tài sản
+        model.addAttribute("assetList", taiSanChungCuService.getGeneralAssetListReport());
+
+        // === PHẦN 2: DỮ LIỆU CƯ DÂN ===
+        // A. Thống kê theo Tòa/Tầng
+        java.util.Map<String, Object> buildingStats = taiSanChungCuService.getChartData();
+
+        // Xử lý dữ liệu Tầng
+        java.util.Map<Integer, Long> floorMap = (java.util.Map<Integer, Long>) buildingStats.get("floorStats");
+        java.util.List<String> floorLabels = new java.util.ArrayList<>();
+        java.util.List<Long> floorData = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<Integer, Long> e : floorMap.entrySet()) {
+            floorLabels.add("Tầng " + e.getKey());
+            floorData.add(e.getValue());
+        }
+        model.addAttribute("floorLabels", floorLabels);
+        model.addAttribute("floorData", floorData);
+
+        // B. Thống kê Giới tính & Trạng thái
+        java.util.Map<String, Object> residentStats = cuDanService.getResidentStatistics();
+        model.addAttribute("genderLabels", residentStats.get("genderLabels"));
+        model.addAttribute("genderData", residentStats.get("genderData"));
+        model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
+        model.addAttribute("resStatusData", residentStats.get("resStatusData"));
+        model.addAttribute("ageLabels", residentStats.get("ageLabels"));
+        model.addAttribute("ageData", residentStats.get("ageData"));
+
+        // === PHẦN 3: DỮ LIỆU HỘ GIA ĐÌNH ===
+        java.util.Map<String, Object> householdStats = hoGiaDinhService.getHouseholdStatistics();
+        model.addAttribute("householdFloorLabels", householdStats.get("householdFloorLabels"));
+        model.addAttribute("householdFloorData", householdStats.get("householdFloorData"));
+        model.addAttribute("averageMembers", householdStats.get("averageMembers"));
+        model.addAttribute("totalHouseholds", householdStats.get("totalHouseholds"));
+        model.addAttribute("totalMembers", householdStats.get("totalMembers"));
+        model.addAttribute("householdSizeLabels", householdStats.get("householdSizeLabels"));
+        model.addAttribute("householdSizeData", householdStats.get("householdSizeData"));
+
+        return "reports-dashboard-officer";
     }
 }

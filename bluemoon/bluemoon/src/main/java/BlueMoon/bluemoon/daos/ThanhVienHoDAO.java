@@ -1,5 +1,6 @@
 package BlueMoon.bluemoon.daos;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -73,5 +74,12 @@ public class ThanhVienHoDAO {
 
     public ThanhVienHo save(ThanhVienHo thanhVien) {
         return entityManager.merge(thanhVien);
+    }
+
+    public List<ThanhVienHo> findActiveByMaHo(String maHo) {
+        String jpql = "SELECT tvh FROM ThanhVienHo tvh WHERE tvh.hoGiaDinh.maHo = :maHo AND tvh.ngayKetThuc IS NULL";
+        return entityManager.createQuery(jpql, ThanhVienHo.class)
+                            .setParameter("maHo", maHo)
+                            .getResultList();
     }
 }

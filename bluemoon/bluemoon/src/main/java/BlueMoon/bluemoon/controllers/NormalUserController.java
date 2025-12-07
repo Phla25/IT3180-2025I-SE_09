@@ -27,6 +27,7 @@ import BlueMoon.bluemoon.entities.DichVu;
 import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.HoaDon;
+import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.entities.ThongBao;
 import BlueMoon.bluemoon.models.ApartmentReportDTO;
 import BlueMoon.bluemoon.models.DichVuStatsDTO;
@@ -797,5 +798,45 @@ public class NormalUserController {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi gửi báo cáo: " + e.getMessage());
             return "redirect:/resident/incident-report";
         }
+    }
+    @GetMapping("/resident/my-household")
+    public String showMyApartment(Model model, Authentication auth) {
+        DoiTuong currentUser = getCurrentUser(auth);
+        if (currentUser == null) {
+            return "redirect:/login?error=auth";
+        }
+        model.addAttribute("user", currentUser);
+        try {
+            // Lấy thông tin hộ gia đình
+            Optional<HoGiaDinh> hoGiaDinhOpt = thanhVienHoService.getHoGiaDinhByCccd(currentUser.getCccd());
+
+            if (hoGiaDinhOpt.isEmpty()) {
+                model.addAttribute("message", "Bạn chưa được đăng ký vào hộ gia đình nào.");
+                model.addAttribute("maHo", "N/A");
+                model.addAttribute("members", Collections.emptyList());
+                return "my-assets-resident";
+            }
+            HoGiaDinh hoGiaDinh = hoGiaDinhOpt.get();
+            String maHo = hoGiaDinh.getMaHo();
+
+            // Lấy thông tin chủ hộ
+            Optional<DoiTuong> chuHoOpt = thanhVienHoService.getChuHoByMaHo(maHo);
+            String tenChuHo = chuHoOpt.isPresent() ? chuHoOpt.get().getHoVaTen() : "N/A";
+
+            // Lấy danh sách thành viên bằng query trực tiếp (đã sort chủ hộ lên đầu)
+            List<ThanhVienHo> members = thanhVienHoService.getActiveByMaHo(maHo);
+            model.addAttribute("hoGiaDinh", hoGiaDinh);
+            model.addAttribute("maHo", maHo);
+            model.addAttribute("tenChuHo", tenChuHo);
+            model.addAttribute("tongThanhVien", members.size());
+            model.addAttribute("members", members);
+
+        } catch (Exception e) {
+            model.addAttribute("message", "Không thể tải thông tin căn hộ: " + e.getMessage());
+            model.addAttribute("maHo", "N/A");
+            model.addAttribute("members", Collections.emptyList());
+        }
+
+        return "my-household-resident";
     }
 }

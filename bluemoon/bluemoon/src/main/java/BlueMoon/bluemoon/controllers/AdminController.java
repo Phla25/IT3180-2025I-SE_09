@@ -1947,7 +1947,7 @@ public class AdminController {
         model.addAttribute("householdSizeLabels", householdStats.get("householdSizeLabels"));
         model.addAttribute("householdSizeData", householdStats.get("householdSizeData"));
 
-        return "reports-dashboard";
+        return "reports-dashboard-admin";
     }
     // =======================================================
     // XỬ LÝ SỰ CỐ
