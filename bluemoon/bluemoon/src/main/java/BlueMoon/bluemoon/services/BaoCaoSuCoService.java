@@ -149,4 +149,44 @@ public class BaoCaoSuCoService {
     public int countSuCoDangXuLyByNguoiDung(String cccd) {
         return suCoDAO.sumSoSuCoByNguoiBaoCaoAndTrangThai(cccd, IncidentStatus.dang_xu_ly);
     }
+
+    @Autowired private ThongBaoService thongBaoService; // Inject thêm
+
+    /**
+     * Cập nhật trạng thái/mức độ sự cố và gửi thông báo cho người dân
+     */
+    @Transactional
+    public void capNhatTrangThaiSuCo(Integer maBaoCao, IncidentStatus trangThaiMoi, PriorityLevel mucDoMoi) {
+        BaoCaoSuCo suCo = suCoDAO.findById(maBaoCao)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy sự cố #" + maBaoCao));
+
+        IncidentStatus trangThaiCu = suCo.getTrangThai();
+        
+        // Cập nhật dữ liệu
+        if (trangThaiMoi != null) suCo.setTrangThai(trangThaiMoi);
+        if (mucDoMoi != null) suCo.setMucDoUuTien(mucDoMoi);
+        
+        suCo.setThoiGianCapNhat(java.time.LocalDateTime.now());
+        
+        suCoDAO.save(suCo);
+
+        // === LOGIC THÔNG BÁO: Gửi cho người báo cáo nếu trạng thái thay đổi ===
+        if (trangThaiMoi != null && trangThaiCu != trangThaiMoi) {
+            DoiTuong nguoiNhan = suCo.getNguoiBaoCao();
+            
+            // Chỉ gửi nếu người báo cáo là cư dân (có tài khoản)
+            if (nguoiNhan != null) {
+                String tieuDe = "Cập nhật tiến độ sự cố #" + suCo.getMaBaoCao();
+                String noiDung = "Kính chào " + nguoiNhan.getHoVaTen() + ",\n" +
+                                 "Sự cố '" + suCo.getTieuDe() + "' bạn đã báo cáo " +
+                                 "đã được chuyển sang trạng thái: " + trangThaiMoi.getDbValue() + ".";
+                
+                try {
+                    thongBaoService.guiThongBaoCaNhan(nguoiNhan, tieuDe, noiDung);
+                } catch (Exception e) {
+                    System.err.println("Lỗi gửi thông báo cá nhân: " + e.getMessage());
+                }
+            }
+        }
+    }
 }

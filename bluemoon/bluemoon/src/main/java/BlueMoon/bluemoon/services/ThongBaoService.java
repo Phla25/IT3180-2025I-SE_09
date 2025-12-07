@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import BlueMoon.bluemoon.daos.DoiTuongDAO;
 import BlueMoon.bluemoon.daos.PhanHoiThongBaoDAO;
 import BlueMoon.bluemoon.daos.ThongBaoDAO;
 import BlueMoon.bluemoon.entities.DoiTuong;
@@ -80,6 +81,56 @@ public class ThongBaoService {
             .collect(Collectors.toList());
     }
 
+    @Autowired private DoiTuongDAO doiTuongDAO; // Inject thêm
 
+    // Helper: Lấy đại diện BQT để làm người gửi hệ thống
+    private DoiTuong getSystemSender() {
+        // Tìm người đầu tiên có vai trò ban_quan_tri
+        return doiTuongDAO.findAll().stream()
+                .filter(u -> u.getVaiTro() == BlueMoon.bluemoon.utils.UserRole.ban_quan_tri)
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Hệ thống cần ít nhất 1 tài khoản Ban Quản Trị để gửi thông báo tự động."));
+    }
 
+    /**
+     * Gửi thông báo đến TOÀN BỘ cư dân (Broadcast)
+     */
+    @Transactional
+    public void guiThongBaoHeThongDenTatCa(String tieuDe, String noiDung) {
+        ThongBao thongBao = new ThongBao();
+        thongBao.setTieuDe(tieuDe);
+        thongBao.setNoiDung(noiDung);
+        thongBao.setNguoiGui(getSystemSender()); // Người gửi là BQT
+        thongBao.setNguoiNhan(null); // Null nghĩa là gửi tất cả
+        thongBao.setDoiTuongNhan(BlueMoon.bluemoon.utils.RecipientType.tat_ca);
+        thongBao.setLoaiThongBao(BlueMoon.bluemoon.utils.NotificationType.quan_trong); // Hoặc urgent/normal tùy logic
+        thongBao.setThoiGianGui(LocalDateTime.now());
+        thongBao.setTrangThaiHienThi(true);
+        
+        thongBaoDAO.save(thongBao);
+    }
+
+    /**
+     * Gửi thông báo đến MỘT cá nhân cụ thể
+     */
+    @Transactional
+    public void guiThongBaoCaNhan(DoiTuong nguoiNhan, String tieuDe, String noiDung) {
+        ThongBao thongBao = new ThongBao();
+        thongBao.setTieuDe(tieuDe);
+        thongBao.setNoiDung(noiDung);
+        thongBao.setNguoiGui(getSystemSender());
+        thongBao.setNguoiNhan(nguoiNhan); // Gán người nhận cụ thể
+        // Giả sử RecipientType có giá trị 'ca_nhan' hoặc 'cu_dan', nếu không có thì set null hoặc logic tương ứng
+        thongBao.setDoiTuongNhan(BlueMoon.bluemoon.utils.RecipientType.ca_nhan); // Tạm thời set tat_ca nhưng có nguoiNhan cụ thể
+        // Tốt nhất nên thêm giá trị CA_NHAN vào Enum RecipientType
+        
+        thongBao.setLoaiThongBao(BlueMoon.bluemoon.utils.NotificationType.binh_thuong);
+        thongBao.setThoiGianGui(LocalDateTime.now());
+        thongBao.setTrangThaiHienThi(true);
+
+        thongBaoDAO.save(thongBao);
+    }
+    public List<ThongBao> layThongBaoChoCuDan(String cccd) {
+        return thongBaoDAO.findForResident(cccd, BlueMoon.bluemoon.utils.RecipientType.tat_ca);
+    }
 }

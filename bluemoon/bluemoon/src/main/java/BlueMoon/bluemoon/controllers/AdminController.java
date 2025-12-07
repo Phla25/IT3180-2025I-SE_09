@@ -2116,34 +2116,32 @@ public class AdminController {
     }
     
     // 5. MỚI: API Cập nhật trạng thái sự cố (Dùng cho Modal)
+    // Trong BlueMoon/bluemoon/controllers/AdminController.java
+
+    // 5. MỚI: API Cập nhật trạng thái sự cố (Dùng cho Modal)
     @org.springframework.web.bind.annotation.PutMapping("/incidents/update/{id}")
-    @org.springframework.web.bind.annotation.ResponseBody // Trả về JSON
+    @org.springframework.web.bind.annotation.ResponseBody 
     public ResponseEntity<?> updateIncidentStatus(@PathVariable Integer id, 
                                                   @RequestBody Map<String, String> payload) {
         try {
-            BaoCaoSuCo suCo = suCoDAO.findById(id).orElse(null);
-            if (suCo == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Không tìm thấy sự cố!"));
-            }
-
-            // Lấy dữ liệu từ JSON gửi lên
+            // Lấy dữ liệu từ JSON
             String trangThaiStr = payload.get("trangThai");
             String mucDoStr = payload.get("mucDo");
 
-            if (trangThaiStr != null) {
-                suCo.setTrangThai(IncidentStatus.valueOf(trangThaiStr));
-            }
-            if (mucDoStr != null) {
-                suCo.setMucDoUuTien(PriorityLevel.valueOf(mucDoStr));
-            }
-            
-            // Cập nhật thời gian
-            suCo.setThoiGianCapNhat(java.time.LocalDateTime.now());
+            IncidentStatus trangThai = null;
+            PriorityLevel mucDo = null;
 
-            suCoDAO.save(suCo); // Lưu thay đổi
+            if (trangThaiStr != null) trangThai = IncidentStatus.valueOf(trangThaiStr);
+            if (mucDoStr != null) mucDo = PriorityLevel.valueOf(mucDoStr);
 
-            return ResponseEntity.ok(Map.of("message", "Cập nhật thành công!"));
+            // GỌI SERVICE (Đã bao gồm logic lưu DB và gửi thông báo)
+            baoCaoSuCoService.capNhatTrangThaiSuCo(id, trangThai, mucDo);
+
+            return ResponseEntity.ok(Map.of("message", "Cập nhật thành công và đã gửi thông báo!"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }

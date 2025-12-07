@@ -212,15 +212,20 @@ public class TaiSanChungCuService {
      * @param maHo Mã Hộ gia đình mới liên kết (có thể là null để gỡ liên kết).
      * @return TaiSanChungCu đã được cập nhật.
      */
+    @Autowired private ThongBaoService thongBaoService; // Inject thêm
+
     @Transactional
     public TaiSanChungCu capNhatTaiSanChung(Integer maTaiSan, TaiSanChungCu taiSanCapNhat, String maHo) {
         TaiSanChungCu taiSanHienTai = taiSanChungCuDAO.findByID(maTaiSan)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Tài Sản với Mã Tài Sản: " + maTaiSan));
 
+        // Lưu trạng thái cũ để so sánh
+        BlueMoon.bluemoon.utils.AssetStatus trangThaiCu = taiSanHienTai.getTrangThai();
+
         // 1. Cập nhật thông tin cơ bản
         taiSanHienTai.setTenTaiSan(taiSanCapNhat.getTenTaiSan());
-        taiSanHienTai.setLoaiTaiSan(taiSanCapNhat.getLoaiTaiSan()); // Cho phép đổi loại tài sản
-        taiSanHienTai.setTrangThai(taiSanCapNhat.getTrangThai());
+        taiSanHienTai.setLoaiTaiSan(taiSanCapNhat.getLoaiTaiSan());
+        taiSanHienTai.setTrangThai(taiSanCapNhat.getTrangThai()); // Trạng thái mới
         taiSanHienTai.setDienTich(taiSanCapNhat.getDienTich());
         taiSanHienTai.setGiaTri(taiSanCapNhat.getGiaTri());
         taiSanHienTai.setViTri(taiSanCapNhat.getViTri());
@@ -232,10 +237,28 @@ public class TaiSanChungCuService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình với Mã Hộ: " + maHo));
             taiSanHienTai.setHoGiaDinh(hgd);
         } else {
-             taiSanHienTai.setHoGiaDinh(null); // Gỡ liên kết
+             taiSanHienTai.setHoGiaDinh(null); 
         }
 
-        return taiSanChungCuDAO.save(taiSanHienTai);
+        TaiSanChungCu savedAsset = taiSanChungCuDAO.save(taiSanHienTai);
+
+        // === LOGIC THÔNG BÁO: Nếu trạng thái thay đổi -> Báo toàn bộ cư dân ===
+        if (trangThaiCu != savedAsset.getTrangThai()) {
+            String tieuDe = "Thông báo tài sản: " + savedAsset.getTenTaiSan() +" đã " + savedAsset.getTrangThai().getDbValue();
+            String noiDung = "Tài sản '" + savedAsset.getTenTaiSan() + "' (" + savedAsset.getViTri() + ") " +
+                             "đã chuyển trạng thái từ " + trangThaiCu.getDbValue() + 
+                             " sang " + savedAsset.getTrangThai().getDbValue() + ".";
+            
+            // Gọi service gửi thông báo (chạy ngầm hoặc trực tiếp)
+            try {
+                thongBaoService.guiThongBaoHeThongDenTatCa(tieuDe, noiDung);
+            } catch (Exception e) {
+                System.err.println("Lỗi gửi thông báo tự động: " + e.getMessage());
+                // Không throw exception để tránh rollback giao dịch cập nhật tài sản
+            }
+        }
+
+        return savedAsset;
     }
     /**
      * Cập nhật thông tin Căn hộ.
@@ -487,4 +510,5 @@ public class TaiSanChungCuService {
         }
         return result;
     }
+    
 }

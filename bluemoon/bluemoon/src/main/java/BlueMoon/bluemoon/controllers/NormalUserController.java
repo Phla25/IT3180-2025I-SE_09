@@ -788,7 +788,7 @@ public String handleBatchPayment(@RequestParam(value = "selectedIds", required =
         model.addAttribute("user", currentUser);
 
         // Lấy danh sách thông báo Entity từ service
-        List<ThongBao> thongBaos = thongBaoService.layTatCaThongBaoMoiNhat();
+        List<ThongBao> thongBaos = thongBaoService.layThongBaoChoCuDan(currentUser.getCccd());
         
         // ✅ CHUYỂN ĐỔI Entity sang DTO
         List<ThongBaoDTO> thongBaoDTOs = thongBaos.stream()
