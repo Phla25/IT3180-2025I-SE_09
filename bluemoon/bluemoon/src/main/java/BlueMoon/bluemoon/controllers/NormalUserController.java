@@ -1,6 +1,8 @@
 package BlueMoon.bluemoon.controllers;
 
 import java.io.IOException;
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -48,6 +50,8 @@ import BlueMoon.bluemoon.services.NguoiDungService;
 import BlueMoon.bluemoon.services.ReportService;
 import BlueMoon.bluemoon.services.ThanhVienHoService;
 import BlueMoon.bluemoon.services.ThongBaoService;
+import BlueMoon.bluemoon.utils.InvoiceStatus;
+import jakarta.servlet.http.HttpSession;
 
 @Controller
 public class NormalUserController {
@@ -107,18 +111,26 @@ public class NormalUserController {
         // Mock DichVuStatsDTO
         // Mock DichVuStatsDTO (Bổ sung thiết lập trạng thái mặc định)
         DichVuStatsDTO dichVuStats = new DichVuStatsDTO();
-        dichVuStats.setTongDichVu(0); // Đảm bảo số lượng dịch vụ là 0 khi mock
-        dichVuStats.setTrangThai("Chưa đăng ký dịch vụ"); // Đặt giá trị cho trangThai
+        int tongDichVu = dangKyDichVuService.countDichVuDaDangKyByNguoiDung(currentUser.getCccd());
+        dichVuStats.setTongDichVu(tongDichVu); // Đảm bảo số lượng dịch vụ là 0 khi mock
+        String trangThai = tongDichVu > 0 ? ("Đã đăng ký " + tongDichVu + " dịch vụ") : "Chưa đăng ký dịch vụ";
+        dichVuStats.setTrangThai(trangThai); // Đặt giá trị cho trangThai
         model.addAttribute("dichVuStats", dichVuStats);
-        
-        // Mock SuCoStatsDTO (Sử dụng constructor có tham số)
-        model.addAttribute("suCoStats", new SuCoStatsDTO(0, 0.0, 0.0));
-        
+        @SuppressWarnings("UnnecessaryUnboxing")
+        int tongSuCo = baoCaoSuCoService.countAllSuCoByNguoiDung(currentUser.getCccd()).intValue();
+        int soSuCoDaXuLy = baoCaoSuCoService.getSuCoDaXuLyTheoNguoiDung(currentUser.getCccd());
+        Double tyLeDaXuLy = (double) soSuCoDaXuLy / tongSuCo * 100;
+        int soSuCoDangXuLy = baoCaoSuCoService.countSuCoDangXuLyByNguoiDung(currentUser.getCccd());
+        Double tyLeDangXuLy = (double) soSuCoDangXuLy / tongSuCo * 100;
+        model.addAttribute("suCoStats", new SuCoStatsDTO(tongSuCo, tyLeDaXuLy, tyLeDangXuLy));
         // Mock ThongBaoStatsDTO (Sử dụng constructor có tham số)
         model.addAttribute("thongBaoStats", new ThongBaoStatsDTO(0, "Không có thông báo mới")); 
         
-        // Mock HoGiaDinhStatsDTO (Giả định đã tạo HoGiaDinhStatsDTO với constructor mặc định)
-        model.addAttribute("hoGiaDinhStats", new HoGiaDinhDTO());
+        HoGiaDinhDTO hoGiaDinhStats = new HoGiaDinhDTO();
+        hoGiaDinhStats.setTongThanhVien(thanhVienHoService.countThanhVienByHoGiaDinh(hoGiaDinh));
+        hoGiaDinhStats.setMaCanHo(canHoInfo.getMaCanHo());
+        hoGiaDinhStats.setChuHo(canHoInfo.getChuHo());
+        model.addAttribute("hoGiaDinhStats", hoGiaDinhStats);
 
         return "dashboard-resident";
     }
@@ -282,37 +294,142 @@ public class NormalUserController {
         
         return "fee-details-resident"; // Tên file Thymeleaf mới
     }
+
+// THÊM/THAY THẾ 2 METHOD THANH TOÁN TRONG NormalUserController.java
+
+/**
+ * ✨ Xử lý yêu cầu thanh toán 1 hóa đơn - Chuyển sang trang chi tiết
+ * URL: /resident/fee-pay (POST)
+ */
+@PostMapping("/resident/fee-pay")
+public String handleFeePayment(@RequestParam("maHoaDon") Integer maHoaDon, 
+                               Authentication auth,
+                               RedirectAttributes redirectAttributes) {
+    DoiTuong currentUser = getCurrentUser(auth);
+    if (currentUser == null) {
+        redirectAttributes.addFlashAttribute("errorMessage", "Lỗi xác thực.");
+        return "redirect:/resident/fees";
+    }
     
-    /**
-     * CẬP NHẬT: Xử lý yêu cầu thanh toán hóa đơn.
-     * URL: /resident/fee-pay
-     */
-    @PostMapping("/resident/fee-pay")
-    public String handleFeePayment(@RequestParam("maHoaDon") Integer maHoaDon, 
-                                   Authentication auth,
-                                   RedirectAttributes redirectAttributes) {
-        DoiTuong currentUser = getCurrentUser(auth);
-        if (currentUser == null) {
-             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi xác thực.");
+    try {
+        // Cập nhật trạng thái hóa đơn sang "Chờ xác nhận"
+        hoaDonService.markAsPaidByResident(maHoaDon, currentUser); 
+        
+        redirectAttributes.addFlashAttribute("successMessage", 
+            "Yêu cầu thanh toán Hóa đơn #" + maHoaDon + " đã được ghi nhận. Vui lòng thực hiện chuyển khoản.");
+        
+        // ✨ Chuyển về trang chi tiết
+        return "redirect:/resident/fee-detail?id=" + maHoaDon; 
+        
+    } catch (IllegalArgumentException e) {
+        redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+        return "redirect:/resident/fee-detail?id=" + maHoaDon;
+    } catch (Exception e) {
+        redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống khi thanh toán: " + e.getMessage());
+        return "redirect:/resident/fee-detail?id=" + maHoaDon;
+    }
+}
+
+/**
+ * ✨ Xử lý thanh toán nhiều hóa đơn cùng lúc
+ * URL: /resident/payment/pay-all (POST)
+ */
+@PostMapping("/resident/payment/pay-all")
+public String handleBatchPayment(@RequestParam(value = "selectedIds", required = false) List<Integer> selectedIds,
+                                 Authentication auth,
+                                 HttpSession session,
+                                 RedirectAttributes redirectAttributes) {
+    DoiTuong currentUser = getCurrentUser(auth);
+    if (currentUser == null) {
+        return "redirect:/login?error=auth";
+    }
+    
+    if (selectedIds == null || selectedIds.isEmpty()) {
+        redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn ít nhất một hóa đơn để thanh toán.");
+        return "redirect:/resident/fees";
+    }
+    
+    try {
+        int successCount = 0;
+        BigDecimal tongTien = BigDecimal.ZERO;
+        List<Integer> successIds = new ArrayList<>();
+        
+        // Cập nhật trạng thái từng hóa đơn
+        for (Integer maHoaDon : selectedIds) {
+            try {
+                HoaDon hd = hoaDonService.getHoaDonById(maHoaDon).orElse(null);
+                if (hd != null && hd.getTrangThai() != InvoiceStatus.da_thanh_toan) {
+                    hoaDonService.markAsPaidByResident(maHoaDon, currentUser);
+                    tongTien = tongTien.add(hd.getSoTien());
+                    successIds.add(maHoaDon);
+                    successCount++;
+                }
+            } catch (Exception e) {
+                System.err.println("Lỗi thanh toán hóa đơn #" + maHoaDon + ": " + e.getMessage());
+            }
+        }
+        
+        if (successCount > 0) {
+            // ✨ Lưu thông tin vào session để hiển thị trên trang batch-payment-info
+            session.setAttribute("batchPaymentIds", successIds);
+            session.setAttribute("batchPaymentTotal", tongTien);
+            session.setAttribute("batchPaymentCount", successCount);
+            
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Đã tạo yêu cầu thanh toán cho " + successCount + " hóa đơn. Tổng tiền: " + 
+                tongTien.toString() + " ₫. Vui lòng chuyển khoản theo thông tin bên dưới.");
+            
+            // ✨ Chuyển sang trang hiển thị thông tin thanh toán gộp
+            return "redirect:/resident/batch-payment-info";
+        } else {
+            redirectAttributes.addFlashAttribute("errorMessage", "Không có hóa đơn nào được xử lý.");
             return "redirect:/resident/fees";
         }
         
-        try {
-            // Service cập nhật trạng thái và lưu CCCD của người yêu cầu thanh toán
-            hoaDonService.markAsPaidByResident(maHoaDon, currentUser); 
-            
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Yêu cầu thanh toán Hóa đơn #" + maHoaDon + " đã được ghi nhận. Vui lòng thực hiện chuyển khoản.");
-            
-            // ✨ THAY ĐỔI: Chuyển hướng người dùng đến trang chi tiết để xem QR code
-            return "redirect:/resident/fee-detail?id=" + maHoaDon; 
-        } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            return "redirect:/resident/fee-detail?id=" + maHoaDon;
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống khi thanh toán: " + e.getMessage());
-            return "redirect:/resident/fee-detail?id=" + maHoaDon;
+    } catch (Exception e) {
+        redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+        return "redirect:/resident/fees";
+    }
+}
+
+    /**
+     * ✨ Hiển thị trang thông tin thanh toán gộp
+     * URL: /resident/batch-payment-info (GET)
+     */
+    @GetMapping("/resident/batch-payment-info")
+    public String showBatchPaymentInfo(Model model, 
+                                      Authentication auth,
+                                      HttpSession session) {
+        DoiTuong currentUser = getCurrentUser(auth);
+        if (currentUser == null) {
+            return "redirect:/login?error=auth";
         }
+    
+        // Lấy thông tin từ session
+        @SuppressWarnings("unchecked")
+        List<Integer> batchIds = (List<Integer>) session.getAttribute("batchPaymentIds");
+        BigDecimal totalAmount = (BigDecimal) session.getAttribute("batchPaymentTotal");
+        Integer count = (Integer) session.getAttribute("batchPaymentCount");
+    
+        if (batchIds == null || batchIds.isEmpty()) {
+            return "redirect:/resident/fees?error=session_expired";
+        }
+    
+        // Lấy danh sách hóa đơn chi tiết
+        List<HoaDon> hoaDonList = new ArrayList<>();
+        for (Integer id : batchIds) {
+            hoaDonService.getHoaDonById(id).ifPresent(hoaDonList::add);
+        }
+    
+        model.addAttribute("user", currentUser);
+        model.addAttribute("hoaDonList", hoaDonList);
+        model.addAttribute("totalAmount", totalAmount);
+        model.addAttribute("invoiceCount", count);
+        model.addAttribute("invoiceIds", batchIds.stream()
+            .map(String::valueOf)
+            .collect(Collectors.joining(", ")));
+    
+        return "batch-payment-info"; // ✨ Trang HTML mới
     }
     /**
      * Hiển thị danh sách Dịch vụ có thể đăng ký (Đang hoạt động)

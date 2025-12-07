@@ -41,29 +41,42 @@ public class HoaDonService {
     private ThanhVienHoService thanhVienHoService;
 
     /**
-     * Lấy thông tin thống kê hóa đơn chính cho dashboard cư dân.
+     * Lấy thông tin thống kê hóa đơn chính cho dashboard cư dân (DỮ LIỆU THẬT).
      */
     public HoaDonStatsDTO getHoaDonStats(HoGiaDinh hoGiaDinh) {
-        if (hoGiaDinh == null) {
-            return new HoaDonStatsDTO();
-        }
-        
-        // Cần cập nhật DAO để lọc theo Hộ nếu cần, tạm thời vẫn dùng DAO cũ
-        BigDecimal tongChuaThanhToan = hoaDonDAO.sumSoTienByTrangThai(InvoiceStatus.chua_thanh_toan); 
-        Long soLuongChuaThanhToan = hoaDonDAO.countByTrangThai(InvoiceStatus.chua_thanh_toan); 
-        
         HoaDonStatsDTO stats = new HoaDonStatsDTO();
-        stats.tongChuaThanhToan = tongChuaThanhToan;
-        stats.tongHoaDonChuaThanhToan = soLuongChuaThanhToan.intValue();
-
-        if (soLuongChuaThanhToan > 0) {
-            stats.trangThai = soLuongChuaThanhToan + " chưa thanh toán";
-        } else {
-             stats.trangThai = "Tất cả đã thanh toán";
+        
+        if (hoGiaDinh == null) {
+            return stats;
         }
+        
+        // 1. Lấy tất cả hóa đơn của hộ này
+        List<HoaDon> invoices = getAllHoaDonByHo(hoGiaDinh); 
+        
+        // 2. Lọc các hóa đơn Chưa thanh toán hoặc Quá hạn
+        List<HoaDon> pendingInvoices = invoices.stream()
+            .filter(hd -> hd.getTrangThai() == InvoiceStatus.chua_thanh_toan || hd.getTrangThai() == InvoiceStatus.qua_han)
+            .collect(Collectors.toList());
+            
+        // 3. Tính tổng tiền
+        BigDecimal tongChuaThanhToan = pendingInvoices.stream()
+            .map(HoaDon::getSoTien)
+            .reduce(BigDecimal.ZERO, BigDecimal::add); // Cộng dồn số tiền
+            
+        int soLuong = pendingInvoices.size();
+        
+        // 4. Gán vào DTO
+        stats.tongChuaThanhToan = tongChuaThanhToan;
+        stats.tongHoaDonChuaThanhToan = soLuong;
+
+        if (soLuong > 0) {
+            stats.trangThai = soLuong + " hóa đơn chưa thanh toán";
+        } else {
+             stats.trangThai = "Đã thanh toán hết";
+        }
+        
         return stats;
     }
-    
     /**
      * Lấy danh sách hóa đơn gần đây nhất của một hộ gia đình.
      */
@@ -557,5 +570,68 @@ public class HoaDonService {
         
         // 6. Lưu vào DB
         hoaDonDAO.save(hd);
+    }
+    /**
+     * Duyệt nhiều hóa đơn cùng lúc (Batch Confirmation)
+     * @param maHoaDonList Danh sách ID hóa đơn cần duyệt
+     * @return Số lượng hóa đơn được duyệt thành công
+     */
+    @Transactional
+    public int confirmMultiplePayments(List<Integer> maHoaDonList) {
+        int successCount = 0;
+    
+        for (Integer maHoaDon : maHoaDonList) {
+            try {
+                HoaDon hd = hoaDonDAO.findById(maHoaDon)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hóa đơn #" + maHoaDon));
+
+                // Chỉ duyệt những hóa đơn đang ở trạng thái "Chờ xác nhận"
+                if (hd.getTrangThai() == InvoiceStatus.cho_xac_nhan) {
+                    hd.setTrangThai(InvoiceStatus.da_thanh_toan);
+                    hd.setNgayThanhToan(LocalDateTime.now());
+                    hoaDonDAO.save(hd);
+                    successCount++;
+                }
+            } catch (Exception e) {
+                // Log lỗi nhưng tiếp tục duyệt các hóa đơn khác
+                System.err.println("Lỗi duyệt hóa đơn #" + maHoaDon + ": " + e.getMessage());
+            }
+        }
+    
+        return successCount;
+    }
+
+    /**
+     * Từ chối nhiều hóa đơn cùng lúc
+     * @param maHoaDonList Danh sách ID hóa đơn cần từ chối
+     * @param nguoiXacNhan Kế toán/Admin thực hiện
+     * @return Số lượng hóa đơn bị từ chối
+     */
+    @Transactional
+    public int rejectMultiplePayments(List<Integer> maHoaDonList, DoiTuong nguoiXacNhan) {
+        int successCount = 0;
+    
+        for (Integer maHoaDon : maHoaDonList) {
+            try {
+                HoaDon hd = hoaDonDAO.findById(maHoaDon)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hóa đơn #" + maHoaDon));
+
+                if (hd.getTrangThai() == InvoiceStatus.cho_xac_nhan) {
+                    // Chuyển về trạng thái "Chưa thanh toán"
+                    if (hd.getHanThanhToan() != null && hd.getHanThanhToan().isBefore(LocalDate.now())) {
+                        hd.setTrangThai(InvoiceStatus.qua_han);
+                    } else {
+                        hd.setTrangThai(InvoiceStatus.chua_thanh_toan);
+                    }
+                    hd.setNguoiThanhToan(null); // Xóa người thanh toán
+                    hoaDonDAO.save(hd);
+                    successCount++;
+                }
+            } catch (Exception e) {
+                System.err.println("Lỗi từ chối hóa đơn #" + maHoaDon + ": " + e.getMessage());
+            }
+        }
+    
+        return successCount;
     }
 }

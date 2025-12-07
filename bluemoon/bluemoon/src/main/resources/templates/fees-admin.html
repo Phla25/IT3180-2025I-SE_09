@@ -89,70 +89,133 @@
                 <h2 style="margin: 0;">Danh Sách Hóa Đơn</h2>
                 <a th:href="@{/admin/fee-form}" class="btn-add"> <i class="fas fa-plus"></i> Tạo Hóa Đơn Mới </a>
                 <a th:href="@{/admin/fees/import}" class="btn-export btn-import">
-                        <i class="fas fa-file-import"></i> Import Excel
+                    <i class="fas fa-file-import"></i> Import Excel
                 </a>
                 <a th:href="@{/admin/export/invoices}" class="btn-export btn-export-excel"><i class="fas fa-file-excel"></i> Excel</a>
-                <a th:href="@{/admin/export/invoices/pdf}" class="btn-export btn-export-pdf"><i class="fas fa-file-pdf"></i> PDF</a>                
+                <a th:href="@{/admin/export/invoices/pdf}" class="btn-export btn-export-pdf"><i class="fas fa-file-pdf"></i> PDF</a>
             </div>
 
-            <div class="content-card">
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Mã HĐ</th>
-                                <th>Hộ Gia Đình</th>
-                                <th>Người Đứng Tên</th> <th>Người TT</th> 
-                                <th>Loại Phí</th>
-                                <th>Số Tiền</th>
-                                <th>Hạn Thanh Toán</th>
-                                <th>Trạng Thái</th>
-                                <th>Hành Động</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="hoaDon : ${hoaDonList}">
-                                <td><strong th:text="'#' + ${hoaDon.maHoaDon}">#HD001</strong></td>
-                                <td th:text="${hoaDon.hoGiaDinh?.tenHo} ?: 'N/A'">Hộ Nguyễn Văn A</td>
-                                
-                                <td style="font-weight: 600; color: #4B5563;">
-                                    <span th:if="${hoaDon.nguoiDangKyDichVu != null}">
-                                        <i class="fas fa-user"></i> <span th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen}">Nguyễn Văn B</span>
-                                    </span>
-                                    <span th:unless="${hoaDon.nguoiDangKyDichVu != null}" style="color: #999;">(Chưa gán)</span>
-                                </td>
-                                
-                                <td th:text="${hoaDon.nguoiThanhToan?.hoVaTen} ?: '---'">Cư dân/Kế toán</td>
-
-                                <td th:text="${hoaDon.loaiHoaDon?.dbValue} ?: 'N/A'">Phí Quản Lý</td>
-                                <td th:text="${#numbers.formatInteger(hoaDon.soTien, 0, 'POINT')} + ' ₫'">2,500,000 ₫</td>
-                                <td th:text="${hoaDon.hanThanhToan != null ? #temporals.format(hoaDon.hanThanhToan, 'dd/MM/yyyy') : 'N/A'}">31/10/2024</td>
-                                <td>
-                                    <span class="status-badge" 
-                                          th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning')}"
-                                          th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán</span>
-                                </td>
-                                <td>
-                                    <a th:href="@{/admin/fee-form(id=${hoaDon.maHoaDon})}" class="btn-action" title="Chỉnh Sửa"><i class="fas fa-edit"></i></a>
-                                    <form th:action="@{/admin/fee-delete}" method="post" style="display: inline;">
-                                        <input type="hidden" name="id" th:value="${hoaDon.maHoaDon}">
-                                        <button type="submit" onclick="return confirm('Xóa hóa đơn này?')" class="btn-action text-danger" title="Xóa" style="border: none; background: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
-                                    </form>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <!-- ✨ TOOLBAR HÀNH ĐỘNG HÀNG LOẠT -->
+            <form id="batchActionForm" method="post">
+                <div class="bulk-actions-bar" style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #1e3a8a;">
+                        <input type="checkbox" id="selectAll" style="width: 18px; height: 18px; cursor: pointer;"> 
+                        Chọn tất cả hóa đơn chờ xác nhận
+                    </label>
+                    
+                    <div id="batchButtons" style="display: none; gap: 10px;">
+                        <button type="button" id="confirmBatchBtn" class="btn btn-sm" 
+                                style="background-color: #10B981; color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                            <i class="fas fa-check-circle"></i> Duyệt (<span id="countSelected">0</span>) hóa đơn
+                        </button>
+                    
+                        <button type="button" id="rejectBatchBtn" class="btn btn-sm" 
+                                style="background-color: #F59E0B; color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                            <i class="fas fa-undo"></i> Từ chối (<span id="countSelectedReject">0</span>) hóa đơn
+                        </button>
+                    </div>
+                
+                    <span id="noSelectionText" style="color: #64748b; font-size: 14px;">(Chưa chọn hóa đơn nào)</span>
                 </div>
-            </div>
+
+                <div class="content-card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th width="50" style="text-align: center;">#</th>
+                                    <th>Mã HĐ</th>
+                                    <th>Hộ Gia Đình</th>
+                                    <th>Người Đứng Tên</th>
+                                    <th>Người TT</th>
+                                    <th>Loại Phí</th>
+                                    <th>Số Tiền</th>
+                                    <th>Hạn Thanh Toán</th>
+                                    <th>Trạng Thái</th>
+                                    <th>Hành Động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="hoaDon : ${hoaDonList}">
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" name="selectedIds" 
+                                               th:if="${hoaDon.trangThai?.name() == 'cho_xac_nhan'}"
+                                               th:value="${hoaDon.maHoaDon}"
+                                               class="invoice-checkbox"
+                                               style="width: 18px; height: 18px; cursor: pointer;">
+                                    </td>
+                                    
+                                    <td><strong th:text="'#' + ${hoaDon.maHoaDon}">#HD001</strong></td>
+                                        <td th:text="${hoaDon.hoGiaDinh?.tenHo} ?: 'N/A'">Hộ Nguyễn Văn A</td>
+                                    <td style="font-weight: 600; color: #4B5563;">
+                                        <span th:if="${hoaDon.nguoiDangKyDichVu != null}">
+                                            <i class="fas fa-user"></i> <span th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen}">Nguyễn Văn B</span>
+                                        </span>
+                                        <span th:unless="${hoaDon.nguoiDangKyDichVu != null}" style="color: #999;">(Chưa gán)</span>
+                                    </td>
+                                    <td th:text="${hoaDon.nguoiThanhToan?.hoVaTen} ?: '---'">Cư dân/Kế toán</td>
+                                    <td th:text="${hoaDon.loaiHoaDon?.dbValue} ?: 'N/A'">Phí Quản Lý</td>
+                                    <td th:text="${#numbers.formatInteger(hoaDon.soTien, 0, 'POINT')} + ' ₫'">2,500,000 ₫</td>
+                                    <td th:text="${hoaDon.hanThanhToan != null ? #temporals.format(hoaDon.hanThanhToan, 'dd/MM/yyyy') : 'N/A'}">31/10/2024</td>
+                                    <td>
+                                        <span class="status-badge" 
+                                              th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning')}"
+                                              th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán</span>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/admin/fee-form(id=${hoaDon.maHoaDon})}" class="btn-action" title="Chỉnh Sửa"><i class="fas fa-edit"></i></a>
+                                        <form th:action="@{/admin/fee-delete}" method="post" style="display: inline;">
+                                            <input type="hidden" name="id" th:value="${hoaDon.maHoaDon}">
+                                            <button type="submit" onclick="return confirm('Xóa hóa đơn này?')" class="btn-action text-danger" title="Xóa" style="border: none; background: none; cursor: pointer;"><i class="fas fa-trash"></i></button>
+                                        </form>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </form>
         </div>
     </main>
-    <script src="/js/main.js"></script>
+
+    <!-- ✨ JAVASCRIPT GIỐNG ACCOUNTANT (thay đổi action URL) -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
-        function toggleSidebar() {
-            document.querySelector('.sidebar').classList.toggle('collapsed');
-            document.querySelector('.main-content').classList.toggle('shifted');
-            document.querySelector('.header').classList.toggle('shifted');
+    $(document).ready(function() {
+        $('#selectAll').change(function() {
+            $('.invoice-checkbox').prop('checked', $(this).prop('checked'));
+            updateToolbar();
+        });
+
+        $('.invoice-checkbox').change(function() {
+            updateToolbar();
+            if (!$(this).prop('checked')) $('#selectAll').prop('checked', false);
+            if ($('.invoice-checkbox:checked').length === $('.invoice-checkbox').length && $('.invoice-checkbox').length > 0) {
+                $('#selectAll').prop('checked', true);
+            }
+        });
+
+        function updateToolbar() {
+            var count = $('.invoice-checkbox:checked').length;
+            $('#countSelected, #countSelectedReject').text(count);
+            count > 0 ? ($('#batchButtons').css('display', 'flex'), $('#noSelectionText').hide()) : 
+                        ($('#batchButtons').hide(), $('#noSelectionText').show());
         }
+
+        $('#confirmBatchBtn').click(function() {
+            var count = $('.invoice-checkbox:checked').length;
+            if (confirm('Xác nhận duyệt ' + count + ' hóa đơn đã chọn?')) {
+                $('#batchActionForm').attr('action', '/admin/fee-confirm-batch').submit();
+            }
+        });
+
+        $('#rejectBatchBtn').click(function() {
+            var count = $('.invoice-checkbox:checked').length;
+            if (confirm('Xác nhận từ chối ' + count + ' hóa đơn đã chọn?')) {
+                $('#batchActionForm').attr('action', '/admin/fee-reject-batch').submit();
+            }
+        });
+    });
     </script>
 </body>
 </html>

@@ -1225,7 +1225,88 @@ public class AdminController {
         
         return "invoice-add-edit-admin"; 
     }
+    /**
+     * Xử lý lưu hóa đơn (Thêm mới hoặc Cập nhật)
+     * URL: /admin/fee-save
+     */
+    @PostMapping("/fee-save")
+    public String handleSaveFee(@ModelAttribute("hoaDon") HoaDon hoaDon,
+                                @RequestParam(value = "maHo", required = false) String maHo,
+                                @RequestParam(value = "nguoiDangKyCccd", required = false) String nguoiDangKyCccd,
+                                Authentication auth,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            DoiTuong currentUser = getCurrentUser(auth); // Người thực hiện (Admin)
+
+            // Gọi Service để lưu (Logic đã có trong HoaDonService)
+            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Lưu hóa đơn thành công!");
+            return "redirect:/admin/fees";
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi lưu hóa đơn: " + e.getMessage());
+            // Quay lại form với ID (nếu sửa) hoặc form trống (nếu thêm)
+            return "redirect:/admin/fee-form" + (hoaDon.getMaHoaDon() != null ? "?id=" + hoaDon.getMaHoaDon() : "");
+        }
+    }
+    // THÊM VÀO AdminController.java (tương tự AccountantController)
+
+    /**
+     * ✨ MỚI: Duyệt nhiều hóa đơn cùng lúc (Admin)
+     * URL: POST /admin/fee-confirm-batch
+     */
+    @PostMapping("/fee-confirm-batch")
+    public String handleAdminBatchFeeConfirm(@RequestParam(value = "selectedIds", required = false) List<Integer> selectedIds,
+                                             Authentication auth,
+                                             RedirectAttributes redirectAttributes) {
     
+        if (selectedIds == null || selectedIds.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn ít nhất một hóa đơn để duyệt.");
+            return "redirect:/admin/fees";
+        }
+    
+        try {
+            int successCount = hoaDonService.confirmMultiplePayments(selectedIds);
+
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Đã duyệt thành công " + successCount + "/" + selectedIds.size() + " hóa đơn!");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+        }
+    
+        return "redirect:/admin/fees";
+    }
+
+    /**
+     * ✨ MỚI: Từ chối nhiều hóa đơn cùng lúc (Admin)
+     * URL: POST /admin/fee-reject-batch
+     */
+    @PostMapping("/fee-reject-batch")
+    public String handleAdminBatchFeeReject(@RequestParam(value = "selectedIds", required = false) List<Integer> selectedIds,
+                                            Authentication auth,
+                                            RedirectAttributes redirectAttributes) {
+        DoiTuong currentUser = getCurrentUser(auth);
+    
+        if (selectedIds == null || selectedIds.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn ít nhất một hóa đơn để từ chối.");
+            return "redirect:/admin/fees";
+        }
+    
+        try {
+            int successCount = hoaDonService.rejectMultiplePayments(selectedIds, currentUser);
+        
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Đã từ chối " + successCount + "/" + selectedIds.size() + " hóa đơn!");
+        
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+        }
+    
+        return "redirect:/admin/fees";
+    }
     /**
      * API JSON: Trả về danh sách thành viên của một hộ cụ thể.
      * Giao diện sẽ gọi cái này khi người dùng chọn Hộ.

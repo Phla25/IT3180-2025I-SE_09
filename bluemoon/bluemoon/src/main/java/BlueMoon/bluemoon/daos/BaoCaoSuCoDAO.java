@@ -4,8 +4,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Repository; // Import quan trọng
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional; // Import quan trọng
 
 import BlueMoon.bluemoon.entities.BaoCaoSuCo;
 import BlueMoon.bluemoon.utils.IncidentStatus;
@@ -205,5 +205,24 @@ public class BaoCaoSuCoDAO {
         }
 
         return query.getResultList();
+    }
+
+    public Integer countByNguoiBaoCao(String cccd) {
+        String jpql = "SELECT COUNT(bcs) FROM BaoCaoSuCo bcs WHERE bcs.nguoiBaoCao.cccd = :cccd";
+        Integer count = entityManager.createQuery(jpql, Long.class)
+                .setParameter("cccd", cccd)
+                .getSingleResult()
+                .intValue();
+        return count;
+    }
+
+    public Integer sumSoSuCoByNguoiBaoCaoAndTrangThai(String cccd, IncidentStatus daHoanThanh) {
+        String jpql = "SELECT COUNT(bcs) FROM BaoCaoSuCo bcs WHERE bcs.nguoiBaoCao.cccd = :cccd AND bcs.trangThai = :trangThai";
+        Integer sum = entityManager.createQuery(jpql, Long.class)
+                .setParameter("cccd", cccd)
+                .setParameter("trangThai", daHoanThanh)
+                .getSingleResult()
+                .intValue();
+        return sum;
     }
 }

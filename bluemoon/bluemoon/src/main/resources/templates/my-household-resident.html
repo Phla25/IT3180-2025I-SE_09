@@ -158,8 +158,6 @@
             <div th:if="${maHo != null and maHo != 'N/A'}" class="info-card">
                 <h3><i class="fas fa-home"></i> Thông Tin Hộ Gia Đình</h3>
                 <p><strong>Mã Hộ:</strong> <span th:text="${maHo}">HGD001</span></p>
-                <p><strong>Chủ Hộ:</strong> <span th:text="${hoGiaDinh.chuHo?.hoVaTen} ?: 'N/A'">Nguyễn Văn A</span></p>
-                <p><strong>Mã Hộ:</strong> <span th:text="${maHo}">HGD001</span></p>
                 <p><strong>Chủ Hộ:</strong> <span th:text="${tenChuHo}">Chủ Hộ</span></p>
                 <p><strong>Số Thành Viên:</strong> <span th:text="${tongThanhVien}">0</span> người</p>
             </div>

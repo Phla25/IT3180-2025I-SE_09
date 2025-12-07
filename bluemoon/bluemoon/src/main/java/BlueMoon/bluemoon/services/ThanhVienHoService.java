@@ -72,4 +72,7 @@ public class ThanhVienHoService {
     public List<ThanhVienHo> getActiveByMaHo(String maHo) {
         return thanhVienHoDAO.findActiveByMaHo(maHo);
     }
+    public Integer countThanhVienByHoGiaDinh(HoGiaDinh hoGiaDinh) {
+        return thanhVienHoDAO.countByHoGiaDinh(hoGiaDinh);
+    }
 }

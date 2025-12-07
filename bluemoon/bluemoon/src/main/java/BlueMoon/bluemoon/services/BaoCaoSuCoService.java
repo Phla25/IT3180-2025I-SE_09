@@ -6,8 +6,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service; // Import Transactional
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional; // Import Transactional
 
 import BlueMoon.bluemoon.daos.BaoCaoSuCoDAO;
 import BlueMoon.bluemoon.entities.BaoCaoSuCo;
@@ -136,5 +136,17 @@ public class BaoCaoSuCoService {
 
     public Optional<BaoCaoSuCo> getSuCoById(Integer id) {
         return suCoDAO.findById(id);
+    }
+
+    public Integer countAllSuCoByNguoiDung(String cccd) {
+        return suCoDAO.countByNguoiBaoCao(cccd);
+    }
+
+    public Integer getSuCoDaXuLyTheoNguoiDung(String cccd) {
+        return suCoDAO.sumSoSuCoByNguoiBaoCaoAndTrangThai(cccd, IncidentStatus.da_hoan_thanh);
+    }
+
+    public int countSuCoDangXuLyByNguoiDung(String cccd) {
+        return suCoDAO.sumSoSuCoByNguoiBaoCaoAndTrangThai(cccd, IncidentStatus.dang_xu_ly);
     }
 }
