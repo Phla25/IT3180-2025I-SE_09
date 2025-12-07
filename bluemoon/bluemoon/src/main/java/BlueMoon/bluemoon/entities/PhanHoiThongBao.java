@@ -105,4 +105,12 @@ public class PhanHoiThongBao {
         return thoiGianGui;
     }
 
+    public Integer getMaPhanHoi() {
+        return maPhanHoi;
+    }
+
+    public void setMaPhanHoi(Integer maPhanHoi) {
+        this.maPhanHoi = maPhanHoi;
+    }
+
 }
