@@ -1927,8 +1927,27 @@ public class AdminController {
         model.addAttribute("genderData", residentStats.get("genderData"));
         model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
         model.addAttribute("resStatusData", residentStats.get("resStatusData"));
+        // B. Thống kê Giới tính & Trạng thái (Lấy từ CuDanService mới)
+        model.addAttribute("genderLabels", residentStats.get("genderLabels"));
+        model.addAttribute("genderData", residentStats.get("genderData"));
+        model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
+        model.addAttribute("resStatusData", residentStats.get("resStatusData"));
 
-        return "reports-dashboard"; // Tên file HTML mới
+        // --- BỔ SUNG THÊM ---
+        model.addAttribute("ageLabels", residentStats.get("ageLabels"));
+        model.addAttribute("ageData", residentStats.get("ageData"));
+        Map<String, Object> householdStats = hoGiaDinhService.getHouseholdStatistics();
+        
+        model.addAttribute("totalHouseholds", householdStats.get("totalHouseholds"));
+        model.addAttribute("totalMembers", householdStats.get("totalMembers"));
+        model.addAttribute("averageMembers", householdStats.get("averageMembers"));
+        
+        model.addAttribute("householdFloorLabels", householdStats.get("householdFloorLabels"));
+        model.addAttribute("householdFloorData", householdStats.get("householdFloorData"));
+        model.addAttribute("householdSizeLabels", householdStats.get("householdSizeLabels"));
+        model.addAttribute("householdSizeData", householdStats.get("householdSizeData"));
+
+        return "reports-dashboard";
     }
     // =======================================================
     // XỬ LÝ SỰ CỐ

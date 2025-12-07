@@ -347,4 +347,111 @@ public class HoGiaDinhService {
     public Optional<ThanhVienHo> getThanhVienHoCurrentByCccd(String cccd) {
         return thanhVienHoDAO.findCurrentByCccd(cccd);
     }
+        // =======================================================
+    // 4. THỐNG KÊ HỘ GIA ĐÌNH
+    // =======================================================
+
+    /**
+     * Lấy dữ liệu thống kê hộ gia đình
+     */
+    public java.util.Map<String, Object> getHouseholdStatistics() {
+        java.util.Map<String, Object> stats = new java.util.HashMap<>();
+
+        // 1. Lấy tất cả hộ gia đình đang hoạt động
+        List<HoGiaDinh> allHouseholds = hoGiaDinhDAO.findAll().stream()
+                .filter(h -> h.getTrangThai() == HouseholdStatus.hoat_dong)
+                .collect(java.util.stream.Collectors.toList());
+
+        // 2. Thống kê theo tầng (dựa trên căn hộ) - lấy từ viTri
+        java.util.Map<String, Long> floorStats = new java.util.HashMap<>();
+        for (HoGiaDinh hgd : allHouseholds) {
+            Optional<TaiSanChungCu> apartment = getApartmentByHousehold(hgd.getMaHo());
+            if (apartment.isPresent() && apartment.get().getViTri() != null) {
+                String viTri = apartment.get().getViTri();
+                // Trích xuất số tầng từ chuỗi viTri (ví dụ: "Tầng 5, Tòa A" -> "Tầng 5")
+                String floor = extractFloorFromViTri(viTri);
+                if (floor != null) {
+                    floorStats.put(floor, floorStats.getOrDefault(floor, 0L) + 1);
+                }
+            }
+        }
+
+        List<String> floorLabels = new java.util.ArrayList<>(floorStats.keySet());
+        floorLabels.sort((a, b) -> {
+            try {
+                int floorA = Integer.parseInt(a.replace("Tầng ", ""));
+                int floorB = Integer.parseInt(b.replace("Tầng ", ""));
+                return Integer.compare(floorA, floorB);
+            } catch (NumberFormatException e) {
+                return a.compareTo(b);
+            }
+        });
+        List<Long> floorData = floorLabels.stream()
+                .map(floorStats::get)
+                .collect(java.util.stream.Collectors.toList());
+
+        stats.put("householdFloorLabels", floorLabels);
+        stats.put("householdFloorData", floorData);
+
+        // 3. Tính trung bình số thành viên mỗi hộ
+        long totalMembers = 0;
+        for (HoGiaDinh hgd : allHouseholds) {
+            // Đếm số thành viên hiện tại (ngayKetThuc == null)
+            long memberCount = hgd.getThanhVienHoList().stream()
+                    .filter(tv -> tv.getNgayKetThuc() == null)
+                    .count();
+            totalMembers += memberCount;
+        }
+
+        double avgMembers = allHouseholds.isEmpty() ? 0 : (double) totalMembers / allHouseholds.size();
+        stats.put("averageMembers", Math.round(avgMembers * 10.0) / 10.0); // Làm tròn 1 chữ số
+        stats.put("totalHouseholds", (long) allHouseholds.size());
+        stats.put("totalMembers", totalMembers);
+
+        // 4. Phân bố số thành viên (1 người, 2-3 người, 4-5 người, 6+ người)
+        long single = 0; // 1 người
+        long small = 0; // 2-3 người
+        long medium = 0; // 4-5 người
+        long large = 0; // 6+ người
+
+        for (HoGiaDinh hgd : allHouseholds) {
+            long memberCount = hgd.getThanhVienHoList().stream()
+                    .filter(tv -> tv.getNgayKetThuc() == null)
+                    .count();
+
+            if (memberCount == 1)
+                single++;
+            else if (memberCount <= 3)
+                small++;
+            else if (memberCount <= 5)
+                medium++;
+            else
+                large++;
+        }
+
+        List<String> sizeLabels = java.util.List.of("1 người", "2-3 người", "4-5 người", "6+ người");
+        List<Long> sizeData = java.util.List.of(single, small, medium, large);
+
+        stats.put("householdSizeLabels", sizeLabels);
+        stats.put("householdSizeData", sizeData);
+
+        return stats;
+    }
+
+    /**
+     * Trích xuất tầng từ chuỗi viTri (ví dụ: "Tầng 5, Tòa A" -> "Tầng 5")
+     */
+    private String extractFloorFromViTri(String viTri) {
+        if (viTri == null)
+            return null;
+
+        // Tìm pattern "Tầng X" hoặc "tầng X"
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("[Tt]ầng\\s*(\\d+)");
+        java.util.regex.Matcher matcher = pattern.matcher(viTri);
+
+        if (matcher.find()) {
+            return "Tầng " + matcher.group(1);
+        }
+        return null;
+    }
 }

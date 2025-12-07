@@ -9,50 +9,35 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* ==================== FEATURE TOGGLE STYLES ==================== */
+        /* CSS cho Modal */
+        .modal { display: none; position: fixed; z-index: 1000; inset: 0; background-color: rgba(0,0,0,0.5); align-items: center; justify-content: center; }
+        .modal.show { display: flex; }
+        .modal-content { background-color: #fff; padding: 24px; border-radius: 12px; width: 700px; max-width: 95%; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); max-height: 90vh; overflow-y: auto; position: relative; }
+        
+        /* CSS Badge */
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-block; }
+        .badge-moi_tiep_nhan { background: #FEF3C7; color: #D97706; }
+        .badge-dang_xu_ly { background: #DBEAFE; color: #2563EB; }
+        .badge-da_hoan_thanh { background: #D1FAE5; color: #059669; }
+        .badge-da_huy { background: #F3F4F6; color: #6B7280; }
+
+        /* Priority Dots */
+        .priority-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+        .priority-thap { background-color: #9CA3AF; }
+        .priority-binh_thuong { background-color: #3B82F6; }
+        .priority-cao { background-color: #F59E0B; }
+        .priority-khan_cap { background-color: #EF4444; }
+
+        /* Feature Toggle Badge */
         .feature-badge {
             background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-            color: white;
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 8px;
-            margin-left: auto;
-            animation: pulse 2s infinite;
+            color: white; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 8px; margin-left: auto; animation: pulse 2s infinite;
         }
-        
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
-        }
-        
-        .nav-item {
-            position: relative;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .nav-item:hover .feature-badge {
-            animation-play-state: paused;
-            transform: scale(1.1);
-        }
-        
-        .feature-badge {
-            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-            color: white;
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 8px;
-            margin-left: auto;
-            animation: pulse 2s infinite;
-        }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .nav-item:hover .feature-badge { animation-play-state: paused; transform: scale(1.1); }
     </style>
 </head>
 <body>
-    <!-- SIDEBAR - CƠ QUAN CHỨC NĂNG -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="logo">
@@ -63,24 +48,16 @@
         
         <nav class="sidebar-nav">
             <a th:href="@{/officer/dashboard}" class="nav-item active">
-                <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
+                <i class="fas fa-chart-line"></i><span>Dashboard</span>
             </a>
-            <a href="#" class="nav-item" onclick="showFeatureToggle('Xem Sự Cố', 'Tính năng này đang được phát triển và sẽ sớm ra mắt.')">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>Xem Sự Cố</span>
+            <a th:href="@{/officer/incidents}" class="nav-item">
+                <i class="fas fa-exclamation-triangle"></i><span>Xem Sự Cố</span>
             </a>
-            <a href="#" class="nav-item" onclick="showFeatureToggle('Báo Cáo', 'Tính năng này đang được phát triển và sẽ sớm ra mắt.')">
-                <i class="fas fa-chart-bar"></i>
-                <span>Báo Cáo</span>
-            </a>
-            <a href="#" class="nav-item" onclick="showFeatureToggle('Tài Liệu', 'Tính năng này đang được phát triển và sẽ sớm ra mắt.')">
-                <i class="fas fa-file-alt"></i>
-                <span>Tài Liệu</span>
+            <a href="#" class="nav-item" onclick="showFeatureToggle('Báo Cáo', 'Tính năng này đang được phát triển.')">
+                <i class="fas fa-chart-bar"></i><span>Báo Cáo</span>
             </a>
             <a th:href="@{/officer/apartment-list}" class="nav-item">
-                <i class="fas fa-home"></i>
-                <span>Xem Căn Hộ</span>
+                <i class="fas fa-home"></i><span>Xem Căn Hộ</span>
             </a>
         </nav>
         
@@ -93,122 +70,114 @@
         </div>
     </aside>
 
-    <!-- HEADER -->
     <header class="header">
         <div class="header-left">
-            <button class="menu-toggle" onclick="toggleSidebar()">
+            <button class="menu-toggle" onclick="document.querySelector('.sidebar').classList.toggle('collapsed')">
                 <i class="fas fa-bars"></i>
             </button>
             <h1>Dashboard - Cơ Quan Chức Năng</h1>
         </div>
         
         <div class="header-right">
-            
             <div class="user-menu">
                 <div class="user-info">
-                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
+                    <span class="user-name" th:text="${user.hoVaTen} ?: 'Officer'">Nguyễn Văn Thanh</span>
                     <span class="user-role" style="color: #7C3AED;">CƠ QUAN CHỨC NĂNG</span>
                 </div>
                 <div class="user-avatar"> <i class="fas fa-user-circle"></i> </div>
                 <div class="dropdown-menu">
-                    <a href="/officer/profile">
-                        <i class="fas fa-user"></i> Thông Tin Cá Nhân
-                    </a>
-                    <a href="/office/settings">
-                        <i class="fas fa-cog"></i> Cài Đặt
-                    </a>
+                    <a th:href="@{/officer/profile}"><i class="fas fa-user"></i> Thông Tin Cá Nhân</a>
                     <hr>
                     <form th:action="@{/logout}" method="post">
-                        <button type="submit" class="logout-btn">
-                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
-                        </button>
+                        <button type="submit" class="logout-btn"><i class="fas fa-sign-out-alt"></i> Đăng Xuất</button>
                     </form>
                 </div>
             </div>
         </div>
     </header>
 
-    <!-- MAIN CONTENT -->
     <main class="main-content">
         <div style="background: linear-gradient(135deg, #7C3AED 0%, #5B21B6 100%); color: white; padding: 32px; border-radius: 12px; margin-bottom: 30px;">
-            <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">
-                🏛️ Dashboard Giám Sát
-            </h1>
-            <p style="font-size: 16px; opacity: 0.9;">
-                Theo dõi và giám sát hoạt động chung cư BlueMoon
-            </p>
+            <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">🏛️ Dashboard Giám Sát</h1>
+            <p style="font-size: 16px; opacity: 0.9;">Theo dõi và giám sát hoạt động chung cư BlueMoon</p>
         </div>
         
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-card-header">
                     <span class="stat-card-title">Tổng Sự Cố</span>
-                    <div class="stat-icon orange">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
+                    <div class="stat-icon orange"><i class="fas fa-exclamation-triangle"></i></div>
                 </div>
-                <div class="stat-value" th:text="${tongSuCo}">32</div>
+                <div class="stat-value" th:text="${tongSuCo}">0</div>
+            </div>
             
             <div class="stat-card">
                 <div class="stat-card-header">
                     <span class="stat-card-title">Đã Xử Lý</span>
-                    <div class="stat-icon green">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
+                    <div class="stat-icon green"><i class="fas fa-check-circle"></i></div>
                 </div>
-                <div class="stat-value" th:text="${suCoDaXuLy}">24</div>
+                <div class="stat-value" th:text="${suCoDaXuLy}">0</div>
             </div>
             
             <div class="stat-card">
                 <div class="stat-card-header">
                     <span class="stat-card-title">Đang Xử Lý</span>
-                    <div class="stat-icon blue">
-                        <i class="fas fa-spinner"></i>
-                    </div>
+                    <div class="stat-icon blue"><i class="fas fa-spinner"></i></div>
                 </div>
-                <div class="stat-value" th:text="${suCoDangXuLy}">5</div>
-                <div class="stat-change">
-                    <i class="fas fa-clock"></i>
-                    <span>Đang giải quyết</span>
-                </div>
+                <div class="stat-value" th:text="${suCoDangXuLy}">0</div>
             </div>
             
             <div class="stat-card">
                 <div class="stat-card-header">
-                    <span class="stat-card-title">Chưa Xử Lý</span>
-                    <div class="stat-icon" style="background: #FEE2E2; color: #DC2626;">
-                        <i class="fas fa-exclamation-circle"></i>
-                    </div>
+                    <span class="stat-card-title">Mới Tiếp Nhận</span>
+                    <div class="stat-icon" style="background: #FEE2E2; color: #DC2626;"><i class="fas fa-bell"></i></div>
                 </div>
-                <div class="stat-value" th:text="${suCoChuaXuLy}">3</div>
+                <div class="stat-value" th:text="${suCoChuaXuLy}">0</div>
             </div>
         </div>
 
         <div class="content-card" style="margin-bottom: 24px;">
             <div class="content-card-header">
-                <h2 class="content-card-title">📊 Sự Cố Theo Mức Độ Ưu Tiên</h2>
+                <h2 class="content-card-title">📊 Phân Tích Mức Độ Ưu Tiên</h2>
             </div>
             
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
-                <div style="padding: 20px; background: #FEE2E2; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 32px; font-weight: 700; color: #DC2626; margin-bottom: 8px;" th:text="${suCoCao}">8</div>
-                    <div style="font-size: 14px; color: #991B1B;">Ưu tiên cao</div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 30px;">
+                <div style="padding: 20px; background: #FEF2F2; border: 1px solid #FEE2E2; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 15px; color: #991B1B; font-weight: 700;">Ưu tiên Cao</div>
+                        <div style="font-size: 13px; color: #EF4444;">Cần xử lý gấp</div>
+                    </div>
+                    <div style="font-size: 32px; font-weight: 800; color: #DC2626;" th:text="${suCoCao}">0</div>
                 </div>
-                <div style="padding: 20px; background: #FEF3C7; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 32px; font-weight: 700; color: #D97706; margin-bottom: 8px;" th:text="${suCoTrungBinh}">12</div>
-                    <div style="font-size: 14px; color: #92400E;">Ưu tiên trung bình</div>
+
+                <div style="padding: 20px; background: #FFFBEB; border: 1px solid #FEF3C7; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 15px; color: #92400E; font-weight: 700;">Trung bình</div>
+                        <div style="font-size: 13px; color: #F59E0B;">Theo dõi tiến độ</div>
+                    </div>
+                    <div style="font-size: 32px; font-weight: 800; color: #D97706;" th:text="${suCoTrungBinh}">0</div>
                 </div>
-                <div style="padding: 20px; background: #DBEAFE; border-radius: 8px; text-align: center;">
-                    <div style="font-size: 32px; font-weight: 700; color: #1E40AF; margin-bottom: 8px;" th:text="${suCoThap}">12</div>
-                    <div style="font-size: 14px; color: #1E3A8A;">Ưu tiên thấp</div>
+
+                <div style="padding: 20px; background: #F0F9FF; border: 1px solid #DBEAFE; border-radius: 12px; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <div style="font-size: 15px; color: #1E40AF; font-weight: 700;">Thấp</div>
+                        <div style="font-size: 13px; color: #3B82F6;">Xử lý định kỳ</div>
+                    </div>
+                    <div style="font-size: 32px; font-weight: 800; color: #2563EB;" th:text="${suCoThap}">0</div>
+                </div>
+            </div>
+
+            <div style="border-top: 1px solid #F3F4F6; padding-top: 20px;">
+                <div style="height: 350px; display: flex; justify-content: center;">
+                    <canvas id="priorityChart"></canvas>
                 </div>
             </div>
         </div>
 
         <div class="content-card">
             <div class="content-card-header">
-                <h2 class="content-card-title">⚠️ Danh Sách Sự Cố</h2>
-                <a href="#" class="btn btn-sm btn-outline">Xem tất cả</a>
+                <h2 class="content-card-title">⚠️ Sự Cố Gần Đây</h2>
+                <a th:href="@{/officer/incidents}" class="btn btn-sm btn-outline">Xem tất cả</a>
             </div>
             
             <div class="table-container">
@@ -216,7 +185,7 @@
                     <thead>
                         <tr>
                             <th>Mã SC</th>
-                            <th>Loại Sự Cố</th>
+                            <th>Tiêu Đề</th>
                             <th>Vị Trí</th>
                             <th>Mức Độ</th>
                             <th>Ngày Báo Cáo</th>
@@ -225,32 +194,53 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr th:each="suCo : ${danhSachSuCo}">
-                            <td th:text="'#' + ${suCo.maSuCo}"><strong>#SC001</strong></td>
-                            <td th:text="${suCo.loaiSuCo}">Chập điện</td>
-                            <td th:text="${suCo.viTri}">Tầng 5</td>
-                            <td>
-                                <span class="badge" 
-                                      th:classappend="${suCo.mucDoUuTien.name() == 'cao' ? 'badge-danger' : 
-                                                      (suCo.mucDoUuTien.name() == 'trung_binh' ? 'badge-warning' : 'badge-primary')}"
-                                      th:text="${suCo.mucDoUuTien.dbValue}">Cao</span>
+                        <tr th:each="suCo : ${danhSachSuCo}" 
+                            style="cursor: pointer; border-bottom: 1px solid #E5E7EB; transition: 0.2s;"
+                            onmouseover="this.style.backgroundColor='#F5F3FF'"
+                            onmouseout="this.style.backgroundColor='transparent'"
+                            th:onclick="|showIncidentDetail(${suCo.maBaoCao})|">
+                            
+                            <td style="padding: 15px; font-weight: bold; color: #7C3AED;" 
+                                th:text="'#' + ${suCo.maBaoCao}">#1</td>
+                            
+                            <td style="padding: 15px;">
+                                <span th:text="${suCo.tieuDe}" style="display: block; font-weight: 500;">Tiêu đề</span>
                             </td>
-                            <td th:text="${#temporals.format(suCo.ngayBaoCao, 'dd/MM/yyyy')}">14/10/2024</td>
-                            <td>
+                            
+                            <td style="padding: 15px;" 
+                                th:text="${suCo.taiSan != null ? suCo.taiSan.tenTaiSan : 'Khu vực chung'}">Vị trí</td>
+                            
+                            <td style="padding: 15px;">
+                                <span class="priority-dot" th:classappend="'priority-' + ${suCo.mucDoUuTien?.name()}"></span>
+                                <span th:switch="${suCo.mucDoUuTien?.name()}">
+                                    <span th:case="'khan_cap'">Khẩn cấp</span>
+                                    <span th:case="'cao'">Cao</span>
+                                    <span th:case="'binh_thuong'">Bình thường</span>
+                                    <span th:case="'thap'">Thấp</span>
+                                </span>
+                            </td>
+                            
+                            <td style="padding: 15px;" 
+                                th:text="${suCo.thoiGianBaoCao != null ? #temporals.format(suCo.thoiGianBaoCao, 'dd/MM/yyyy') : ''}">01/01/2024</td>
+                            
+                            <td style="padding: 15px;">
                                 <span class="badge"
-                                       th:classappend="${suCo.trangThai.name() == 'dang_xu_ly' ? 'badge-warning' : 
-                                                       (suCo.trangThai.name() == 'da_hoan_thanh' ? 'badge-success' : 'badge-info')}"
-                                       th:text="${suCo.trangThai.dbValue}">Đang xử lý</span>
+                                       th:classappend="'badge-' + ${suCo.trangThai?.name()}"
+                                       th:text="${suCo.trangThai?.dbValue}">Trạng thái</span>
                             </td>
-                            <td>
-                                <a th:href="@{'/officer/incident/detail/' + ${suCo.maSuCo}}" class="btn btn-sm btn-outline">
+                            
+                            <td style="padding: 15px;">
+                                <button type="button" class="btn btn-sm btn-outline" 
+                                        th:onclick="|event.stopPropagation(); showIncidentDetail(${suCo.maBaoCao})|">
                                     <i class="fas fa-eye"></i>
-                                </a>
+                                </button>
                             </td>
                         </tr>
+                        
                         <tr th:if="${danhSachSuCo == null or danhSachSuCo.isEmpty()}">
-                            <td colspan="7" style="text-align: center; color: #6B7280; padding: 20px;">
-                                🎉 Không có sự cố nào gần đây.
+                            <td colspan="7" style="text-align: center; color: #6B7280; padding: 30px;">
+                                <i class="fas fa-check-circle" style="font-size: 24px; margin-bottom: 10px; display: block; color: #D1D5DB;"></i>
+                                Không có sự cố nào gần đây.
                             </td>
                         </tr>
                     </tbody>
@@ -259,59 +249,130 @@
         </div>
     </main>
     
-    <!-- FOOTER -->
+    <div id="detailIncidentModal" class="modal">
+        <div class="modal-content">
+            <button onclick="closeDetailModal()" style="position: absolute; right: 20px; top: 20px; background: none; border: none; font-size: 24px; cursor: pointer; color: #9CA3AF;">&times;</button>
+            <div id="detail-modal-body">
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-circle-notch fa-spin fa-2x" style="color: #7C3AED;"></i>
+                    <p style="margin-top: 15px; color: #6B7280;">Đang tải dữ liệu chi tiết...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <footer class="footer">
         <div class="footer-content">
             <p>&copy; 2025 BlueMoon Apartment Management System. All rights reserved.</p>
-            <div class="footer-links">
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
-                <a href="#">Contact Support</a>
-            </div>
         </div>
     </footer>
     
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="/js/main.js"></script>
     
-    <script>
-        // ==================== FEATURE TOGGLE FUNCTION ====================
+    <script th:inline="javascript">
+        // --- VẼ BIỂU ĐỒ PIE CHART ---
+        document.addEventListener("DOMContentLoaded", function() {
+            // Lấy dữ liệu từ Thymeleaf (xử lý null safety)
+            const dataCao = /*[[${suCoCao}]]*/ 0;
+            const dataTB = /*[[${suCoTrungBinh}]]*/ 0;
+            const dataThap = /*[[${suCoThap}]]*/ 0;
+
+            const canvas = document.getElementById('priorityChart');
+            if (canvas) {
+                const ctx = canvas.getContext('2d');
+                new Chart(ctx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Cao (Khẩn cấp)', 'Trung bình', 'Thấp'],
+                        datasets: [{
+                            data: [dataCao, dataTB, dataThap],
+                            backgroundColor: [
+                                '#EF4444', // Đỏ
+                                '#F59E0B', // Vàng cam
+                                '#3B82F6'  // Xanh
+                            ],
+                            borderWidth: 0,
+                            hoverOffset: 4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'bottom',
+                                labels: {
+                                    usePointStyle: true,
+                                    padding: 20,
+                                    font: { family: "'Inter', sans-serif", size: 12 }
+                                }
+                            }
+                        },
+                        cutout: '60%', 
+                    }
+                });
+            }
+        });
+
+        // --- HÀM MỞ MODAL ---
+        function showIncidentDetail(id) {
+            const modal = document.getElementById('detailIncidentModal');
+            const modalBody = document.getElementById('detail-modal-body');
+            
+            modal.classList.add('show');
+            
+            // Reset nội dung loading
+            modalBody.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-circle-notch fa-spin fa-2x" style="color: #7C3AED;"></i>
+                    <p style="margin-top: 15px; color: #6B7280;">Đang tải dữ liệu chi tiết...</p>
+                </div>
+            `;
+
+            // Gọi API lấy HTML fragment
+            fetch(`/officer/incidents/detail/${id}`)
+                .then(response => {
+                    if(!response.ok) throw new Error("Lỗi tải dữ liệu");
+                    return response.text();
+                })
+                .then(html => {
+                    modalBody.innerHTML = html;
+                })
+                .catch(err => {
+                    console.error(err);
+                    modalBody.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #EF4444;">
+                            <i class="fas fa-exclamation-triangle fa-2x" style="margin-bottom: 10px;"></i>
+                            <p>Không thể tải chi tiết sự cố.</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailIncidentModal').classList.remove('show');
+        }
+
+        // Đóng modal khi click ra ngoài
+        window.onclick = function(event) {
+            const modal = document.getElementById('detailIncidentModal');
+            if (event.target == modal) {
+                closeDetailModal();
+            }
+        }
+
+        // Hàm thông báo tính năng chưa phát triển
         function showFeatureToggle(featureName, message) {
             Swal.fire({
                 icon: 'info',
-                title: `${featureName} - Coming Soon`,
-                html: `
-                    <div style="text-align: center; padding: 20px;">
-                        <div style="width: 80px; height: 80px; margin: 0 auto 20px; background: linear-gradient(45deg, #4F46E5, #7C3AED); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-rocket" style="font-size: 32px; color: white;"></i>
-                        </div>
-                        <p style="margin-bottom: 15px; font-size: 16px;">${message}</p>
-                        <p style="color: #6B7280; font-size: 14px;">
-                            <i class="fas fa-clock"></i> 
-                            Tính năng này sẽ được phát triển trong phiên bản tiếp theo
-                        </p>
-                    </div>
-                `,
-                confirmButtonColor: '#4F46E5',
-                confirmButtonText: 'Tôi hiểu',
-                showCancelButton: true,
-                cancelButtonText: 'Thông báo cho tôi',
-                cancelButtonColor: '#6B7280'
-            }).then((result) => {
-                if (result.dismiss === Swal.DismissReason.cancel) {
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Đã đăng ký!',
-                        text: 'Chúng tôi sẽ thông báo khi tính năng này ra mắt.',
-                        confirmButtonColor: '#4F46E5'
-                    });
-                }
+                title: `${featureName}`,
+                text: message,
+                confirmButtonColor: '#7C3AED'
             });
         }
-        
-        console.log('BlueMoon Portal - Officer Dashboard Loaded ✓');
     </script>
 </body>
 </html>
-

@@ -31,6 +31,7 @@ import BlueMoon.bluemoon.services.NguoiDungService;
 import BlueMoon.bluemoon.services.ReportService;
 import BlueMoon.bluemoon.services.TaiSanChungCuService; // Import TaiSanChungCuService
 import BlueMoon.bluemoon.utils.Gender; // Cần thiết nếu dùng Enum trực tiếp
+import BlueMoon.bluemoon.utils.IncidentStatus;
 import BlueMoon.bluemoon.utils.PriorityLevel;
 
 @Controller
@@ -417,5 +418,59 @@ public class OfficerController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    /**
+     * Xem Sự Cố - Cơ Quan Chức Năng
+     */
+    // 1. Hiển thị danh sách sự cố (CÓ BỘ LỌC)
+    @GetMapping("/incidents")
+    public String showOfficerIncidents(Model model, 
+                                     @RequestParam(required = false) String keyword,
+                                     @RequestParam(required = false) String reporterName, // Lọc người báo
+                                     @RequestParam(required = false) String assetName, // Lọc theo tên tài sản (Nếu Service hỗ trợ, nếu chưa thì tạm bỏ qua hoặc dùng keyword)
+                                     @RequestParam(required = false) IncidentStatus status,
+                                     @RequestParam(required = false) PriorityLevel priority,
+                                     @RequestParam(required = false) java.time.LocalDate reportDate,
+                                     @RequestParam(required = false) Integer reportHour,
+                                     Authentication auth) {
+        
+        DoiTuong user = getCurrentUser(auth);
+        if (user == null) return "redirect:/login?error=notfound";
+        model.addAttribute("user", user);
+
+        // Gọi Service lọc dữ liệu (Tái sử dụng hàm của Admin)
+        // Lưu ý: Nếu muốn lọc theo "Tên tài sản" riêng biệt, bạn cần nâng cấp Service. 
+        // Ở đây ta tạm dùng keyword để tìm chung cho cả Tiêu đề/Nội dung.
+        List<BaoCaoSuCo> suCoList = suCoService.filterSuCoAdmin(
+            keyword, reporterName, status, priority, null, reportDate, reportHour
+        );
+        
+        model.addAttribute("danhSachSuCo", suCoList);
+        
+        // Truyền lại giá trị để giữ trạng thái Form
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("reporterName", reporterName);
+        model.addAttribute("status", status);
+        model.addAttribute("priority", priority);
+        model.addAttribute("reportDate", reportDate);
+        model.addAttribute("reportHour", reportHour);
+
+        // Enum cho Dropdown
+        model.addAttribute("incidentStatuses", IncidentStatus.values());
+        model.addAttribute("priorityLevels", PriorityLevel.values());
+
+        return "incident-officer"; 
+    }
+
+    // 2. API Lấy chi tiết sự cố cho Modal (QUAN TRỌNG: Trả về Fragment HTML)
+    @GetMapping("/incidents/detail/{id}")
+    public String getIncidentDetailForOfficer(@PathVariable Integer id, Model model) {
+        // SỬA LẠI ĐOẠN NÀY: Không cần ép kiểu (BaoCaoSuCo) hay (Optional) nữa
+        BaoCaoSuCo suCo = suCoService.getSuCoById(id).orElse(null);
+        
+        model.addAttribute("suCo", suCo);
+        
+        // Trả về Fragment
+        return "incident-officer :: detailContent";
     }
 }
