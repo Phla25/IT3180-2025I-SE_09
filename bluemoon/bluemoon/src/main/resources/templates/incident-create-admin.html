@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Tạo Hồ Sơ Sự Cố - Admin</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .form-card { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 800px; margin: 0 auto; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 8px; color: #374151; }
+        .form-control { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; }
+        .hint-box { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; padding: 15px; border-radius: 4px; margin-bottom: 20px; display: none; font-size: 0.95em; }
+        .hint-box i { margin-right: 8px; }
+        .btn-submit { background-color: #10B981; color: white; padding: 12px 24px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-submit:hover { background-color: #059669; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-building"></i>
+                <span>BlueMoon Portal</span>
+            </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user?.hoVaTen} ?: 'Người Dùng'">Người Dùng</span>
+                    <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                </div>
+            </div>
+        </div>
+        
+        <nav class="sidebar-nav">
+            <a th:href="@{/admin/dashboard}" class="nav-item"> <i class="fas fa-chart-line"></i> <span>Dashboard</span> </a>
+            <a th:href="@{/admin/resident-list}" class="nav-item"> <i class="fas fa-users"></i> <span>Quản Lý Cư Dân</span> </a>
+            <a th:href="@{/admin/apartment-list}" class="nav-item"> <i class="fas fa-home"></i> <span>Quản Lý Căn Hộ</span> </a>
+            <a th:href="@{/admin/household-list}" class="nav-item"> <i class="fas fa-users-cog"></i> <span>Quản Lý Hộ Gia Đình</span> </a>
+            <a th:href="@{/admin/entry-exit-logs}" class="nav-item"> <i class="fas fa-history"></i> <span>Lịch Sử Ra Vào</span> </a>
+            <a th:href="@{/admin/general-asset-list}" class="nav-item"> <i class="fas fa-building"></i> <span>Quản Lý Tài Sản</span> </a>
+            <a th:href="@{/admin/fees}" class="nav-item"> <i class="fas fa-file-invoice-dollar"></i> <span>Quản Lý Khoản Phí</span> </a>
+            <a th:href="@{/admin/service-list}" class="nav-item"><i class="fas fa-concierge-bell"></i><span>Quản Lý Dịch Vụ</span></a>
+            <a th:href="@{/admin/service-registrations}" class="nav-item">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Quản Lý Đăng Ký Dịch Vụ</span>
+            </a>
+            <a th:href="@{/admin/incidents}" class="nav-item active">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
+            <a th:href="@{/admin/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
+            </a>
+            <a th:href="@{/admin/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
+        </nav>
+        
+        <div class="sidebar-footer">
+            <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1 th:text="${pageTitle} ?: 'Xử lý sự cố'">Xử lý sự cố</h1>
+        </div>
+        
+        <div class="header-right">
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user?.hoVaTen} ?: 'Người Dùng'">Trần Thị Lan</span>
+                    <span class="user-role" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                </div>
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="dropdown-menu">
+                    <a th:href="@{/admin/profile}">
+                        <i class="fas fa-user"></i> Thông Tin Cá Nhân
+                    </a>
+                    <hr>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="form-card">
+            <h2 style="margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                <i class="fas fa-pen-to-square"></i> Nhập Thông Tin Sự Cố
+            </h2>
+
+            <div style="background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #ffeeba;">
+                <i class="fas fa-info-circle"></i> <strong>Lưu ý:</strong> Sự cố được tạo bởi Admin sẽ được chuyển ngay sang trạng thái <strong>"Mới tiếp nhận"</strong>.
+            </div>
+
+            <form th:action="@{/admin/incident-create}" th:object="${newIncident}" method="post">
+                
+                <div style="margin-bottom: 20px;">
+                    <label class="form-label">Loại sự cố <span style="color:red">*</span></label>
+                    <select th:field="*{loaiSuCo}" class="form-control" id="incidentType" required onchange="updateHint()">
+                        <option value="" disabled selected>-- Chọn loại --</option>
+                        <option th:each="type : ${incidentTypes}" th:value="${type}" th:text="${type.dbValue}"></option>
+                    </select>
+                </div>
+
+                <div id="hint-box" class="hint-box">
+                    <i class="fas fa-lightbulb"></i> <span id="hint-text"></span>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label class="form-label">Tiêu đề sự cố <span style="color:red">*</span></label>
+                    <input type="text" th:field="*{tieuDe}" class="form-control" placeholder="Ví dụ: Hỏng đèn hành lang tầng 5..." required>
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label class="form-label">Nội dung chi tiết <span style="color:red">*</span></label>
+                    <textarea th:field="*{noiDung}" class="form-control" rows="5" placeholder="Mô tả chi tiết sự việc..." required></textarea>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px;">
+                    <a th:href="@{/admin/incidents}" style="color: #6b7280; text-decoration: none;"><i class="fas fa-arrow-left"></i> Quay lại danh sách</a>
+                    <button type="submit" class="btn-submit"><i class="fas fa-save"></i> Lưu Hồ Sơ</button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <script>
+        function updateHint() {
+            const select = document.getElementById('incidentType');
+            const hintBox = document.getElementById('hint-box');
+            const hintText = document.getElementById('hint-text');
+            const val = select.value;
+            let msg = "", show = false;
+
+            if (val === 'mat_do') { msg = "Gợi ý: Ghi rõ vật bị mất, đặc điểm, thời gian & địa điểm dự đoán."; show = true; }
+            else if (val === 'an_ninh') { msg = "Gợi ý: Mô tả sự việc gây mất an ninh, vị trí, người liên quan."; show = true; }
+            else if (['dien', 'nuoc', 've_sinh', 'khac'].includes(val)) { msg = "Gợi ý: Vị trí hỏng hóc, tình trạng hiện tại, thời điểm phát hiện."; show = true; }
+
+            if (show) { hintText.textContent = msg; hintBox.style.display = 'block'; }
+            else { hintBox.style.display = 'none'; }
+        }
+    </script>
+</body>
+</html>

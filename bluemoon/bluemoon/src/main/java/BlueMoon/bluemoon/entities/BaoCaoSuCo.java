@@ -6,6 +6,7 @@ import java.time.LocalDateTime;
 import org.hibernate.annotations.DynamicUpdate;
 
 import BlueMoon.bluemoon.utils.IncidentStatus;
+import BlueMoon.bluemoon.utils.IncidentType;
 import BlueMoon.bluemoon.utils.PriorityLevel;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -34,7 +35,7 @@ public class BaoCaoSuCo {
     private DoiTuong nguoiBaoCao;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ma_tai_san", nullable = false)
+    @JoinColumn(name = "ma_tai_san", nullable = true)
     private TaiSanChungCu taiSan;
 
     @Column(name = "tieu_de", length = 255)
@@ -51,6 +52,10 @@ public class BaoCaoSuCo {
     @Column(name = "trang_thai", length = 20)
     private IncidentStatus trangThai = IncidentStatus.moi_tiep_nhan;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "loai_su_co", length = 30)
+    private IncidentType loaiSuCo = IncidentType.khac;
+
     @Column(name = "thoi_gian_bao_cao")
     private LocalDateTime thoiGianBaoCao = LocalDateTime.now();
 
@@ -60,7 +65,7 @@ public class BaoCaoSuCo {
     @Column(name = "chi_phi_xu_ly", precision = 15, scale = 2)
     private BigDecimal chiPhiXuLy = BigDecimal.ZERO;
 
-    // ✅ Constructors
+    // Constructors
     public BaoCaoSuCo() {}
 
     public BaoCaoSuCo(DoiTuong nguoiBaoCao, TaiSanChungCu taiSan, String tieuDe, String noiDung,
@@ -73,7 +78,7 @@ public class BaoCaoSuCo {
         this.trangThai = trangThai;
     }
 
-    // ✅ Getters & Setters
+    // Getters & Setters
     public Integer getMaBaoCao() {
         return maBaoCao;
     }
@@ -152,5 +157,13 @@ public class BaoCaoSuCo {
 
     public void setChiPhiXuLy(BigDecimal chiPhiXuLy) {
         this.chiPhiXuLy = chiPhiXuLy;
+    }
+
+    public IncidentType getLoaiSuCo() {
+        return loaiSuCo;
+    }
+
+    public void setLoaiSuCo(IncidentType loaiSuCo) {
+        this.loaiSuCo = loaiSuCo;
     }
 }

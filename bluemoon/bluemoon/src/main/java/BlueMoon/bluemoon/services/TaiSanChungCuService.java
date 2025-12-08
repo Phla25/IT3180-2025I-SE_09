@@ -1,12 +1,13 @@
 package BlueMoon.bluemoon.services;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,10 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import BlueMoon.bluemoon.daos.HoGiaDinhDAO;
 import BlueMoon.bluemoon.daos.TaiSanChungCuDAO;
-import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
-import BlueMoon.bluemoon.utils.AssetStatus;
 import BlueMoon.bluemoon.utils.AssetType;
 
 @Service
@@ -26,7 +25,6 @@ public class TaiSanChungCuService {
     // Inject DAO để tương tác với cơ sở dữ liệu
     @Autowired private TaiSanChungCuDAO taiSanChungCuDAO;
     @Autowired private HoGiaDinhDAO hoGiaDinhDAO; // Cần để tìm HoGiaDinh khi liên kết
-    @Autowired private ThongBaoService thongBaoService; // Để gửi thông báo khi thay đổi trạng thái
 
     // =======================================================
     // 1. CHỨC NĂNG READ (Đọc)
@@ -214,35 +212,24 @@ public class TaiSanChungCuService {
      * @param maHo Mã Hộ gia đình mới liên kết (có thể là null để gỡ liên kết).
      * @return TaiSanChungCu đã được cập nhật.
      */
+    @Autowired private ThongBaoService thongBaoService; // Inject thêm
+
     @Transactional
     public TaiSanChungCu capNhatTaiSanChung(Integer maTaiSan, TaiSanChungCu taiSanCapNhat, String maHo) {
-        return capNhatTaiSanChung(maTaiSan, taiSanCapNhat, maHo, null);
-    }
-    
-    /**
-     * Cập nhật thông tin Tài Sản Chung Cư và gửi thông báo nếu trạng thái thay đổi.
-     * @param maTaiSan Mã tài sản cần cập nhật.
-     * @param taiSanCapNhat Entity TaiSanChungCu chứa dữ liệu mới.
-     * @param maHo Mã Hộ gia đình mới liên kết (có thể là null để gỡ liên kết).
-     * @param nguoiCapNhat Người thực hiện cập nhật (để gửi thông báo).
-     * @return TaiSanChungCu đã được cập nhật.
-     */
-    @Transactional
-    public TaiSanChungCu capNhatTaiSanChung(Integer maTaiSan, TaiSanChungCu taiSanCapNhat, String maHo, DoiTuong nguoiCapNhat) {
         TaiSanChungCu taiSanHienTai = taiSanChungCuDAO.findByID(maTaiSan)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Tài Sản với Mã Tài Sản: " + maTaiSan));
 
         // Lưu trạng thái cũ để so sánh
-        AssetStatus trangThaiCu = taiSanHienTai.getTrangThai();
-        String tenTaiSan = taiSanHienTai.getTenTaiSan();
+        BlueMoon.bluemoon.utils.AssetStatus trangThaiCu = taiSanHienTai.getTrangThai();
 
         // 1. Cập nhật thông tin cơ bản
         taiSanHienTai.setTenTaiSan(taiSanCapNhat.getTenTaiSan());
-        taiSanHienTai.setLoaiTaiSan(taiSanCapNhat.getLoaiTaiSan()); // Cho phép đổi loại tài sản
-        taiSanHienTai.setTrangThai(taiSanCapNhat.getTrangThai());
+        taiSanHienTai.setLoaiTaiSan(taiSanCapNhat.getLoaiTaiSan());
+        taiSanHienTai.setTrangThai(taiSanCapNhat.getTrangThai()); // Trạng thái mới
         taiSanHienTai.setDienTich(taiSanCapNhat.getDienTich());
         taiSanHienTai.setGiaTri(taiSanCapNhat.getGiaTri());
         taiSanHienTai.setViTri(taiSanCapNhat.getViTri());
+        taiSanHienTai.setMoTa(taiSanCapNhat.getMoTa());
     
         // 2. Cập nhật Hộ gia đình liên kết
         if (maHo != null && !maHo.trim().isEmpty()) {
@@ -250,51 +237,28 @@ public class TaiSanChungCuService {
                 .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình với Mã Hộ: " + maHo));
             taiSanHienTai.setHoGiaDinh(hgd);
         } else {
-             taiSanHienTai.setHoGiaDinh(null); // Gỡ liên kết
+             taiSanHienTai.setHoGiaDinh(null); 
         }
 
-        TaiSanChungCu taiSanDaLuu = taiSanChungCuDAO.save(taiSanHienTai);
-        
-        // 3. Gửi thông báo nếu trạng thái thay đổi
-        AssetStatus trangThaiMoi = taiSanCapNhat.getTrangThai();
-        if (nguoiCapNhat != null && trangThaiMoi != null && trangThaiCu != null && !trangThaiMoi.equals(trangThaiCu)) {
-            guiThongBaoThayDoiTrangThai(tenTaiSan, trangThaiCu, trangThaiMoi, nguoiCapNhat);
+        TaiSanChungCu savedAsset = taiSanChungCuDAO.save(taiSanHienTai);
+
+        // === LOGIC THÔNG BÁO: Nếu trạng thái thay đổi -> Báo toàn bộ cư dân ===
+        if (trangThaiCu != savedAsset.getTrangThai()) {
+            String tieuDe = "Thông báo tài sản: " + savedAsset.getTenTaiSan() +" đã " + savedAsset.getTrangThai().getDbValue();
+            String noiDung = "Tài sản '" + savedAsset.getTenTaiSan() + "' (" + savedAsset.getViTri() + ") " +
+                             "đã chuyển trạng thái từ " + trangThaiCu.getDbValue() + 
+                             " sang " + savedAsset.getTrangThai().getDbValue() + ".";
+            
+            // Gọi service gửi thông báo (chạy ngầm hoặc trực tiếp)
+            try {
+                thongBaoService.guiThongBaoHeThongDenTatCa(tieuDe, noiDung);
+            } catch (Exception e) {
+                System.err.println("Lỗi gửi thông báo tự động: " + e.getMessage());
+                // Không throw exception để tránh rollback giao dịch cập nhật tài sản
+            }
         }
 
-        return taiSanDaLuu;
-    }
-    
-    /**
-     * Gửi thông báo khi trạng thái tài sản thay đổi
-     */
-    private void guiThongBaoThayDoiTrangThai(String tenTaiSan, AssetStatus trangThaiCu, AssetStatus trangThaiMoi, DoiTuong nguoiGui) {
-        // Format ngày hiện tại
-        String ngayHienTai = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"));
-        
-        // Tạo tiêu đề: "{Tên Tài Sản} Đã Đi Vào {Trạng Thái Mới}"
-        String tieuDe = tenTaiSan + " Đã Đi Vào " + getDisplayStatus(trangThaiMoi);
-        
-        // Tạo nội dung: "Từ {Today Date}, {Tên Tài Sản} sẽ được đi vào {Trạng Thái Mới} sau một thời gian {Trạng Thái Cũ}. Quý cư dân lưu ý!"
-        String noiDung = "Từ " + ngayHienTai + ", " + tenTaiSan + " sẽ được đi vào " + getDisplayStatus(trangThaiMoi) 
-                + " sau một thời gian " + getDisplayStatus(trangThaiCu) + ". Quý cư dân lưu ý!";
-        
-        // Gửi thông báo
-        thongBaoService.taoVaGuiThongBao(tieuDe, noiDung, nguoiGui);
-    }
-    
-    /**
-     * Chuyển đổi AssetStatus sang tên hiển thị tiếng Việt
-     */
-    private String getDisplayStatus(AssetStatus status) {
-        if (status == null) return "Không xác định";
-        switch (status) {
-            case hoat_dong: return "Hoạt Động";
-            case bao_tri: return "Bảo Trì";
-            case hong: return "Hỏng";
-            case ngung_hoat_dong: return "Ngừng Hoạt Động";
-            case da_duoc_thue: return "Đã Được Thuê";
-            default: return status.getDbValue();
-        }
+        return savedAsset;
     }
     /**
      * Cập nhật thông tin Căn hộ.
@@ -305,23 +269,9 @@ public class TaiSanChungCuService {
      */
     @Transactional
     public TaiSanChungCu capNhatCanHo(Integer maTaiSan, TaiSanChungCu canHoCapNhat, String maHo) {
-        return capNhatCanHo(maTaiSan, canHoCapNhat, maHo, null);
-    }
-    
-    /**
-     * Cập nhật thông tin Căn hộ và gửi thông báo nếu trạng thái thay đổi.
-     * @param maTaiSan Mã căn hộ cần cập nhật.
-     * @param canHoCapNhat Entity TaiSanChungCu chứa dữ liệu mới.
-     * @param maHo Mã Hộ gia đình mới liên kết (có thể là null để gỡ liên kết).
-     * @param nguoiCapNhat Người thực hiện cập nhật (để gửi thông báo).
-     * @return TaiSanChungCu đã được cập nhật.
-     */
-    @Transactional
-    public TaiSanChungCu capNhatCanHo(Integer maTaiSan, TaiSanChungCu canHoCapNhat, String maHo, DoiTuong nguoiCapNhat) {
         TaiSanChungCu canHoHienTai = taiSanChungCuDAO.findByID(maTaiSan)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Căn hộ với Mã Tài Sản: " + maTaiSan));
-        
-        // KIỂM TRA NGHIỆP VỤ: Tên căn hộ phải là duy nhất (khi cập nhật) (NEW)
+                // KIỂM TRA NGHIỆP VỤ: Tên căn hộ phải là duy nhất (khi cập nhật) (NEW)
         if (taiSanChungCuDAO.existsByTenCanHoExceptId(canHoCapNhat.getTenTaiSan(), maTaiSan)) {
              throw new IllegalArgumentException("Lỗi: Tên Căn hộ '" + canHoCapNhat.getTenTaiSan() + "' đã được sử dụng cho căn hộ khác.");
         }
@@ -330,17 +280,13 @@ public class TaiSanChungCuService {
              throw new IllegalStateException("Loại tài sản không phải là Căn hộ. Không thể cập nhật qua chức năng này.");
         }
 
-        // Lưu trạng thái cũ để so sánh
-        AssetStatus trangThaiCu = canHoHienTai.getTrangThai();
-        String tenCanHo = canHoHienTai.getTenTaiSan();
-
         // 1. Cập nhật thông tin cơ bản
         canHoHienTai.setTenTaiSan(canHoCapNhat.getTenTaiSan());
         canHoHienTai.setTrangThai(canHoCapNhat.getTrangThai());
         canHoHienTai.setDienTich(canHoCapNhat.getDienTich());
         canHoHienTai.setGiaTri(canHoCapNhat.getGiaTri());
         canHoHienTai.setViTri(canHoCapNhat.getViTri());
-        
+        canHoHienTai.setMoTa(canHoCapNhat.getMoTa());
         // 2. Cập nhật Hộ gia đình liên kết
         if (maHo != null && !maHo.trim().isEmpty()) {
             HoGiaDinh hgd = hoGiaDinhDAO.findById(maHo)
@@ -350,15 +296,7 @@ public class TaiSanChungCuService {
              canHoHienTai.setHoGiaDinh(null); // Gỡ liên kết
         }
 
-        TaiSanChungCu canHoDaLuu = taiSanChungCuDAO.save(canHoHienTai);
-        
-        // 3. Gửi thông báo nếu trạng thái thay đổi
-        AssetStatus trangThaiMoi = canHoCapNhat.getTrangThai();
-        if (nguoiCapNhat != null && trangThaiMoi != null && trangThaiCu != null && !trangThaiMoi.equals(trangThaiCu)) {
-            guiThongBaoThayDoiTrangThai(tenCanHo, trangThaiCu, trangThaiMoi, nguoiCapNhat);
-        }
-
-        return canHoDaLuu;
+        return taiSanChungCuDAO.save(canHoHienTai);
     }
 
     // =======================================================
@@ -505,4 +443,72 @@ public class TaiSanChungCuService {
     public List<TaiSanChungCu> getGeneralAssetListReport() {
         return taiSanChungCuDAO.findAllGeneralAssets();
     }
+    /**
+     * Lấy danh sách các TÒA NHÀ có căn hộ trống.
+     * Logic: Quét toàn bộ căn trống, cắt chuỗi lấy ký tự đầu (A, B...).
+     */
+    public List<String> getAvailableBuildings() {
+        List<TaiSanChungCu> emptyApts = taiSanChungCuDAO.findAllEmptyApartments();
+        Set<String> buildings = new HashSet<>();
+
+        for (TaiSanChungCu apt : emptyApts) {
+            String name = apt.getTenTaiSan(); // VD: "A-101"
+            if (name.contains("-")) {
+                String building = name.split("-")[0]; // Lấy "A"
+                buildings.add(building);
+            }
+        }
+        return new ArrayList<>(buildings).stream().sorted().collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy danh sách TẦNG có căn hộ trống thuộc Tòa cụ thể.
+     * Logic: A-101 -> Tầng 1, A-1205 -> Tầng 12.
+     */
+    @SuppressWarnings("UnnecessaryContinue")
+    public List<Integer> getAvailableFloorsByBuilding(String building) {
+        List<TaiSanChungCu> emptyApts = taiSanChungCuDAO.findAllEmptyApartments();
+        Set<Integer> floors = new HashSet<>();
+
+        for (TaiSanChungCu apt : emptyApts) {
+            String name = apt.getTenTaiSan(); // VD: "A-101"
+            if (name.startsWith(building + "-")) {
+                try {
+                    String numberPart = name.split("-")[1]; // "101"
+                    int roomNum = Integer.parseInt(numberPart);
+                    int floor = roomNum / 100; // 101/100 = 1
+                    if (floor == 0) floor = 1; // Xử lý tầng trệt nếu cần
+                    floors.add(floor);
+                } catch (NumberFormatException e) { continue; }
+            }
+        }
+        return new ArrayList<>(floors).stream().sorted().collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy danh sách CĂN HỘ trống thuộc Tòa và Tầng cụ thể.
+     */
+    @SuppressWarnings("UnnecessaryContinue")
+    public List<TaiSanChungCu> getEmptyApartmentsByBuildingAndFloor(String building, Integer floor) {
+        List<TaiSanChungCu> emptyApts = taiSanChungCuDAO.findAllEmptyApartments();
+        List<TaiSanChungCu> result = new ArrayList<>();
+
+        for (TaiSanChungCu apt : emptyApts) {
+            String name = apt.getTenTaiSan(); // VD: "A-101"
+            try {
+                if (name.startsWith(building + "-")) {
+                    String numberPart = name.split("-")[1];
+                    int roomNum = Integer.parseInt(numberPart);
+                    int calculatedFloor = roomNum / 100;
+                    if (calculatedFloor == 0) calculatedFloor = 1;
+
+                    if (calculatedFloor == floor) {
+                        result.add(apt);
+                    }
+                }
+            } catch (NumberFormatException e) { continue; }
+        }
+        return result;
+    }
+    
 }

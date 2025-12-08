@@ -1,11 +1,13 @@
 package BlueMoon.bluemoon.daos;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import BlueMoon.bluemoon.entities.DoiTuong;
+import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
@@ -73,5 +75,20 @@ public class ThanhVienHoDAO {
 
     public ThanhVienHo save(ThanhVienHo thanhVien) {
         return entityManager.merge(thanhVien);
+    }
+
+    public List<ThanhVienHo> findActiveByMaHo(String maHo) {
+        String jpql = "SELECT tvh FROM ThanhVienHo tvh WHERE tvh.hoGiaDinh.maHo = :maHo AND tvh.ngayKetThuc IS NULL";
+        return entityManager.createQuery(jpql, ThanhVienHo.class)
+                            .setParameter("maHo", maHo)
+                            .getResultList();
+    }
+
+    public Integer countByHoGiaDinh(HoGiaDinh hoGiaDinh) {
+        String jpql = "SELECT COUNT(tvh) FROM ThanhVienHo tvh WHERE tvh.hoGiaDinh = :hoGiaDinh AND tvh.ngayKetThuc IS NULL";
+        return entityManager.createQuery(jpql, Long.class)
+                            .setParameter("hoGiaDinh", hoGiaDinh)
+                            .getSingleResult()
+                            .intValue();
     }
 }

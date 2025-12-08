@@ -99,26 +99,12 @@
         </div>
         
         <nav class="sidebar-nav">
-            <a th:href="@{/officer/dashboard}" class="nav-item">
-                <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>Xem Sự Cố</span>
-            </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-chart-bar"></i>
-                <span>Báo Cáo</span>
-            </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-file-alt"></i>
-                <span>Tài Liệu</span>
-            </a>
-            <a th:href="@{/officer/apartment-list}" class="nav-item active">
-                <i class="fas fa-home"></i>
-                <span>Xem Căn Hộ</span>
-            </a>
+            <a th:href="@{/officer/dashboard}" class="nav-item"> <i class="fas fa-chart-line"></i> <span>Dashboard</span> </a>
+            <a th:href="@{/officer/incidents}" class="nav-item"> <i class="fas fa-exclamation-triangle"></i> <span>Xem Sự Cố</span> </a>
+            <a th:href="@{/officer/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo</span> </a>
+            <a th:href="@{/officer/apartment-list}" class="nav-item active"> <i class="fas fa-home"></i> <span>Xem Căn Hộ</span> </a>
+            
+            <a th:href="@{/officer/entry-exit-logs}" class="nav-item"> <i class="fas fa-history"></i> <span>Tra Cứu Ra Vào</span> </a>
         </nav>
         
         <div class="sidebar-footer">
@@ -192,9 +178,14 @@
                             <span class="detail-label">Trạng Thái:</span>
                             <span class="detail-value" th:text="${apartment.trangThai?.dbValue}">Hoạt Động</span>
                         </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Vị Trí:</span>
+                            <span class="detail-value" th:text="${apartment.viTri} ?: 'N/A'">Tầng 5</span>
+                        </div>
+
                         <div class="detail-item" style="grid-column: 1 / -1;">
-                            <span class="detail-label">Vị Trí / Mô tả:</span>
-                            <span class="detail-value" th:text="${apartment.viTri} ?: 'N/A'">Tầng 5, Tòa A, Cửa sổ hướng Đông Nam</span>
+                            <span class="detail-label">Mô Tả:</span>
+                            <span class="detail-value" th:text="${apartment.moTa} ?: 'Không có mô tả'">Căn góc...</span>
                         </div>
                     </div>
                 </div>

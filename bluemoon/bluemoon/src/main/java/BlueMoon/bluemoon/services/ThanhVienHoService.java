@@ -1,5 +1,6 @@
 package BlueMoon.bluemoon.services;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -8,11 +9,11 @@ import org.springframework.transaction.annotation.Transactional; // THÊM IMPORT
 
 import BlueMoon.bluemoon.daos.TaiSanChungCuDAO;
 import BlueMoon.bluemoon.daos.ThanhVienHoDAO;
+import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
-import BlueMoon.bluemoon.models.HoGiaDinhDTO; 
-import BlueMoon.bluemoon.entities.DoiTuong;
+import BlueMoon.bluemoon.models.HoGiaDinhDTO;
 
 @Service
 public class ThanhVienHoService {
@@ -66,5 +67,12 @@ public class ThanhVienHoService {
     }
     public Optional<DoiTuong> getChuHoByMaHo(String maHo){
         return thanhVienHoDAO.findChuHoByHo(maHo);
+    }
+
+    public List<ThanhVienHo> getActiveByMaHo(String maHo) {
+        return thanhVienHoDAO.findActiveByMaHo(maHo);
+    }
+    public Integer countThanhVienByHoGiaDinh(HoGiaDinh hoGiaDinh) {
+        return thanhVienHoDAO.countByHoGiaDinh(hoGiaDinh);
     }
 }

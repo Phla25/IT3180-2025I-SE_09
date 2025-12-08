@@ -236,15 +236,9 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
 
             if (s != null) {
                 switch (s) {
-                    case o_chung_cu:
-                        label = "Đang sinh sống";
-                        break;
-                    case roi_di:
-                        label = "Đã rời đi";
-                        break;
-                    case da_chet:
-                        label = "Đã mất";
-                        break;
+                    case o_chung_cu -> label = "Đang sinh sống";
+                    case roi_di -> label = "Đã rời đi";
+                    case da_chet -> label = "Đã mất";
                 }
             }
             
@@ -253,7 +247,44 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
         }
         stats.put("resStatusLabels", statusLabels);
         stats.put("resStatusData", statusData);
+        
+        // 3. Thống kê theo Độ tuổi
+        List<DoiTuong> allResidents = doiTuongDAO.findResidentsInComplex(ResidentStatus.o_chung_cu);
+        long treEmMamNon = 0; // 0-5 tuổi
+        long hocSinh = 0; // 6-17 tuổi
+        long sinhVien = 0; // 18-22 tuổi
+        long nguoiDiLam = 0; // 23-59 tuổi
+        long nguoiGia = 0; // 60+ tuổi
+
+        int currentYear = java.time.Year.now().getValue();
+
+        for (DoiTuong resident : allResidents) {
+            if (resident.getNgaySinh() != null) {
+                int age = currentYear - resident.getNgaySinh().getYear();
+
+                if (age <= 5) {
+                    treEmMamNon++;
+                } else if (age <= 17) {
+                    hocSinh++;
+                } else if (age <= 22) {
+                    sinhVien++;
+                } else if (age <= 59) {
+                    nguoiDiLam++;
+                } else {
+                    nguoiGia++;
+                }
+            }
+        }
+
+        List<String> ageLabels = List.of("Trẻ em mầm non (0-5)", "Học sinh (6-17)",
+                "Sinh viên (18-22)", "Người đi làm (23-59)",
+                "Người già (60+)");
+        List<Long> ageData = List.of(treEmMamNon, hocSinh, sinhVien, nguoiDiLam, nguoiGia);
+
+        stats.put("ageLabels", ageLabels);
+        stats.put("ageData", ageData);
 
         return stats;
     }
+    
 }

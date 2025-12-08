@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Căn Hộ Của Tôi - BlueMoon Portal</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+            .info-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 12px; 
+            }
+            .info-card h3 {
+            margin: 0 0 20px 0;
+            font-size: 1.4rem;
+        }
+        .info-card p {
+            margin: 10px 0;
+            font-size: 1.05rem;
+        }  
+        .member-table {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .member-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .member-table th {
+            background: #F9FAFB;
+            padding: 15px;
+            text-align: left;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #4B5563;
+            border-bottom: 2px solid #E5E7EB;
+        }
+        .member-table td {
+            padding: 15px;
+            border-bottom: 1px solid #F3F4F6;
+        }
+        .badge-primary {
+            background: #DBEAFE;
+            color: #1E40AF;
+            padding: 5px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .badge-warning {
+            background: #FEF3C7;
+            color: #D97706;
+            padding: 5px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }   
+        .alert {
+            background: #E0F2FE;
+            color: #075985;
+            padding: 20px;
+            border-radius: 8px;border-left: 4px solid #0284C7;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-building"></i>
+                <span>BlueMoon Portal</span>
+            </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen}">User</span>
+                    <span class="user-role" style="color: #10B981;">CƯ DÂN</span>
+                </div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/resident/dashboard}" class="nav-item">
+                <i class="fas fa-chart-line"></i> <span>Dashboard</span>
+            </a>
+            <a th:href="@{/resident/profile}" class="nav-item">
+                <i class="fas fa-user"></i> <span>Thông Tin Cá Nhân</span>
+            </a>
+            <a th:href="@{/resident/fees}" class="nav-item">
+                <i class="fas fa-file-invoice-dollar"></i> <span>Hóa Đơn & Thanh Toán</span>
+            </a>
+            <a th:href="@{/resident/my-services}" class="nav-item">
+                <i class="fas fa-handshake"></i> <span>Dịch Vụ Của Tôi</span>
+            </a>
+            <a th:href="@{/resident/services}" class="nav-item">
+                <i class="fas fa-concierge-bell"></i> <span>Đăng Ký Dịch Vụ</span>
+            </a>
+            <a th:href="@{/resident/my-household}" class="nav-item active">
+                <i class="fas fa-home"></i> <span>Căn Hộ Của Tôi</span>
+            </a>    
+            <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
+                <i class="fas fa-exclamation-triangle"></i> <span>Báo Cáo Sự Cố</span>
+            </a>
+            <a th:href="@{/resident/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i> <span>Thông Báo</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            <form th:action="@{/logout}" method="post" style="margin: 0;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1>Căn Hộ Của Tôi</h1>
+        </div>
+        <div class="header-right">
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen}">User</span>
+                    <span class="user-role" style="color: #10B981;">CƯ DÂN</span>
+                </div>
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="dropdown-menu">
+                    <a th:href="@{/resident/profile}">
+                        <i class="fas fa-user"></i> Thông Tin Cá Nhân
+                    </a>
+                    <a th:href="@{/resident/change-password}">
+                        <i class="fas fa-key"></i> Đổi Mật Khẩu
+                    </a>
+                    <hr>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <div th:if="${maHo != null and maHo != 'N/A'}" class="info-card">
+                <h3><i class="fas fa-home"></i> Thông Tin Hộ Gia Đình</h3>
+                <p><strong>Mã Hộ:</strong> <span th:text="${maHo}">HGD001</span></p>
+                <p><strong>Chủ Hộ:</strong> <span th:text="${tenChuHo}">Chủ Hộ</span></p>
+                <p><strong>Số Thành Viên:</strong> <span th:text="${tongThanhVien}">0</span> người</p>
+            </div>
+            <!-- Danh sách thành viên -->
+            <div th:if="${members != null and members.size() > 0}" style="margin-top: 30px;">
+                <h3 style="margin-bottom: 20px; color: #1F2937;">
+                    <i class="fas fa-users"></i> Danh Sách Thành Viên
+                </h3>
+                <div class="member-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Họ Tên</th>
+                                <th>Vai Trò</th>
+                                <th>Quan Hệ</th>
+                                <th>CCCD</th>
+                                <th>Ngày Tham Gia</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="member : ${members}">
+                                <td>
+                                    <span th:if="${member.doiTuong != null}" th:text="${member.doiTuong.hoVaTen}">Họ Tên</span>
+                                    <span th:unless="${member.doiTuong != null}">N/A</span>
+                                </td>
+                                <td>
+                                    <span th:if="${member.laChuHo}" class="badge-primary">Chủ Hộ</span>
+                                    <span th:unless="${member.laChuHo}" class="badge-warning">Thành Viên</span>
+                                </td>
+                                <td>
+                                    <span th:if="${member.quanHeVoiChuHo != null}" th:text="${member.quanHeVoiChuHo}">Quan Hệ</span>
+                                    <span th:unless="${member.quanHeVoiChuHo != null}">N/A</span>
+                                </td>
+                                <td>
+                                    <span th:if="${member.doiTuong != null}" th:text="${member.doiTuong.cccd}">CCCD</span>
+                                    <span th:unless="${member.doiTuong != null}">N/A</span>
+                                </td>
+                                <td>
+                                    <span th:if="${member.id != null and member.id.ngayBatDau != null}" th:text="${#temporals.format(member.id.ngayBatDau, 'dd/MM/yyyy')}">Ngày</span>
+                                    <span th:unless="${member.id != null and member.id.ngayBatDau != null}">N/A</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Thông báo -->
+            <div th:if="${message != null}" class="alert">
+                <i class="fas fa-info-circle"></i>
+                <span th:text="${message}">Thông báo</span>
+            </div>
+            <div th:if="${maHo == null or maHo == 'N/A'}" class="alert">
+                <i class="fas fa-info-circle"></i>
+                <span>Bạn chưa được gán vào hộ gia đình nào.</span>
+            </div>
+
+        </div>
+        </div>
+    </main>
+
+    <script src="/js/main.js"></script>
+    <script>
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+            document.querySelector('.main-content').classList.toggle('shifted');
+            document.querySelector('.header').classList.toggle('shifted');
+        }
+        var userMenu = document.querySelector('.user-menu');
+        if (userMenu) {
+            userMenu.addEventListener('click', function() {
+                this.querySelector('.dropdown-menu').classList.toggle('show');
+            });
+        }
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.user-menu')) {
+                var dropdowns = document.querySelectorAll('.dropdown-menu');
+                dropdowns.forEach(function(menu) {
+                    menu.classList.remove('show');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

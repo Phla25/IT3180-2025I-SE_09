@@ -60,4 +60,11 @@ public class DangKyDichVuDAO {
     public List<DangKyDichVu> findAll() {
         return entityManager.createQuery("SELECT dkdv FROM DangKyDichVu dkdv", DangKyDichVu.class).getResultList();
     }
+    public int countByNguoiDungCccd(String cccd) {
+        String jpql = "SELECT COUNT(dkdv) FROM DangKyDichVu dkdv WHERE dkdv.nguoiDung.cccd = :cccd";
+        return entityManager.createQuery(jpql, Long.class)
+                .setParameter("cccd", cccd)
+                .getSingleResult()
+                .intValue();
+    }
 }

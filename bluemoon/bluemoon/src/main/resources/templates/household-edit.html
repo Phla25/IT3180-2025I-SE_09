@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Chỉnh Sửa Hộ Gia Đình - Admin</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* CSS Form giống các trang khác */
+        .form-card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 800px; margin: 20px auto; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-weight: 600; margin-bottom: 8px; }
+        .form-control, .form-select { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        .current-info { background: #f3f4f6; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #4F46E5; }
+        .btn-save { background: #10B981; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"> <i class="fas fa-building"></i> <span>BlueMoon Portal</span> </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user?.hoVaTen} ?: 'Người Dùng'">Tên Người Dùng</span>
+                    <span class="user-role" th:if="${user?.vaiTro?.name() == 'ban_quan_tri'}" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                    <span class="user-role" th:if="${user?.vaiTro?.name() == 'ke_toan'}" style="color: #F59E0B;">KẾ TOÁN</span>
+                </div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/admin/dashboard}" class="nav-item"> <i class="fas fa-chart-line"></i> <span>Dashboard</span> </a>
+            <a th:href="@{/admin/resident-list}" class="nav-item"> <i class="fas fa-users"></i> <span>Quản Lý Cư Dân</span> </a>
+            <a th:href="@{/admin/apartment-list}" class="nav-item"> <i class="fas fa-home"></i> <span>Quản Lý Căn Hộ</span> </a>
+            <a th:href="@{/admin/household-list}" class="nav-item active"> <i class="fas fa-users-cog"></i> <span>Quản Lý Hộ Gia Đình</span> </a>
+            <a th:href="@{/admin/entry-exit-logs}" class="nav-item"> <i class="fas fa-history"></i> <span>Lịch Sử Ra Vào</span> </a>
+            <a th:href="@{/admin/general-asset-list}" class="nav-item"> <i class="fas fa-building"></i> <span>Quản Lý Tài Sản</span> </a>
+            <a th:href="@{/admin/fees}" class="nav-item"> <i class="fas fa-file-invoice-dollar"></i> <span>Quản Lý Khoản Phí</span> </a>
+            <a th:href="@{/admin/service-list}" class="nav-item"><i class="fas fa-concierge-bell"></i><span>Quản Lý Dịch Vụ</span></a>
+            <a th:href="@{/admin/service-registrations}" class="nav-item">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Quản Lý Đăng Ký Dịch Vụ</span>
+            </a>
+            <a th:href="@{/admin/incidents}" class="nav-item">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
+            <a th:href="@{/admin/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
+            </a>
+            <a th:href="@{/admin/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
+        </nav>
+        <div class="sidebar-footer">
+             <form th:action="@{/logout}" method="post"><button type="submit" class="logout-btn"> <i class="fas fa-sign-out-alt"></i> Đăng Xuất </button></form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()"> <i class="fas fa-bars"></i> </button>
+            <h1>Quản Lý Hộ Gia Đình</h1>
+        </div>
+        <div class="header-right">
+            </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <a th:href="@{/admin/household-list}" class="btn btn-sm btn-secondary" style="margin-bottom: 20px; display: inline-block; text-decoration: none; color: #555;">
+                <i class="fas fa-arrow-left"></i> Quay lại
+            </a>
+
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+            <div class="form-card">
+                <form th:action="@{/admin/household-edit}" method="post" th:object="${household}">
+                    
+                    <input type="hidden" th:field="*{maHo}">
+
+                    <h3 style="margin-top: 0;">1. Thông Tin Chung</h3>
+                    <div class="form-group">
+                        <label class="form-label">Tên Hộ / Số Sổ:</label>
+                        <input type="text" th:field="*{tenHo}" class="form-control" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Trạng Thái:</label>
+                        <select th:field="*{trangThai}" class="form-select">
+                            <option th:each="st : ${householdStatuses}" th:value="${st}" th:text="${st.dbValue}"></option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label class="form-label">Ghi Chú:</label>
+                        <textarea th:field="*{ghiChu}" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <hr style="margin: 30px 0; border: 0; border-top: 1px dashed #ddd;">
+
+                    <h3 style="color: #4F46E5;">2. Cập Nhật Căn Hộ (Chuyển nhà)</h3>
+                    
+                    <div class="current-info">
+                        <strong>Căn hộ hiện tại:</strong> 
+                        <span th:text="${currentApartment != null ? currentApartment.tenTaiSan : 'Chưa có'}">A-101</span>
+                        <br>
+                        <small style="color: #666;">Chọn bên dưới nếu muốn chuyển sang căn hộ khác. Để trống nếu giữ nguyên.</small>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 2fr; gap: 15px;">
+                        <div class="form-group">
+                            <label class="form-label">Chọn Tòa:</label>
+                            <select id="buildingSelect" class="form-select" onchange="loadFloors()">
+                                <option value="">-- Tòa --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Chọn Tầng:</label>
+                            <select id="floorSelect" class="form-select" disabled onchange="loadApartments()">
+                                <option value="">-- Tầng --</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label">Căn Hộ Trống:</label>
+                            <select id="apartmentSelect" name="maCanHoMoi" class="form-select" disabled>
+                                <option value="">-- Chọn Căn Hộ Mới --</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="text-align: right; margin-top: 20px;">
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-save"></i> Lưu Thay Đổi
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="/js/main.js"></script>
+    <script>
+        // === LOGIC CASCADING DROPDOWN ===
+        
+        // 1. Khi trang tải xong -> Load danh sách Tòa
+        document.addEventListener('DOMContentLoaded', function() {
+            fetch('/admin/api/buildings')
+                .then(res => res.json())
+                .then(data => {
+                    const select = document.getElementById('buildingSelect');
+                    data.forEach(b => {
+                        let opt = document.createElement('option');
+                        opt.value = b;
+                        opt.text = "Tòa " + b;
+                        select.add(opt);
+                    });
+                });
+        });
+
+        // 2. Khi chọn Tòa -> Load Tầng
+        function loadFloors() {
+            const building = document.getElementById('buildingSelect').value;
+            const floorSelect = document.getElementById('floorSelect');
+            const aptSelect = document.getElementById('apartmentSelect');
+            
+            // Reset
+            floorSelect.innerHTML = '<option value="">-- Tầng --</option>';
+            aptSelect.innerHTML = '<option value="">-- Chọn Căn Hộ Mới --</option>';
+            floorSelect.disabled = true;
+            aptSelect.disabled = true;
+
+            if (building) {
+                fetch(`/admin/api/floors?building=${building}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        data.forEach(f => {
+                            let opt = document.createElement('option');
+                            opt.value = f;
+                            opt.text = "Tầng " + f;
+                            floorSelect.add(opt);
+                        });
+                        floorSelect.disabled = false;
+                    });
+            }
+        }
+
+        // 3. Khi chọn Tầng -> Load Căn Hộ
+        function loadApartments() {
+            const building = document.getElementById('buildingSelect').value;
+            const floor = document.getElementById('floorSelect').value;
+            const aptSelect = document.getElementById('apartmentSelect');
+
+            aptSelect.innerHTML = '<option value="">-- Chọn Căn Hộ Mới --</option>';
+            aptSelect.disabled = true;
+
+            if (building && floor) {
+                fetch(`/admin/api/apartments?building=${building}&floor=${floor}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.length === 0) {
+                            let opt = document.createElement('option');
+                            opt.text = "Hết căn trống";
+                            aptSelect.add(opt);
+                        } else {
+                            data.forEach(apt => {
+                                let opt = document.createElement('option');
+                                opt.value = apt.maTaiSan;
+                                opt.text = `${apt.tenTaiSan} (${apt.dienTich} m²)`;
+                                aptSelect.add(opt);
+                            });
+                            aptSelect.disabled = false;
+                        }
+                    });
+            }
+        }
+    </script>
+</body>
+</html>

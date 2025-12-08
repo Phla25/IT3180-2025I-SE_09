@@ -10,6 +10,8 @@ public class ThongBaoDTO {
     private String tieuDe;
     private String noiDung;
     private LocalDateTime thoiGianGui;
+    private boolean daDoc; // Cho cư dân
+    private long soNguoiChuaDoc; // Cho Admin
     
     // -------------------- Constructors --------------------
     
@@ -57,5 +59,21 @@ public class ThongBaoDTO {
 
     public void setThoiGianGui(LocalDateTime thoiGianGui) {
         this.thoiGianGui = thoiGianGui;
+    }
+
+    public long getSoNguoiChuaDoc() {
+        return soNguoiChuaDoc;
+    }
+
+    public void setSoNguoiChuaDoc(long soNguoiChuaDoc) {
+        this.soNguoiChuaDoc = soNguoiChuaDoc;
+    }
+
+    public boolean isDaDoc() {
+        return daDoc;
+    }
+
+    public void setDaDoc(boolean daDoc) {
+        this.daDoc = daDoc;
     }
 }

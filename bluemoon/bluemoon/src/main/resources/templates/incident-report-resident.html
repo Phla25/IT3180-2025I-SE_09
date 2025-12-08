@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Báo Cáo Sự Cố - Cư Dân</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .form-card { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 700px; margin: 0 auto; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-weight: 500; margin-bottom: 8px; color: #374151; }
+        .form-control { width: 100%; padding: 12px; border: 1px solid #d1d5db; border-radius: 8px; transition: border-color 0.3s; }
+        .form-control:focus { outline: none; border-color: #4F46E5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+        
+        .hint-box { background-color: #eef2ff; border-left: 4px solid #4f46e5; color: #3730a3; padding: 15px; border-radius: 4px; margin-bottom: 20px; display: none; }
+        
+        .btn-submit { background-color: #4F46E5; color: white; padding: 12px 30px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; transition: background 0.3s; }
+        .btn-submit:hover { background-color: #4338CA; }
+        .btn-cancel { color: #6b7280; text-decoration: none; margin-right: 15px; font-weight: 500; }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-building"></i>
+                <span>BlueMoon Portal</span>
+            </div>
+        
+            <div class="user-profile-desktop" th:if="${user != null}">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen}">Nguyễn Văn Cư Dân</span>
+                    <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
+            </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a th:href="@{/resident/dashboard}" class="nav-item">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </a>
+            <a th:href="@{/resident/fees}" class="nav-item">
+                <i class="fas fa-file-invoice-dollar"></i>
+                <span>Hóa Đơn Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/my-services}" class="nav-item">
+                <i class="fas fa-handshake"></i>
+                <span>Dịch Vụ Của Tôi</span>
+            </a>
+            
+            <a th:href="@{/resident/services}" class="nav-item">
+                <i class="fas fa-concierge-bell"></i>
+                <span>Đăng Ký Dịch Vụ</span>
+            </a>
+            <a th:href="@{/resident/my-household}" class="nav-item">
+                <i class="fas fa-home"></i> <span>Căn Hộ Của Tôi</span>
+            </a>  
+            <a th:href="@{/resident/incidents}" class="nav-item active">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Báo Cáo Sự Cố</span>
+            </a>
+            <a th:href="@{/resident/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i>
+                <span>Thông Báo</span>
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()">
+                <i class="fas fa-bars"></i>
+            </button>
+            <h1>Báo cáo sự cố</h1>
+        </div>
+        
+        <div class="header-right">
+
+            <div class="user-menu">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
+                    <span class="user-role" style="color: #7C3AED;">CƯ DÂN</span>
+                </div>
+                <div class="user-avatar">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="dropdown-menu"> 
+                    <a th:href="@{/resident/profile}">
+                        <i class="fas fa-user"></i> Thông Tin Cá Nhân
+                    </a>
+                    <a th:href="@{/resident/settings}">
+                        <i class="fas fa-cog"></i> Cài Đặt
+                    </a>
+                    <hr>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="logout-btn">
+                            <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+            <div class="form-card">
+                <h2 style="text-align: center; margin-bottom: 25px; color: #1f2937;">📝 Thông tin sự cố</h2>
+                
+                <form th:action="@{/resident/incident-report}" th:object="${newIncident}" method="post">
+                    
+                    <div class="form-group">
+                        <label class="form-label">Loại sự cố <span style="color:red">*</span></label>
+                        <select th:field="*{loaiSuCo}" class="form-control" id="incidentType" required onchange="updateHint()">
+                            <option value="" disabled selected>-- Chọn vấn đề bạn gặp phải --</option>
+                            <option th:each="type : ${incidentTypes}" th:value="${type}" th:text="${type.dbValue}"></option>
+                        </select>
+                    </div>
+
+                    <div id="hint-box" class="hint-box">
+                        <i class="fas fa-info-circle"></i> <span id="hint-text"></span>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Tiêu đề <span style="color:red">*</span></label>
+                        <input type="text" th:field="*{tieuDe}" class="form-control" placeholder="Tóm tắt ngắn gọn vấn đề..." required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">Nội dung chi tiết <span style="color:red">*</span></label>
+                        <textarea th:field="*{noiDung}" class="form-control" rows="5" placeholder="Mô tả càng chi tiết càng tốt để BQT hỗ trợ nhanh nhất..." required></textarea>
+                    </div>
+
+                    <div style="text-align: center; margin-top: 30px;">
+                        <a th:href="@{/resident/incidents}" class="btn-cancel">Hủy bỏ</a>
+                        <button type="submit" class="btn-submit">
+                            <i class="fas fa-paper-plane"></i> Gửi Báo Cáo
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function updateHint() {
+            const selectBox = document.getElementById('incidentType');
+            const hintBox = document.getElementById('hint-box');
+            const hintText = document.getElementById('hint-text');
+            const selectedValue = selectBox.value;
+            let message = "";
+            let show = false;
+
+            if (selectedValue === 'mat_do') {
+                message = "Hãy mô tả: Vật bị mất? Đặc điểm nhận dạng? Thời gian và địa điểm dự đoán bị mất?";
+                show = true;
+            } else if (selectedValue === 'an_ninh') {
+                message = "Hãy mô tả: Sự việc gì? Ở đâu? Thời gian? Có ai liên quan không?";
+                show = true;
+            } else if (['dien', 'nuoc', 've_sinh', 'khac'].includes(selectedValue)) {
+                message = "Hãy mô tả: Vị trí xảy ra? Tình trạng hiện tại? Thời điểm phát hiện?";
+                show = true;
+            }
+
+            if (show) {
+                hintText.textContent = message;
+                hintBox.style.display = 'block';
+            } else {
+                hintBox.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

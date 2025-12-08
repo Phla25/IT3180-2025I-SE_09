@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Sự Cố - BlueMoon Portal</title>
+    <link rel="stylesheet" href="/css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}"/>
+    <meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}"/>
+
+    <style>
+        .feature-badge { background: linear-gradient(45deg, #FF6B6B, #4ECDC4); color: white; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 8px; margin-left: auto; animation: pulse 2s infinite; }
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
+        .nav-item { position: relative; display: flex; align-items: center; gap: 12px; }
+        .nav-item:hover .feature-badge { animation-play-state: paused; transform: scale(1.1); }
+        .modal.hidden { display: none; }
+        .modal { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); z-index: 9999; }
+        .modal-content { background: white; width: 760px; max-width: calc(100% - 32px); padding: 20px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.15); }
+        .badge { padding: 4px 8px; border-radius: 6px; font-size: 13px; font-weight: 600; }
+        
+        /* Màu badge trạng thái */
+        .badge-danger { background:#ef4444; color:white; }
+        .badge-warning { background:#f59e0b; color:white; }
+        .badge-primary { background:#3b82f6; color:white; }
+        .badge-success { background:#10b981; color:white; }
+        .badge-secondary { background:#6b7280; color:white; }
+        
+        .btn { padding: 8px 16px; border-radius: 6px; cursor: pointer; border: none; font-weight: 500; display: inline-flex; align-items: center; gap: 8px; text-decoration: none;}
+        .btn-primary { background:#2563EB; color:white; }
+        .btn-success { background:#10B981; color:white; }
+        .btn-outline { background:transparent; border:1px solid #e5e7eb; }
+        .table { width:100%; border-collapse: collapse; margin-top: 15px; }
+        .table th, .table td { padding:12px 15px; border-bottom:1px solid #f3f4f6; text-align:left; }
+        .input { padding: 8px; border: 1px solid #ddd; border-radius: 6px; }
+    </style>
+</head>
+
+<body>
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo"> <i class="fas fa-building"></i> <span>BlueMoon Portal</span> </div>
+            <div class="user-profile">
+                <div class="user-info">
+                    <span class="user-name" th:text="${user?.hoVaTen} ?: 'Người Dùng'">Tên Người Dùng</span>
+                    <span class="user-role" th:if="${user?.vaiTro?.name() == 'ban_quan_tri'}" style="color: #7C3AED;">BAN QUẢN TRỊ</span>
+                </div>
+            </div>
+        </div>
+        <nav class="sidebar-nav">
+            <a th:href="@{/admin/dashboard}" class="nav-item"> <i class="fas fa-chart-line"></i> <span>Dashboard</span> </a>
+            <a th:href="@{/admin/resident-list}" class="nav-item"> <i class="fas fa-users"></i> <span>Quản Lý Cư Dân</span> </a>
+            <a th:href="@{/admin/apartment-list}" class="nav-item"> <i class="fas fa-home"></i> <span>Quản Lý Căn Hộ</span> </a>
+            <a th:href="@{/admin/household-list}" class="nav-item"> <i class="fas fa-users-cog"></i> <span>Quản Lý Hộ Gia Đình</span> </a>
+            <a th:href="@{/admin/entry-exit-logs}" class="nav-item"> <i class="fas fa-history"></i> <span>Lịch Sử Ra Vào</span> </a>
+            <a th:href="@{/admin/general-asset-list}" class="nav-item"> <i class="fas fa-building"></i> <span>Quản Lý Tài Sản</span> </a>
+            <a th:href="@{/admin/fees}" class="nav-item"> <i class="fas fa-file-invoice-dollar"></i> <span>Quản Lý Khoản Phí</span> </a>
+            <a th:href="@{/admin/service-list}" class="nav-item"><i class="fas fa-concierge-bell"></i><span>Quản Lý Dịch Vụ</span></a>
+            <a th:href="@{/admin/service-registrations}" class="nav-item">
+                <i class="fas fa-clipboard-list"></i>
+                <span>Quản Lý Đăng Ký Dịch Vụ</span>
+            </a>
+            <a th:href="@{/admin/incidents}" class="nav-item active">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
+            <a th:href="@{/admin/notifications}" class="nav-item">
+                <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
+            </a>
+            <a th:href="@{/admin/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
+        </nav>
+        <div class="sidebar-footer">
+             <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
+                <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
+                    <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <header class="header">
+        <div class="header-left">
+            <button class="menu-toggle" onclick="toggleSidebar()"> <i class="fas fa-bars"></i> </button>
+            <h1>Quản Lý Sự Cố</h1>
+        </div>
+        <div class="header-right">
+             <div class="user-menu"><span class="user-name" th:text="${user?.hoVaTen}"></span> <i class="fas fa-user-circle"></i></div>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div style="background: linear-gradient(135deg, #FF6B6B 0%, #D8334A 100%); color: white; padding: 32px; border-radius: 12px; margin-bottom: 30px;">
+            <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">🚨 Trung Tâm Xử Lý Sự Cố</h1>
+            <p style="font-size: 16px; opacity: 0.9;">Tiếp nhận, phân loại và xử lý các vấn đề từ cư dân và hệ thống.</p>
+        </div>
+
+        <div class="content-card">
+            <div class="content-card-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 class="content-card-title"><i class="fas fa-list"></i> Danh sách Sự Cố</h2>
+                <a th:href="@{/admin/incident-create}" class="btn btn-success">
+                    <i class="fas fa-plus-circle"></i> Tạo Sự Cố Mới
+                </a>
+            </div>
+
+<form method="get" th:action="@{/admin/incidents}" style="background: #f8fafc; padding: 20px; border-radius: 8px; margin-bottom: 25px; border: 1px solid #e2e8f0;">
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; align-items: end;">
+                    
+                    <div style="grid-column: span 2;">
+                        <label class="form-label" style="font-size: 13px; color: #64748b;">Từ khóa (Tiêu đề/Nội dung)</label>
+                        <input type="text" name="keyword" class="input" style="width: 100%;" 
+                               placeholder="Ví dụ: Mất điện, hỏng khóa..." th:value="${keyword}">
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="font-size: 13px; color: #64748b;">Người báo cáo</label>
+                        <input type="text" name="reporterName" class="input" style="width: 100%;" 
+                               placeholder="Tên người báo..." th:value="${currentReporter}">
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="font-size: 13px; color: #64748b;">Loại sự cố</label>
+                        <select name="loai" class="input" style="width: 100%;">
+                            <option value="">-- Tất cả --</option>
+                            <option th:each="type : ${incidentTypes}" 
+                                    th:value="${type}" 
+                                    th:text="${type.dbValue}"
+                                    th:selected="${type == currentType}"></option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="font-size: 13px; color: #64748b;">Độ ưu tiên</label>
+                        <select name="mucDo" class="input" style="width: 100%;">
+                            <option value="">-- Tất cả --</option>
+                            <option th:each="p : ${priorityLevels}" 
+                                    th:value="${p}" 
+                                    th:text="${p.dbValue}"
+                                    th:selected="${p == currentPriority}"></option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="font-size: 13px; color: #64748b;">Trạng thái</label>
+                        <select name="trangThai" class="input" style="width: 100%;">
+                            <option value="">-- Tất cả --</option>
+                            <option th:each="s : ${incidentStatuses}" 
+                                    th:value="${s}" 
+                                    th:text="${s.name()}"
+                                    th:selected="${s == currentStatus}"></option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="form-label" style="font-size: 13px; color: #64748b;">Ngày báo cáo</label>
+                        <input type="date" name="ngayBao" class="input" style="width: 100%;" th:value="${currentDate}">
+                    </div>
+
+                    <div style="max-width: 100px;">
+                        <label class="form-label" style="font-size: 13px; color: #64748b;">Giờ (0-23)</label>
+                        <input type="number" name="gioBao" class="input" style="width: 100%;" min="0" max="23" placeholder="Giờ" th:value="${currentHour}">
+                    </div>
+
+                    <div>
+                        <button class="btn btn-primary" type="submit" style="width: 100%;">
+                            <i class="fas fa-filter"></i> Lọc
+                        </button>
+                    </div>
+                    <div>
+                        <a th:href="@{/admin/incidents}" class="btn btn-outline" style="width: 100%; justify-content: center;">
+                            <i class="fas fa-sync-alt"></i> Xóa
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            <div style="overflow-x: auto;">
+                <table class="table">
+                    <thead>
+                        <tr style="background-color: #f3f4f6;">
+                            <th>Mã</th>
+                            <th>Tiêu đề</th>
+                            <th>Người báo cáo</th>
+                            <th>Loại</th>
+                            <th>Mức độ</th>
+                            <th>Trạng thái</th>
+                            <th>Ngày báo</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${danhSachSuCo == null or danhSachSuCo.empty}">
+                            <td colspan="9" style="text-align: center; padding: 20px;">Không có dữ liệu sự cố.</td>
+                        </tr>
+                        <tr th:each="sc : ${danhSachSuCo}">
+                            <td><b th:text="'#' + ${sc.maBaoCao}"></b></td>
+                            <td style="font-weight: 600; color: #1f2937;" th:text="${sc.tieuDe}"></td>
+                            
+                            <td>
+                                <div th:if="${sc.nguoiBaoCao != null}">
+                                    <div th:text="${sc.nguoiBaoCao.hoVaTen}"></div>
+                                    <small style="color: #6b7280;" 
+                                           th:text="${sc.nguoiBaoCao.vaiTro?.name() == 'ban_quan_tri' ? '(Admin)' : '(Cư dân)'}">
+                                    </small>
+                                </div>
+                                <span th:unless="${sc.nguoiBaoCao != null}" style="color: #999;">N/A</span>
+                            </td>
+
+                            <td th:text="${sc.loaiSuCo != null ? sc.loaiSuCo.dbValue : ''}"></td>
+                            
+                            <td>
+                                <span th:switch="${sc.mucDoUuTien?.name()}">
+                                    <span th:case="'khan_cap'" class="badge badge-danger">Khẩn cấp</span>
+                                    <span th:case="'cao'" class="badge badge-danger" style="background: #ef4444; opacity: 0.8;">Cao</span>
+                                    <span th:case="'binh_thuong'" class="badge badge-primary">Bình thường</span>
+                                    <span th:case="*" class="badge badge-secondary">Thấp</span>
+                                </span>
+                            </td>
+                            
+                            <td>
+                                <span th:switch="${sc.trangThai?.name()}">
+                                    <span th:case="'moi_tiep_nhan'" class="badge badge-warning">Mới tiếp nhận</span>
+                                    <span th:case="'dang_xu_ly'" class="badge badge-primary">Đang xử lý</span>
+                                    <span th:case="'cho_phe_duyet'" class="badge badge-warning" style="background: #f59e0b; opacity: 0.8;">Chờ duyệt</span>
+                                    <span th:case="'da_hoan_thanh'" class="badge badge-success">Đã xong</span>
+                                    <span th:case="'da_huy'" class="badge badge-secondary">Đã hủy</span>
+                                    <span th:case="*" class="badge badge-secondary">Không rõ</span>
+                                </span>
+                            </td>
+                            
+                            <td th:text="${#temporals.format(sc.thoiGianBaoCao, 'dd/MM/yyyy HH:mm')}"></td>
+                            <td>
+                                <button class="btn btn-primary" style="padding: 4px 10px; font-size: 12px;" 
+                                        type="button" th:onclick="|openIncidentDetail(${sc.maBaoCao})|">
+                                    <i class="fas fa-edit"></i> Xử lý
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <div id="incidentModal" class="modal hidden" aria-hidden="true">
+        <div class="modal-content">
+            <h3 style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">Chi tiết sự cố và Cập nhật</h3>
+            
+            <div id="incidentDetailContent">
+                <div style="text-align: center; padding: 20px;">
+                    <i class="fas fa-spinner fa-spin"></i> Đang tải...
+                </div>
+            </div>
+
+            <div style="text-align: right; margin-top: 20px;">
+                <button class="btn btn-outline" type="button" onclick="closeModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <div style="display:none;">
+        <div th:fragment="detailContent">
+            <div th:if="${suCo != null}">
+                <div style="margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px;">
+                    <h4 style="color: #2563EB; margin: 0 0 5px 0;" th:text="${suCo.tieuDe}"></h4>
+                    <div style="font-size: 0.9em; color: #666;">
+                        <span style="margin-right: 15px;">
+                            <i class="fas fa-hashtag"></i> Mã: <b th:text="${suCo.maBaoCao}"></b>
+                        </span>
+                        <span>
+                            <i class="far fa-clock"></i> Ngày báo: 
+                            <span th:text="${suCo.thoiGianBaoCao != null ? #temporals.format(suCo.thoiGianBaoCao, 'dd/MM/yyyy HH:mm') : 'N/A'}"></span>
+                        </span>
+                    </div>
+                </div>
+
+                <div style="background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #eee;">
+                    <label style="font-weight: bold; display: block; margin-bottom: 5px; color: #4b5563;">Nội dung chi tiết:</label>
+                    <p style="margin: 0; white-space: pre-wrap; color: #1f2937;" th:text="${suCo.noiDung}"></p>
+                </div>
+
+                <form id="updateForm" onsubmit="return updateIncidentStatus(event)">
+                    <input type="hidden" id="incidentId" th:value="${suCo.maBaoCao}">
+                    
+                    <div style="display: flex; gap: 15px; margin-bottom: 20px;">
+                        <div style="flex: 1;">
+                            <label class="form-label" style="font-weight: 600; margin-bottom: 5px; display: block;">Trạng thái xử lý:</label>
+                            <select id="newStatus" class="input" style="width: 100%; padding: 8px;">
+                                <option value="moi_tiep_nhan" th:selected="${suCo.trangThai?.name() == 'moi_tiep_nhan'}">Mới tiếp nhận</option>
+                                <option value="dang_xu_ly" th:selected="${suCo.trangThai?.name() == 'dang_xu_ly'}">Đang xử lý</option>
+                                <option value="cho_phe_duyet" th:selected="${suCo.trangThai?.name() == 'cho_phe_duyet'}">Chờ phê duyệt</option>
+                                <option value="da_hoan_thanh" th:selected="${suCo.trangThai?.name() == 'da_hoan_thanh'}">Đã hoàn thành</option>
+                                <option value="da_huy" th:selected="${suCo.trangThai?.name() == 'da_huy'}">Đã hủy</option>
+                            </select>
+                        </div>
+
+                        <div style="flex: 1;">
+                            <label class="form-label" style="font-weight: 600; margin-bottom: 5px; display: block;">Mức độ ưu tiên:</label>
+                            <select id="newPriority" class="input" style="width: 100%; padding: 8px;">
+                                <option value="thap" th:selected="${suCo.mucDoUuTien?.name() == 'thap'}">Thấp</option>
+                                <option value="binh_thuong" th:selected="${suCo.mucDoUuTien?.name() == 'binh_thuong'}">Bình thường</option>
+                                <option value="cao" th:selected="${suCo.mucDoUuTien?.name() == 'cao'}">Cao</option>
+                                <option value="khan_cap" th:selected="${suCo.mucDoUuTien?.name() == 'khan_cap'}">Khẩn cấp</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="text-align: right; border-top: 1px solid #eee; padding-top: 15px;">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Lưu Thay Đổi
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div th:unless="${suCo != null}" class="text-danger" style="text-align: center; padding: 20px;">
+                <i class="fas fa-exclamation-triangle"></i> Không tìm thấy thông tin sự cố này trong hệ thống.
+            </div>
+        </div>
+    </div>
+    
+    <script src="/js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // JS xử lý Modal
+        function openIncidentDetail(id) {
+            document.getElementById("incidentDetailContent").innerHTML = '<div style="text-align: center; padding: 20px;"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+            document.getElementById("incidentModal").classList.remove("hidden");
+            
+            fetch(`/admin/incidents/detail/${id}`)
+                .then(res => {
+                    if (!res.ok) throw new Error('Lỗi tải dữ liệu');
+                    return res.text();
+                })
+                .then(html => {
+                    document.getElementById("incidentDetailContent").innerHTML = html;
+                })
+                .catch(err => {
+                    document.getElementById("incidentDetailContent").innerHTML = '<p class="text-danger">Không thể tải chi tiết.</p>';
+                    console.error(err);
+                });
+        }
+
+        function closeModal() {
+            document.getElementById("incidentModal").classList.add("hidden");
+        }
+        
+        // Hàm cập nhật trạng thái
+        function updateIncidentStatus(event) {
+            event.preventDefault();
+            const id = document.getElementById('incidentId').value;
+            const newStatus = document.getElementById('newStatus').value;
+            const newPriority = document.getElementById('newPriority').value;
+
+            // CSRF protection for Spring Security
+            const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+            const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+            const headers = { 'Content-Type': 'application/json' };
+            if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+
+            fetch(`/admin/incidents/update/${id}`, {
+                method: 'PUT',
+                headers: headers,
+                body: JSON.stringify({ trangThai: newStatus, mucDo: newPriority })
+            })
+            .then(res => {
+                if (res.ok) {
+                    Swal.fire('Thành công', 'Đã cập nhật trạng thái', 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Lỗi', 'Cập nhật thất bại', 'error');
+                }
+            })
+            .catch(err => Swal.fire('Lỗi mạng', 'Không kết nối được server', 'error'));
+            
+            return false;
+        }
+    </script>
+</body>
+</html>

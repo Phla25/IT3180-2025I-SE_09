@@ -24,7 +24,7 @@ public class VNPayConfig {
     // Thay vì https://sandbox.vnpayment.vn..., ta trỏ về đường dẫn nội bộ
     public static String vnp_PayUrl = "/mock-vnpay-portal"; 
     
-    public static String vnp_ApiUrl = "http://localhost:8080/api/mock-transaction";
+    public static String vnp_ApiUrl = "https://vv3rq1lx-8080.asse.devtunnels.ms/api/mock-transaction";
 
     // --- 2. MÃ TEST TỰ QUY ĐỊNH (Dùng gì cũng được, miễn là thống nhất) ---
     public static String vnp_TmnCode = "TEST_DOAN"; 

@@ -3,12 +3,13 @@ package BlueMoon.bluemoon.controllers;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.security.Principal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -17,7 +18,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -33,13 +32,13 @@ import BlueMoon.bluemoon.daos.BaoCaoSuCoDAO;
 import BlueMoon.bluemoon.daos.DoiTuongDAO;
 import BlueMoon.bluemoon.daos.HoGiaDinhDAO;
 import BlueMoon.bluemoon.daos.HoaDonDAO;
-import BlueMoon.bluemoon.daos.ThongBaoDAO;
 import BlueMoon.bluemoon.entities.BaoCaoSuCo;
 import BlueMoon.bluemoon.entities.DangKyDichVu;
 import BlueMoon.bluemoon.entities.DichVu;
 import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.HoaDon;
+import BlueMoon.bluemoon.entities.LichSuRaVao;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.entities.ThongBao;
@@ -48,14 +47,15 @@ import BlueMoon.bluemoon.models.HouseholdReportDTO;
 import BlueMoon.bluemoon.models.InvoiceReportDTO;
 import BlueMoon.bluemoon.models.PhanHoiThongBaoDTO;
 import BlueMoon.bluemoon.models.ResidentReportDTO;
+import BlueMoon.bluemoon.models.ThongBaoDTO;
+import BlueMoon.bluemoon.services.BaoCaoSuCoService;
 import BlueMoon.bluemoon.services.CuDanService;
-import BlueMoon.bluemoon.utils.NotificationType;
-import BlueMoon.bluemoon.utils.RecipientType;
 import BlueMoon.bluemoon.services.DangKyDichVuService;
 import BlueMoon.bluemoon.services.DichVuService;
 import BlueMoon.bluemoon.services.ExportService;
 import BlueMoon.bluemoon.services.HoGiaDinhService;
 import BlueMoon.bluemoon.services.HoaDonService;
+import BlueMoon.bluemoon.services.LichSuRaVaoService;
 import BlueMoon.bluemoon.services.NguoiDungService;
 import BlueMoon.bluemoon.services.PhanHoiThongBaoService;
 import BlueMoon.bluemoon.services.ReportService;
@@ -80,6 +80,7 @@ public class AdminController {
     @Autowired
     private NguoiDungService nguoiDungService;
 
+    @Autowired private LichSuRaVaoService lichSuRaVaoService;
     @Autowired private HoGiaDinhService hoGiaDinhService;
     @Autowired private DichVuService dichVuService;
 
@@ -101,7 +102,7 @@ public class AdminController {
     @Autowired private ThongBaoService thongBaoService;
     @Autowired private DoiTuongDAO doiTuongDAO;
     @Autowired private PhanHoiThongBaoService phanHoiThongBaoService;
-    @Autowired private ThongBaoDAO thongBaoDAO;
+    @Autowired private BaoCaoSuCoService baoCaoSuCoService;
 
     @SuppressWarnings("unchecked")
     @GetMapping("/dashboard")
@@ -886,19 +887,14 @@ public class AdminController {
 
     /**
      * Xử lý cập nhật Căn Hộ (POST)
-     * Tự động gửi thông báo khi trạng thái căn hộ thay đổi
      */
     @PostMapping("/apartment-edit")
     public String handleEditApartment(@ModelAttribute("apartment") TaiSanChungCu apartment,
                                       @RequestParam("maTaiSan") Integer maTaiSan,
                                       @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
-                                      Authentication auth,
                                       RedirectAttributes redirectAttributes) {
         try {
-            // Lấy người dùng hiện tại để gửi thông báo nếu trạng thái thay đổi
-            DoiTuong currentUser = getCurrentUser(auth);
-            
-            taiSanChungCuService.capNhatCanHo(maTaiSan, apartment, maHoLienKet, currentUser);
+            taiSanChungCuService.capNhatCanHo(maTaiSan, apartment, maHoLienKet);
             redirectAttributes.addFlashAttribute("successMessage", 
                 "Cập nhật Căn hộ " + apartment.getTenTaiSan() + " thành công!");
             return "redirect:/admin/apartment-list";
@@ -956,6 +952,72 @@ public class AdminController {
         }
 
         return "apartment-details-admin";
+    }
+    // === CÁC API JSON CHO DROPDOWN (AJAX) ===
+
+    @GetMapping("/api/buildings")
+    public ResponseEntity<List<String>> getAvailableBuildings() {
+        return ResponseEntity.ok(taiSanChungCuService.getAvailableBuildings());
+    }
+
+    @GetMapping("/api/floors")
+    public ResponseEntity<List<Integer>> getAvailableFloors(@RequestParam String building) {
+        return ResponseEntity.ok(taiSanChungCuService.getAvailableFloorsByBuilding(building));
+    }
+
+    @GetMapping("/api/apartments")
+    public ResponseEntity<List<Map<String, Object>>> getAvailableApartments(@RequestParam String building, @RequestParam Integer floor) {
+        List<TaiSanChungCu> apts = taiSanChungCuService.getEmptyApartmentsByBuildingAndFloor(building, floor);
+        
+        // Map sang object đơn giản để trả về JSON
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (TaiSanChungCu a : apts) {
+            Map<String, Object> map = new HashMap<>();
+            map.put("maTaiSan", a.getMaTaiSan());
+            map.put("tenTaiSan", a.getTenTaiSan());
+            map.put("dienTich", a.getDienTich());
+            result.add(map);
+        }
+        return ResponseEntity.ok(result);
+    }
+
+    // === CHỨC NĂNG EDIT HỘ ===
+
+    /**
+     * GET: Hiển thị form chỉnh sửa
+     */
+    @GetMapping("/household-edit")
+    public String showEditHouseholdForm(@RequestParam("maHo") String maHo, Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        
+        HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy hộ gia đình"));
+        
+        model.addAttribute("household", hgd);
+        model.addAttribute("householdStatuses", HouseholdStatus.values());
+        
+        // Lấy căn hộ hiện tại (để hiển thị)
+        Optional<TaiSanChungCu> currentApt = hoGiaDinhService.getApartmentByHousehold(maHo);
+        model.addAttribute("currentApartment", currentApt.orElse(null));
+
+        return "household-edit"; // File HTML mới
+    }
+
+    /**
+     * POST: Lưu chỉnh sửa
+     */
+    @PostMapping("/household-edit")
+    public String handleEditHousehold(@ModelAttribute("household") HoGiaDinh hgd,
+                                      @RequestParam(value = "maCanHoMoi", required = false) Integer maCanHoMoi,
+                                      RedirectAttributes redirectAttributes) {
+        try {
+            hoGiaDinhService.capNhatHoGiaDinh(hgd.getMaHo(), hgd, maCanHoMoi);
+            redirectAttributes.addFlashAttribute("successMessage", "Cập nhật hộ gia đình thành công.");
+            return "redirect:/admin/household-list";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/admin/household-edit?maHo=" + hgd.getMaHo();
+        }
     }
     // =======================================================
     // QUẢN LÝ TẤT CẢ TÀI SẢN (GENERAL ASSETS) - Bao gồm cả Căn Hộ
@@ -1060,19 +1122,14 @@ public class AdminController {
     /**
      * Xử lý cập nhật Tài Sản Chung (POST)
      * URL: /admin/general-asset-edit
-     * Tự động gửi thông báo khi trạng thái tài sản thay đổi
      */
     @PostMapping("/general-asset-edit")
     public String handleEditGeneralAsset(@ModelAttribute("asset") TaiSanChungCu asset,
                                       @RequestParam("maTaiSan") Integer maTaiSan,
                                       @RequestParam(value = "maHoLienKet", required = false) String maHoLienKet,
-                                      Authentication auth,
                                       RedirectAttributes redirectAttributes) {
         try {
-            // Lấy người dùng hiện tại để gửi thông báo nếu trạng thái thay đổi
-            DoiTuong currentUser = getCurrentUser(auth);
-            
-            taiSanChungCuService.capNhatTaiSanChung(maTaiSan, asset, maHoLienKet, currentUser);
+            taiSanChungCuService.capNhatTaiSanChung(maTaiSan, asset, maHoLienKet);
             redirectAttributes.addFlashAttribute("successMessage", 
                 "Cập nhật Tài sản Mã " + maTaiSan + " thành công!");
             return "redirect:/admin/general-asset-list";
@@ -1174,7 +1231,88 @@ public class AdminController {
         
         return "invoice-add-edit-admin"; 
     }
+    /**
+     * Xử lý lưu hóa đơn (Thêm mới hoặc Cập nhật)
+     * URL: /admin/fee-save
+     */
+    @PostMapping("/fee-save")
+    public String handleSaveFee(@ModelAttribute("hoaDon") HoaDon hoaDon,
+                                @RequestParam(value = "maHo", required = false) String maHo,
+                                @RequestParam(value = "nguoiDangKyCccd", required = false) String nguoiDangKyCccd,
+                                Authentication auth,
+                                RedirectAttributes redirectAttributes) {
+        try {
+            DoiTuong currentUser = getCurrentUser(auth); // Người thực hiện (Admin)
+
+            // Gọi Service để lưu (Logic đã có trong HoaDonService)
+            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser);
+
+            redirectAttributes.addFlashAttribute("successMessage", "Lưu hóa đơn thành công!");
+            return "redirect:/admin/fees";
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi lưu hóa đơn: " + e.getMessage());
+            // Quay lại form với ID (nếu sửa) hoặc form trống (nếu thêm)
+            return "redirect:/admin/fee-form" + (hoaDon.getMaHoaDon() != null ? "?id=" + hoaDon.getMaHoaDon() : "");
+        }
+    }
+    // THÊM VÀO AdminController.java (tương tự AccountantController)
+
+    /**
+     * ✨ MỚI: Duyệt nhiều hóa đơn cùng lúc (Admin)
+     * URL: POST /admin/fee-confirm-batch
+     */
+    @PostMapping("/fee-confirm-batch")
+    public String handleAdminBatchFeeConfirm(@RequestParam(value = "selectedIds", required = false) List<Integer> selectedIds,
+                                             Authentication auth,
+                                             RedirectAttributes redirectAttributes) {
     
+        if (selectedIds == null || selectedIds.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn ít nhất một hóa đơn để duyệt.");
+            return "redirect:/admin/fees";
+        }
+    
+        try {
+            int successCount = hoaDonService.confirmMultiplePayments(selectedIds);
+
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Đã duyệt thành công " + successCount + "/" + selectedIds.size() + " hóa đơn!");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+        }
+    
+        return "redirect:/admin/fees";
+    }
+
+    /**
+     * ✨ MỚI: Từ chối nhiều hóa đơn cùng lúc (Admin)
+     * URL: POST /admin/fee-reject-batch
+     */
+    @PostMapping("/fee-reject-batch")
+    public String handleAdminBatchFeeReject(@RequestParam(value = "selectedIds", required = false) List<Integer> selectedIds,
+                                            Authentication auth,
+                                            RedirectAttributes redirectAttributes) {
+        DoiTuong currentUser = getCurrentUser(auth);
+    
+        if (selectedIds == null || selectedIds.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn ít nhất một hóa đơn để từ chối.");
+            return "redirect:/admin/fees";
+        }
+    
+        try {
+            int successCount = hoaDonService.rejectMultiplePayments(selectedIds, currentUser);
+        
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Đã từ chối " + successCount + "/" + selectedIds.size() + " hóa đơn!");
+        
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+        }
+    
+        return "redirect:/admin/fees";
+    }
     /**
      * API JSON: Trả về danh sách thành viên của một hộ cụ thể.
      * Giao diện sẽ gọi cái này khi người dùng chọn Hộ.
@@ -1784,7 +1922,15 @@ public class AdminController {
     @GetMapping("/notifications")
     public String hienThiThongBao(Model model, Principal principal) {
         List<ThongBao> thongBaos = thongBaoService.layTatCaThongBaoMoiNhat();
-        model.addAttribute("thongBaos", thongBaos);
+        
+        // Convert sang DTO và tính số người chưa đọc
+        List<ThongBaoDTO> thongBaoDTOs = thongBaos.stream().map(tb -> {
+            ThongBaoDTO dto = new ThongBaoDTO(tb);
+            dto.setSoNguoiChuaDoc(thongBaoService.demSoNguoiChuaDoc(tb));
+            return dto;
+        }).collect(Collectors.toList());
+
+        model.addAttribute("thongBaos", thongBaoDTOs);
 
         //Lấy thông tin người đang đăng nhập
         DoiTuong user = null;
@@ -1801,32 +1947,25 @@ public class AdminController {
     public String guiThongBao(
             @RequestParam("tieuDe") String tieuDe,
             @RequestParam("noiDung") String noiDung,
-            Principal principal,
-            RedirectAttributes redirectAttributes
+            Principal principal
     ) {
-        try {
-            //Lấy người gửi thật từ tài khoản đang đăng nhập
-            DoiTuong nguoiTao = null;
-            if (principal != null) {
-                nguoiTao = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
-            }
-
-            // Nếu không có người đăng nhập, báo lỗi
-            if (nguoiTao == null) {
-                redirectAttributes.addFlashAttribute("error", "Không tìm thấy người dùng");
-                return "redirect:/admin/notifications";
-            }
-
-            //Gọi service để lưu thông báo
-            thongBaoService.taoVaGuiThongBao(tieuDe, noiDung, nguoiTao);
-
-            redirectAttributes.addFlashAttribute("success", "Đã gửi thông báo thành công!");
-            return "redirect:/admin/notifications?success=true";
-        } catch (Exception e) {
-            e.printStackTrace();
-            redirectAttributes.addFlashAttribute("error", "Lỗi khi gửi thông báo: " + e.getMessage());
-            return "redirect:/admin/notifications";
+        //Lấy người gửi thật từ tài khoản đang đăng nhập
+        DoiTuong nguoiTao = null;
+        if (principal != null) {
+            nguoiTao = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
         }
+
+        // Nếu không có người đăng nhập (trường hợp test), dùng giả lập
+        if (nguoiTao == null) {
+            nguoiTao = new DoiTuong();
+            nguoiTao.setCccd("BQT");
+            nguoiTao.setHoVaTen("Ban Quản Trị");
+        }
+
+        //Gọi service để lưu thông báo
+        thongBaoService.taoVaGuiThongBao(tieuDe, noiDung, nguoiTao);
+
+        return "redirect:/admin/notifications?success=true";
     }
     /**
      * Endpoint REST API: Lấy danh sách phản hồi của một thông báo
@@ -1842,225 +1981,6 @@ public class AdminController {
         // Nếu không có phản hồi, trả về List rỗng (status 200)
         return ResponseEntity.ok(replies);
     }
-
-    // ==================== THÔNG BÁO ĐỊNH KỲ ====================
-    
-    /**
-     * Tạo thông báo định kỳ mới
-     * URL: POST /admin/notifications/scheduled/create
-     */
-    @PostMapping("/notifications/scheduled/create")
-    @ResponseBody
-    public ResponseEntity<?> taoThongBaoDinhKy(
-            @RequestBody Map<String, Object> payload,
-            Principal principal) {
-        
-        try {
-            // Lấy người tạo
-            DoiTuong nguoiTao = null;
-            if (principal != null) {
-                nguoiTao = doiTuongDAO.findByCccd(principal.getName()).orElse(null);
-            }
-            
-            if (nguoiTao == null) {
-                return ResponseEntity.status(401).body(Map.of("error", "Người dùng không hợp lệ"));
-            }
-            
-            // Tạo thông báo định kỳ
-            ThongBao thongBao = new ThongBao();
-            thongBao.setTieuDe((String) payload.get("tieuDe"));
-            thongBao.setNoiDung((String) payload.get("noiDung"));
-            thongBao.setNguoiGui(nguoiTao);
-            thongBao.setLaDinhKy(true);
-            thongBao.setTrangThaiHoatDong(true);
-            thongBao.setTrangThaiHienThi(true);
-            thongBao.setThoiGianGui(LocalDateTime.now()); // Set thời gian tạo
-            
-            // Set loại thông báo (mặc định là thong_bao_chung nếu không có)
-            String loaiThongBaoStr = (String) payload.get("loaiThongBao");
-            if (loaiThongBaoStr != null && !loaiThongBaoStr.isEmpty()) {
-                try {
-                    thongBao.setLoaiThongBao(NotificationType.valueOf(loaiThongBaoStr));
-                } catch (IllegalArgumentException e) {
-                    thongBao.setLoaiThongBao(NotificationType.thong_bao_chung);
-                }
-            } else {
-                thongBao.setLoaiThongBao(NotificationType.thong_bao_chung);
-            }
-            
-            // Set đối tượng nhận (mặc định là tất cả)
-            thongBao.setDoiTuongNhan(RecipientType.tat_ca);
-            
-            // Set chu kỳ
-            String chuKyStr = (String) payload.get("chuKy");
-            if (chuKyStr == null || chuKyStr.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Chu kỳ không được để trống"));
-            }
-            thongBao.setChuKy(BlueMoon.bluemoon.utils.ChuKyThongBao.valueOf(chuKyStr));
-            
-            // Set thời gian gửi
-            Object gioGuiObj = payload.get("gioGui");
-            Object phutGuiObj = payload.get("phutGui");
-            
-            if (gioGuiObj == null || phutGuiObj == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Giờ và phút gửi không được để trống"));
-            }
-            
-            thongBao.setGioGui(gioGuiObj instanceof Integer ? (Integer) gioGuiObj : Integer.parseInt(gioGuiObj.toString()));
-            thongBao.setPhutGui(phutGuiObj instanceof Integer ? (Integer) phutGuiObj : Integer.parseInt(phutGuiObj.toString()));
-            
-            // Set cấu hình theo chu kỳ
-            if ("HANG_TUAN".equals(chuKyStr)) {
-                Object thuTrongTuanObj = payload.get("thuTrongTuan");
-                if (thuTrongTuanObj != null) {
-                    thongBao.setThuTrongTuan(thuTrongTuanObj instanceof Integer ? (Integer) thuTrongTuanObj : Integer.parseInt(thuTrongTuanObj.toString()));
-                }
-            } else if ("HANG_THANG".equals(chuKyStr)) {
-                Object ngayTrongThangObj = payload.get("ngayTrongThang");
-                if (ngayTrongThangObj != null) {
-                    thongBao.setNgayTrongThang(ngayTrongThangObj instanceof Integer ? (Integer) ngayTrongThangObj : Integer.parseInt(ngayTrongThangObj.toString()));
-                }
-            } else if ("HANG_NAM".equals(chuKyStr)) {
-                Object thangTrongNamObj = payload.get("thangTrongNam");
-                Object ngayTrongNamObj = payload.get("ngayTrongNam");
-                if (thangTrongNamObj != null) {
-                    thongBao.setThangTrongNam(thangTrongNamObj instanceof Integer ? (Integer) thangTrongNamObj : Integer.parseInt(thangTrongNamObj.toString()));
-                }
-                if (ngayTrongNamObj != null) {
-                    thongBao.setNgayTrongNam(ngayTrongNamObj instanceof Integer ? (Integer) ngayTrongNamObj : Integer.parseInt(ngayTrongNamObj.toString()));
-                }
-            }
-            
-            // Tính ngày gửi tiếp theo
-            thongBao.setNgayGuiTiepTheo(tinhNgayGuiTiepTheo(thongBao));
-            
-            // Lưu vào database
-            ThongBao saved = thongBaoDAO.save(thongBao);
-            
-            return ResponseEntity.ok(saved);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(500).body(Map.of("error", "Lỗi khi tạo thông báo: " + e.getMessage()));
-        }
-    }
-    
-    /**
-     * Lấy danh sách thông báo định kỳ
-     * URL: GET /admin/notifications/scheduled/list
-     */
-    @GetMapping("/notifications/scheduled/list")
-    @ResponseBody
-    public ResponseEntity<List<ThongBao>> layDanhSachThongBaoDinhKy() {
-        List<ThongBao> scheduledNotifications = thongBaoDAO.findAllDinhKyWithNguoiGuiEagerly();
-        return ResponseEntity.ok(scheduledNotifications);
-    }
-    
-    /**
-     * Bật/tắt thông báo định kỳ
-     * URL: POST /admin/notifications/scheduled/{id}/toggle
-     */
-    @PostMapping("/notifications/scheduled/{id}/toggle")
-    @ResponseBody
-    public ResponseEntity<ThongBao> toggleThongBaoDinhKy(@PathVariable Integer id) {
-        try {
-            ThongBao thongBao = thongBaoDAO.findById(id).orElse(null);
-            if (thongBao == null || !Boolean.TRUE.equals(thongBao.getLaDinhKy())) {
-                return ResponseEntity.notFound().build();
-            }
-            
-            // Đảo trạng thái
-            thongBao.setTrangThaiHoatDong(!Boolean.TRUE.equals(thongBao.getTrangThaiHoatDong()));
-            
-            // Nếu kích hoạt lại, tính lại ngày gửi tiếp theo
-            if (Boolean.TRUE.equals(thongBao.getTrangThaiHoatDong())) {
-                thongBao.setNgayGuiTiepTheo(tinhNgayGuiTiepTheo(thongBao));
-            }
-            
-            ThongBao saved = thongBaoDAO.save(thongBao);
-            return ResponseEntity.ok(saved);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().build();
-        }
-    }
-    
-    /**
-     * Xóa thông báo định kỳ
-     * URL: DELETE /admin/notifications/scheduled/{id}/delete
-     */
-    @DeleteMapping("/notifications/scheduled/{id}/delete")
-    @ResponseBody
-    public ResponseEntity<Void> xoaThongBaoDinhKy(@PathVariable Integer id) {
-        try {
-            ThongBao thongBao = thongBaoDAO.findById(id).orElse(null);
-            if (thongBao == null || !Boolean.TRUE.equals(thongBao.getLaDinhKy())) {
-                return ResponseEntity.notFound().build();
-            }
-            
-            thongBaoDAO.delete(thongBao);
-            return ResponseEntity.ok().build();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.badRequest().build();
-        }
-    }
-    
-    /**
-     * Tính ngày gửi tiếp theo cho thông báo định kỳ
-     */
-    private java.time.LocalDateTime tinhNgayGuiTiepTheo(ThongBao thongBao) {
-        java.time.LocalDateTime now = java.time.LocalDateTime.now();
-        java.time.LocalDateTime next = now;
-        
-        // Set giờ và phút
-        next = next.withHour(thongBao.getGioGui() != null ? thongBao.getGioGui() : 9);
-        next = next.withMinute(thongBao.getPhutGui() != null ? thongBao.getPhutGui() : 0);
-        next = next.withSecond(0);
-        next = next.withNano(0);
-        
-        // Nếu thời gian đã qua hôm nay, chuyển sang chu kỳ tiếp theo
-        if (next.isBefore(now) || next.isEqual(now)) {
-            if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_TUAN) {
-                next = next.plusWeeks(1);
-            } else if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_THANG) {
-                next = next.plusMonths(1);
-            } else if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_NAM) {
-                next = next.plusYears(1);
-            }
-        }
-        
-        // Điều chỉnh theo chu kỳ cụ thể
-        if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_TUAN && thongBao.getThuTrongTuan() != null) {
-            // Tìm ngày trong tuần tiếp theo
-            int targetDay = thongBao.getThuTrongTuan(); // 1=CN, 2=T2, ..., 7=T7
-            int currentDay = next.getDayOfWeek().getValue() % 7 + 1; // Chuyển sang 1=CN
-            
-            int daysToAdd = (targetDay - currentDay + 7) % 7;
-            if (daysToAdd == 0 && next.isBefore(now)) {
-                daysToAdd = 7;
-            }
-            next = next.plusDays(daysToAdd);
-            
-        } else if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_THANG && thongBao.getNgayTrongThang() != null) {
-            next = next.withDayOfMonth(Math.min(thongBao.getNgayTrongThang(), next.toLocalDate().lengthOfMonth()));
-            if (next.isBefore(now)) {
-                next = next.plusMonths(1);
-                next = next.withDayOfMonth(Math.min(thongBao.getNgayTrongThang(), next.toLocalDate().lengthOfMonth()));
-            }
-            
-        } else if (thongBao.getChuKy() == BlueMoon.bluemoon.utils.ChuKyThongBao.HANG_NAM && 
-                   thongBao.getThangTrongNam() != null && thongBao.getNgayTrongNam() != null) {
-            next = next.withMonth(thongBao.getThangTrongNam());
-            next = next.withDayOfMonth(Math.min(thongBao.getNgayTrongNam(), 
-                    java.time.YearMonth.of(next.getYear(), thongBao.getThangTrongNam()).lengthOfMonth()));
-            if (next.isBefore(now)) {
-                next = next.plusYears(1);
-            }
-        }
-        
-        return next;
-    }
-    
     /**
      * Hiển thị trang báo cáo thống kê tổng hợp
      * URL: /admin/reports
@@ -2102,7 +2022,210 @@ public class AdminController {
         model.addAttribute("genderData", residentStats.get("genderData"));
         model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
         model.addAttribute("resStatusData", residentStats.get("resStatusData"));
+        // B. Thống kê Giới tính & Trạng thái (Lấy từ CuDanService mới)
+        model.addAttribute("genderLabels", residentStats.get("genderLabels"));
+        model.addAttribute("genderData", residentStats.get("genderData"));
+        model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
+        model.addAttribute("resStatusData", residentStats.get("resStatusData"));
 
-        return "reports-dashboard"; // Tên file HTML mới
+        // --- BỔ SUNG THÊM ---
+        model.addAttribute("ageLabels", residentStats.get("ageLabels"));
+        model.addAttribute("ageData", residentStats.get("ageData"));
+        Map<String, Object> householdStats = hoGiaDinhService.getHouseholdStatistics();
+        
+        model.addAttribute("totalHouseholds", householdStats.get("totalHouseholds"));
+        model.addAttribute("totalMembers", householdStats.get("totalMembers"));
+        model.addAttribute("averageMembers", householdStats.get("averageMembers"));
+        
+        model.addAttribute("householdFloorLabels", householdStats.get("householdFloorLabels"));
+        model.addAttribute("householdFloorData", householdStats.get("householdFloorData"));
+        model.addAttribute("householdSizeLabels", householdStats.get("householdSizeLabels"));
+        model.addAttribute("householdSizeData", householdStats.get("householdSizeData"));
+
+        return "reports-dashboard-admin";
+    }
+    // =======================================================
+    // XỬ LÝ SỰ CỐ
+    // =======================================================
+    // 1. Hiển thị danh sách sự cố (Đã có trong code cũ, đảm bảo trỏ đúng view)
+    // 1. Hiển thị danh sách sự cố
+    @GetMapping("/incidents")
+    public String showAdminIncidents(Model model, 
+                                     @RequestParam(required = false) String keyword,
+                                     @RequestParam(required = false) String reporterName, // <--- THÊM MỚI
+                                     @RequestParam(required = false) IncidentStatus trangThai,
+                                     @RequestParam(required = false) PriorityLevel mucDo,
+                                     @RequestParam(required = false) BlueMoon.bluemoon.utils.IncidentType loai,
+                                     @RequestParam(required = false) java.time.LocalDate ngayBao,
+                                     @RequestParam(required = false) Integer gioBao,
+                                     Authentication auth) {
+        
+        model.addAttribute("user", getCurrentUser(auth));
+
+        // Gọi Service lọc dữ liệu (truyền thêm reporterName)
+        List<BaoCaoSuCo> suCoList = baoCaoSuCoService.filterSuCoAdmin(
+            keyword, reporterName, trangThai, mucDo, loai, ngayBao, gioBao
+        );
+        
+        model.addAttribute("danhSachSuCo", suCoList);
+        
+        // Truyền lại giá trị để giữ trạng thái trên Form
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("currentReporter", reporterName); // <--- Đưa vào Model
+        model.addAttribute("currentStatus", trangThai);
+        model.addAttribute("currentPriority", mucDo);
+        model.addAttribute("currentType", loai);
+        model.addAttribute("currentDate", ngayBao);
+        model.addAttribute("currentHour", gioBao);
+
+        model.addAttribute("incidentStatuses", IncidentStatus.values());
+        model.addAttribute("priorityLevels", PriorityLevel.values());
+        model.addAttribute("incidentTypes", BlueMoon.bluemoon.utils.IncidentType.values());
+
+        return "incident-admin"; 
+    }
+
+    // 2. Hiển thị Form tạo sự cố cho Admin
+    @GetMapping("/incident-create")
+    public String showAdminIncidentCreateForm(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        model.addAttribute("newIncident", new BaoCaoSuCo());
+        model.addAttribute("incidentTypes", BlueMoon.bluemoon.utils.IncidentType.values());
+        return "incident-create-admin"; 
+    }
+
+    // 3. Xử lý Admin tạo sự cố (POST)
+    @PostMapping("/incident-create")
+    @SuppressWarnings("CallToPrintStackTrace")
+    public String handleAdminCreateIncident(@ModelAttribute("newIncident") BaoCaoSuCo incident,
+                                            Authentication auth,
+                                            RedirectAttributes redirectAttributes) {
+        DoiTuong adminUser = getCurrentUser(auth);
+        if (adminUser == null) return "redirect:/login?error=auth";
+
+        try {
+            // Gọi Service để tạo (đã có @Transactional trong Service)
+            baoCaoSuCoService.taoBaoCaoTuAdmin(incident, adminUser);
+            
+            redirectAttributes.addFlashAttribute("successMessage", "Đã tạo hồ sơ sự cố thành công.");
+            return "redirect:/admin/incidents";
+        } catch (Exception e) {
+            e.printStackTrace(); // In lỗi ra console để debug
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi tạo sự cố: " + e.getMessage());
+            return "redirect:/admin/incident-create";
+        }
+    }
+    // 4. MỚI: API Lấy chi tiết sự cố (Trả về Fragment HTML cho Modal)
+    @GetMapping("/incidents/detail/{id}")
+    public String getIncidentDetail(@PathVariable Integer id, Model model) {
+        // Tìm sự cố theo ID
+        BaoCaoSuCo suCo = suCoDAO.findById(id).orElse(null);
+        
+        // Đưa vào Model
+        model.addAttribute("suCo", suCo);
+        
+        // Trả về Fragment "detailContent" trong file "incident-admin.html"
+        // Cú pháp: "tên_file_view :: tên_fragment"
+        return "incident-admin :: detailContent";
+    }
+    
+    // 5. MỚI: API Cập nhật trạng thái sự cố (Dùng cho Modal)
+    // Trong BlueMoon/bluemoon/controllers/AdminController.java
+
+    // 5. MỚI: API Cập nhật trạng thái sự cố (Dùng cho Modal)
+    @org.springframework.web.bind.annotation.PutMapping("/incidents/update/{id}")
+    @org.springframework.web.bind.annotation.ResponseBody 
+    public ResponseEntity<?> updateIncidentStatus(@PathVariable Integer id, 
+                                                  @RequestBody Map<String, String> payload) {
+        try {
+            // Lấy dữ liệu từ JSON
+            String trangThaiStr = payload.get("trangThai");
+            String mucDoStr = payload.get("mucDo");
+
+            IncidentStatus trangThai = null;
+            PriorityLevel mucDo = null;
+
+            if (trangThaiStr != null) trangThai = IncidentStatus.valueOf(trangThaiStr);
+            if (mucDoStr != null) mucDo = PriorityLevel.valueOf(mucDoStr);
+
+            // GỌI SERVICE (Đã bao gồm logic lưu DB và gửi thông báo)
+            baoCaoSuCoService.capNhatTrangThaiSuCo(id, trangThai, mucDo);
+
+            return ResponseEntity.ok(Map.of("message", "Cập nhật thành công và đã gửi thông báo!"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+    // =======================================================
+    // QUẢN LÝ RA VÀO (MỚI)
+    // =======================================================
+    /**
+     * 1. Hiển thị danh sách ra vào (Đã có, giữ nguyên logic lọc)
+     * URL: /admin/entry-exit-logs
+     */
+    @GetMapping("/entry-exit-logs")
+    public String showAllEntryExitLogs(Model model, Authentication auth,
+                                       @RequestParam(required = false) String keyword,
+                                       @RequestParam(required = false) LocalDate date,
+                                       @RequestParam(required = false) String gate) {
+        
+        model.addAttribute("user", getCurrentUser(auth));
+
+        // Gọi Service lọc dữ liệu
+        List<LichSuRaVao> logs = lichSuRaVaoService.getAllLogs(keyword, date, gate);
+
+        model.addAttribute("logs", logs);
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("currentDate", date);
+        model.addAttribute("currentGate", gate);
+        
+        // Danh sách cổng để lọc
+        model.addAttribute("gates", lichSuRaVaoService.getAllGates()); 
+
+        return "entry-exit-log-admin"; 
+    }
+
+    /**
+     * 2. Hiển thị trang Import Excel (MỚI)
+     * URL: /admin/entry-exit-import
+     */
+    @GetMapping("/entry-exit-import")
+    public String showImportEntryExitPage(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        return "entry-exit-import-admin"; // Trỏ đến file HTML upload
+    }
+
+    /**
+     * 3. Xử lý Upload File Excel (MỚI)
+     * URL: /admin/entry-exit-import
+     */
+    @PostMapping("/entry-exit-import")
+    public String handleImportEntryExit(@RequestParam("file") MultipartFile file,
+                                        RedirectAttributes redirectAttributes) {
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file Excel.");
+            return "redirect:/admin/entry-exit-import";
+        }
+
+        try {
+            // Gọi Service xử lý đọc file
+            String result = lichSuRaVaoService.importLichSuRaVaoFromExcel(file);
+            
+            if (result.contains("Thất bại: 0")) {
+                redirectAttributes.addFlashAttribute("successMessage", result);
+            } else {
+                redirectAttributes.addFlashAttribute("warningMessage", result);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+            return "redirect:/admin/entry-exit-import";
+        }
+        
+        return "redirect:/admin/entry-exit-logs";
     }
 }

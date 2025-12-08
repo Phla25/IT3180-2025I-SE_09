@@ -47,6 +47,9 @@ public class TaiSanChungCu {
     @Column(name = "vi_tri", columnDefinition = "TEXT")
     private String viTri;
 
+    @Column(name = "mo_ta", columnDefinition = "TEXT")
+    private String moTa;
+
     @Column(name = "gia_tri", precision = 15, scale = 2)
     private BigDecimal giaTri;
 
@@ -103,4 +106,12 @@ public class TaiSanChungCu {
 
     public HoGiaDinh getHoGiaDinh() { return hoGiaDinh; }
     public void setHoGiaDinh(HoGiaDinh hoGiaDinh) { this.hoGiaDinh = hoGiaDinh; }
+
+    public String getMoTa() {
+        return moTa;
+    }
+
+    public void setMoTa(String moTa) {
+        this.moTa = moTa;
+    }
 }

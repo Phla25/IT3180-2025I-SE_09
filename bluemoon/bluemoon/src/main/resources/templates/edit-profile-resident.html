@@ -119,11 +119,12 @@
                 <i class="fas fa-concierge-bell"></i>
                 <span>Đăng Ký Dịch Vụ</span>
             </a>
-            
-            <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
+            <a th:href="@{/resident/my-household}" class="nav-item">
+                <i class="fas fa-home"></i> <span>Căn Hộ Của Tôi</span>
+            </a>  
+            <a th:href="@{/resident/incidents}" class="nav-item">
                 <i class="fas fa-exclamation-triangle"></i>
                 <span>Báo Cáo Sự Cố</span>
-                <span class="feature-badge">MỚI</span>
             </a>
             <a th:href="@{/resident/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i>
