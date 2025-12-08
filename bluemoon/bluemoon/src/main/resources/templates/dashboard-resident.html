@@ -9,6 +9,18 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        /* ==================== CSS CHO CHUÔNG THÔNG BÁO (MỚI) ==================== */
+        .notification-bell { position: relative; cursor: pointer; margin-right: 20px; }
+        .notification-bell .badge-counter { position: absolute; top: -5px; right: -5px; background: #EF4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold; border: 2px solid white; }
+        .notification-dropdown { display: none; position: absolute; top: 40px; right: -10px; width: 320px; background: white; border-radius: 8px; box-shadow: 0 5px 15px rgba(0,0,0,0.2); z-index: 1000; border: 1px solid #e5e7eb; max-height: 400px; overflow-y: auto; }
+        .notification-dropdown.show { display: block; }
+        .dropdown-header { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; font-weight: 600; color: #374151; background: #f9fafb; border-radius: 8px 8px 0 0; font-size: 14px; }
+        .dropdown-item { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; transition: background 0.2s; cursor: pointer; display: block; text-decoration: none; }
+        .dropdown-item:hover { background-color: #f0f9ff; }
+        .dropdown-item h6 { margin: 0 0 4px 0; font-size: 14px; color: #111827; font-weight: 600; }
+        .dropdown-item p { margin: 0; font-size: 12px; color: #6b7280; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .dropdown-empty { padding: 20px; text-align: center; color: #9ca3af; font-size: 13px; }
+
         /* ==================== FEATURE TOGGLE STYLES ==================== */
         .feature-badge {
             background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
@@ -71,8 +83,8 @@
             text-transform: capitalize;
         }
 
-        /* Dropdown */
-        .user-dropdown {
+        /* Dropdown User */
+        .dropdown-menu {
             position: absolute;
             top: 100%;
             right: 0;
@@ -80,16 +92,18 @@
             min-width: 200px;
             border-radius: 12px;
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-            opacity: 0;
-            visibility: hidden;
-            transform: translateY(-10px);
-            transition: all 0.2s ease;
+            display: none; /* Sửa lại display mặc định */
             z-index: 1000;
             margin-top: 8px;
             overflow: hidden;
+            padding: 10px;
+        }
+        
+        .dropdown-menu.show {
+            display: block;
         }
 
-        .user-dropdown a {
+        .dropdown-menu a {
             display: flex;
             align-items: center;
             gap: 10px;
@@ -98,60 +112,36 @@
             text-decoration: none;
             font-size: 14px;
             transition: background 0.2s;
+            border-radius: 6px;
         }
 
-        .user-dropdown a:hover {
+        .dropdown-menu a:hover {
             background: #f3f4f6;
         }
 
-        .user-dropdown a.text-danger {
-            color: #ef4444;
-        }
-
-        .user-dropdown hr {
+        .dropdown-menu hr {
             margin: 4px 0;
             border: none;
             border-top: 1px solid #e5e7eb;
         }
 
-        .user-dropdown.show {
-            opacity: 1;
-            visibility: visible;
-            transform: translateY(0);
-        }
-
         /* Responsive */
         @media (min-width: 768px) {
-            .user-info {
-                display: block;
-            }
-            .stats-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-            [style*="grid-template-columns: 2fr 1fr"] {
-                grid-template-columns: 2fr 1fr;
-            }
+            .user-info { display: block; }
+            .stats-grid { grid-template-columns: repeat(4, 1fr); }
+            [style*="grid-template-columns: 2fr 1fr"] { grid-template-columns: 2fr 1fr; }
         }
 
         @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            [style*="grid-template-columns: 2fr 1fr"] {
-                grid-template-columns: 1fr !important;
-            }
-            .user-info {
-                display: none;
-            }
-            .header h1 {
-                font-size: 1.2rem;
-            }
+            .stats-grid { grid-template-columns: 1fr; }
+            [style*="grid-template-columns: 2fr 1fr"] { grid-template-columns: 1fr !important; }
+            .user-info { display: none; }
+            .header h1 { font-size: 1.2rem; }
         }
     </style>
 </head>
 
 <body>
-    <!-- ==================== SIDEBAR ==================== -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="logo">
@@ -159,7 +149,6 @@
                 <span>BlueMoon Portal</span>
             </div>
         
-            <!-- CHỈ HIỆN THÔNG TIN NGƯỜI DÙNG KHI SIDEBAR MỞ RỘNG (trên desktop) -->
             <div class="user-profile-desktop" th:if="${user != null}">
                 <div class="user-info">
                     <span class="user-name" th:text="${user.hoVaTen}">Nguyễn Văn Cư Dân</span>
@@ -170,36 +159,28 @@
 
         <nav class="sidebar-nav">
             <a th:href="@{/resident/dashboard}" class="nav-item active">
-                <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
+                <i class="fas fa-chart-line"></i><span>Dashboard</span>
             </a>
             <a th:href="@{/resident/fees}" class="nav-item">
-                <i class="fas fa-file-invoice-dollar"></i>
-                <span>Hóa Đơn Của Tôi</span>
+                <i class="fas fa-file-invoice-dollar"></i><span>Hóa Đơn Của Tôi</span>
             </a>
-            
             <a th:href="@{/resident/my-services}" class="nav-item">
-                <i class="fas fa-handshake"></i>
-                <span>Dịch Vụ Của Tôi</span>
+                <i class="fas fa-handshake"></i><span>Dịch Vụ Của Tôi</span>
             </a>
-            
             <a th:href="@{/resident/services}" class="nav-item">
-                <i class="fas fa-concierge-bell"></i>
-                <span>Đăng Ký Dịch Vụ</span>
+                <i class="fas fa-concierge-bell"></i><span>Đăng Ký Dịch Vụ</span>
             </a>
             <a th:href="@{/resident/my-household}" class="nav-item">
                 <i class="fas fa-home"></i> <span>Căn Hộ Của Tôi</span>
             </a>  
             <a th:href="@{/resident/incidents}" class="nav-item">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>Báo Cáo Sự Cố</span>
+                <i class="fas fa-exclamation-triangle"></i><span>Báo Cáo Sự Cố</span>
             </a>
             <a th:href="@{/resident/notifications}" class="nav-item">
-                <i class="fas fa-bell"></i>
-                <span>Thông Báo</span>
+                <i class="fas fa-bell"></i><span>Thông Báo</span>
             </a>
         </nav>
-            <div class="sidebar-footer">
+        <div class="sidebar-footer">
              <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
                 <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
                     <i class="fas fa-sign-out-alt"></i> Đăng Xuất
@@ -208,7 +189,6 @@
         </div>
     </aside>
 
-    <!-- ==================== HEADER ==================== -->
     <header class="header">
         <div class="header-left">
             <button class="menu-toggle" onclick="toggleSidebar()">
@@ -219,6 +199,32 @@
         
         <div class="header-right">
 
+            <div class="notification-bell" onclick="toggleBellDropdown(event)">
+                <i class="fas fa-bell" style="font-size: 24px; color: #6B7280;"></i>
+                
+                <span th:if="${unreadCount > 0}" 
+                      class="badge-counter" 
+                      th:text="${unreadCount}">0</span>
+
+                <div id="bellDropdown" class="notification-dropdown">
+                    <div class="dropdown-header">Thông báo chưa đọc</div>
+                    
+                    <th:block th:each="tb : ${thongBaos}" th:if="${!tb.daDoc}">
+                        <div class="dropdown-item" 
+                             th:onclick="'event.stopPropagation(); markReadAndShow(' + ${tb.maThongBao} + ')'">
+                            <h6 th:text="${tb.tieuDe}">Tiêu đề</h6>
+                            <small style="color: #6B7280; font-size: 11px;">
+                                <i class="far fa-clock"></i> <span th:text="${#temporals.format(tb.thoiGianGui, 'dd/MM/yyyy HH:mm')}"></span>
+                            </small>
+                        </div>
+                    </th:block>
+
+                    <div th:if="${unreadCount == 0}" class="dropdown-empty">
+                        <i class="fas fa-check-circle" style="color: #10B981; font-size: 24px; margin-bottom: 8px;"></i><br>
+                        Bạn đã đọc hết thông báo!
+                    </div>
+                </div>
+            </div>
             <div class="user-menu">
                 <div class="user-info">
                     <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
@@ -227,11 +233,11 @@
                 <div class="user-avatar">
                     <i class="fas fa-user-circle"></i>
                 </div>
-                <div class="dropdown-menu">
-                    <a href="/resident/profile">
+                <div class="dropdown-menu" id="userDropdown">
+                    <a th:href="@{/resident/profile}">
                         <i class="fas fa-user"></i> Thông Tin Cá Nhân
                     </a>
-                    <a href="/resident/settings">
+                    <a th:href="@{/resident/settings}">
                         <i class="fas fa-cog"></i> Cài Đặt
                     </a>
                     <hr>
@@ -245,7 +251,6 @@
         </div>
     </header>
 
-    <!-- ==================== MAIN CONTENT ==================== -->
     <main class="main-content">
         <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); color: white; padding: 32px; border-radius: 12px; margin-bottom: 30px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
             <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">
@@ -256,7 +261,6 @@
             </p>
         </div>
         
-        <!-- Stats Grid -->
         <div class="stats-grid">
             <div class="stat-card">
                 <div class="stat-card-header">
@@ -320,9 +324,7 @@
             </div>
         </div>
 
-        <!-- Main Grid -->
         <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-top: 24px;">
-            <!-- Hóa Đơn Gần Đây -->
             <div class="content-card">
                 <div class="content-card-header">
                     <h2 class="content-card-title">Hóa Đơn Gần Đây</h2>
@@ -373,7 +375,6 @@
                 </div>
             </div>
 
-            <!-- Thông Tin Hộ Gia Đình -->
             <div class="content-card">
                 <div class="content-card-header">
                     <h2 class="content-card-title">Thông Tin Hộ Gia Đình</h2>
@@ -409,17 +410,14 @@
         </div>
     </main>
     
-    <!-- ==================== FOOTER ==================== -->
     <footer class="footer">
         <div class="footer-content">
             <p>© 2025 BlueMoon Apartment Management System. All rights reserved.</p>
         </div>
     </footer>
     
-    <!-- ==================== SCRIPTS ==================== -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="/js/main.js"></script>
     
     <script>
         // Toggle Sidebar
@@ -428,19 +426,49 @@
             $('main.main-content, header.header').toggleClass('sidebar-open');
         }
 
-        // Toggle User Dropdown
-        function toggleUserDropdown() {
-            const dropdown = document.getElementById('userDropdown');
-            dropdown.classList.toggle('show');
+        // --- XỬ LÝ DROPDOWN USER ---
+        const userMenu = document.querySelector('.user-menu');
+        const userDropdown = document.getElementById('userDropdown');
+
+        if(userMenu && userDropdown) {
+            userMenu.addEventListener('click', function(e) {
+                e.stopPropagation();
+                userDropdown.classList.toggle('show');
+            });
         }
 
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
-            const menu = document.getElementById('userMenu');
-            if (!menu.contains(e.target)) {
-                document.getElementById('userDropdown').classList.remove('show');
+        // --- XỬ LÝ DROPDOWN CHUÔNG THÔNG BÁO (MỚI) ---
+        function toggleBellDropdown(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('bellDropdown');
+            if(dropdown) dropdown.classList.toggle('show');
+            
+            // Đóng user dropdown nếu đang mở
+            if(userDropdown) userDropdown.classList.remove('show');
+        }
+
+        // --- XỬ LÝ CLICK RA NGOÀI ĐỂ ĐÓNG DROPDOWN ---
+        window.addEventListener('click', function(event) {
+            // Đóng Bell Dropdown
+            const bellDropdown = document.getElementById('bellDropdown');
+            if (bellDropdown && bellDropdown.classList.contains('show') && !event.target.closest('.notification-bell')) {
+                bellDropdown.classList.remove('show');
+            }
+
+            // Đóng User Dropdown
+            if (userDropdown && userDropdown.classList.contains('show') && !event.target.closest('.user-menu')) {
+                userDropdown.classList.remove('show');
             }
         });
+
+        // --- HÀM ĐÁNH DẤU ĐÃ ĐỌC VÀ CHUYỂN TRANG ---
+        function markReadAndShow(id) {
+            fetch('/resident/notifications/mark-read?id=' + id, { method: 'POST' })
+                .then(() => {
+                    // Chuyển hướng đến trang thông báo
+                    window.location.href = '/resident/notifications';
+                });
+        }
 
         // Feature Toggle Alert
         function featureToggle(title, message) {

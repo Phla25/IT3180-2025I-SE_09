@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -44,6 +45,7 @@ import BlueMoon.bluemoon.models.HouseholdReportDTO;
 import BlueMoon.bluemoon.models.InvoiceReportDTO;
 import BlueMoon.bluemoon.models.PhanHoiThongBaoDTO;
 import BlueMoon.bluemoon.models.ResidentReportDTO;
+import BlueMoon.bluemoon.models.ThongBaoDTO;
 import BlueMoon.bluemoon.services.BaoCaoSuCoService;
 import BlueMoon.bluemoon.services.CuDanService;
 import BlueMoon.bluemoon.services.DangKyDichVuService;
@@ -1916,7 +1918,15 @@ public class AdminController {
     @GetMapping("/notifications")
     public String hienThiThongBao(Model model, Principal principal) {
         List<ThongBao> thongBaos = thongBaoService.layTatCaThongBaoMoiNhat();
-        model.addAttribute("thongBaos", thongBaos);
+        
+        // Convert sang DTO và tính số người chưa đọc
+        List<ThongBaoDTO> thongBaoDTOs = thongBaos.stream().map(tb -> {
+            ThongBaoDTO dto = new ThongBaoDTO(tb);
+            dto.setSoNguoiChuaDoc(thongBaoService.demSoNguoiChuaDoc(tb));
+            return dto;
+        }).collect(Collectors.toList());
+
+        model.addAttribute("thongBaos", thongBaoDTOs);
 
         //Lấy thông tin người đang đăng nhập
         DoiTuong user = null;

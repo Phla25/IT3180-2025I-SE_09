@@ -79,6 +79,23 @@ public class NormalUserController {
         Optional<DoiTuong> userOpt = nguoiDungService.timNguoiDungThuongTheoCCCD(cccd);
         return userOpt.orElse(null); 
     }
+    /**
+     * Helper: Tải dữ liệu thông báo chung (Dùng cho Bell & Dropdown trên Header)
+     * Có thể gọi hàm này trong các controller method khác để hiển thị chuông
+     */
+    private void loadNotificationData(Model model, DoiTuong currentUser) {
+        List<ThongBao> thongBaos = thongBaoService.layThongBaoChoCuDan(currentUser.getCccd());
+        List<ThongBaoDTO> thongBaoDTOs = thongBaos.stream().map(tb -> {
+            ThongBaoDTO dto = new ThongBaoDTO(tb);
+            dto.setDaDoc(thongBaoService.daDocThongBao(tb.getMaThongBao(), currentUser.getCccd()));
+            return dto;
+        }).collect(Collectors.toList());
+        
+        long unreadCount = thongBaoDTOs.stream().filter(tb -> !tb.isDaDoc()).count();
+
+        model.addAttribute("thongBaos", thongBaoDTOs);
+        model.addAttribute("unreadCount", unreadCount);
+    }
 
     @GetMapping("/resident/dashboard")
     public String residentDashboard(Model model, Authentication auth) {
@@ -88,44 +105,57 @@ public class NormalUserController {
         }
         model.addAttribute("user", currentUser);
 
-        // B1: Lấy thông tin Căn hộ/Hộ gia đình
+        // --- 1. Load Thông báo (Cho cả Bell & Dashboard Card) ---
+        // Gọi hàm helper để lấy danh sách và số lượng chưa đọc
+        loadNotificationData(model, currentUser);
+        
+        // Lấy lại giá trị unreadCount đã được set trong loadNotificationData để dùng cho Card
+        Long unreadCount = (Long) model.getAttribute("unreadCount");
+        if (unreadCount == null) unreadCount = 0L;
+
+        // Cập nhật DTO cho Card Dashboard: hiển thị số chưa đọc
+        String tbStatus = unreadCount > 0 ? "Có " + unreadCount + " tin chưa đọc" : "Không có tin mới";
+        model.addAttribute("thongBaoStats", new ThongBaoStatsDTO(unreadCount.intValue(), tbStatus));
+
+
+        // --- 2. Lấy thông tin Căn hộ/Hộ gia đình ---
         HoGiaDinhDTO canHoInfo = thanhVienHoService.getCanHoInfo(currentUser.getCccd(), currentUser.getHoVaTen());
         model.addAttribute("canHoInfo", canHoInfo);
 
-        // B2: Lấy đối tượng HoGiaDinh (CẦN LOGIC THỰC TẾ TRONG TVH SERVICE)
         Optional<HoGiaDinh> hoGiaDinhOpt = thanhVienHoService.getHoGiaDinhByCccd(currentUser.getCccd()); 
         HoGiaDinh hoGiaDinh = hoGiaDinhOpt.orElse(null);
     
-        // B3: Lấy Dữ liệu Hóa Đơn
+        // --- 3. Lấy Dữ liệu Hóa Đơn ---
         if (hoGiaDinh != null) {
             model.addAttribute("hoaDonStats", hoaDonService.getHoaDonStats(hoGiaDinh));
             model.addAttribute("recentHoaDon", hoaDonService.getRecentHoaDon(hoGiaDinh, 3));
         } else {
-            // Tránh lỗi khi HoGiaDinh null
             model.addAttribute("hoaDonStats", new HoaDonStatsDTO()); 
             model.addAttribute("recentHoaDon", Collections.emptyList());
         }
     
-        // B4: MOCK Dữ liệu còn lại (SỬA DỤNG DTO CÓ THUỘC TÍNH)
-        
-        // Mock DichVuStatsDTO
-        // Mock DichVuStatsDTO (Bổ sung thiết lập trạng thái mặc định)
+        // --- 4. Dữ liệu Dịch vụ ---
         DichVuStatsDTO dichVuStats = new DichVuStatsDTO();
         int tongDichVu = dangKyDichVuService.countDichVuDaDangKyByNguoiDung(currentUser.getCccd());
-        dichVuStats.setTongDichVu(tongDichVu); // Đảm bảo số lượng dịch vụ là 0 khi mock
-        String trangThai = tongDichVu > 0 ? ("Đã đăng ký " + tongDichVu + " dịch vụ") : "Chưa đăng ký dịch vụ";
-        dichVuStats.setTrangThai(trangThai); // Đặt giá trị cho trangThai
+        dichVuStats.setTongDichVu(tongDichVu);
+        String trangThaiDV = tongDichVu > 0 ? ("Đã đăng ký " + tongDichVu + " dịch vụ") : "Chưa đăng ký dịch vụ";
+        dichVuStats.setTrangThai(trangThaiDV); 
         model.addAttribute("dichVuStats", dichVuStats);
+
+        // --- 5. Dữ liệu Sự cố ---
         @SuppressWarnings("UnnecessaryUnboxing")
         int tongSuCo = baoCaoSuCoService.countAllSuCoByNguoiDung(currentUser.getCccd()).intValue();
         int soSuCoDaXuLy = baoCaoSuCoService.getSuCoDaXuLyTheoNguoiDung(currentUser.getCccd());
-        Double tyLeDaXuLy = (double) soSuCoDaXuLy / tongSuCo * 100;
-        int soSuCoDangXuLy = baoCaoSuCoService.countSuCoDangXuLyByNguoiDung(currentUser.getCccd());
-        Double tyLeDangXuLy = (double) soSuCoDangXuLy / tongSuCo * 100;
-        model.addAttribute("suCoStats", new SuCoStatsDTO(tongSuCo, tyLeDaXuLy, tyLeDangXuLy));
-        // Mock ThongBaoStatsDTO (Sử dụng constructor có tham số)
-        model.addAttribute("thongBaoStats", new ThongBaoStatsDTO(0, "Không có thông báo mới")); 
         
+        // Tránh chia cho 0
+        Double tyLeDaXuLy = (tongSuCo > 0) ? (double) soSuCoDaXuLy / tongSuCo * 100 : 0.0;
+        
+        int soSuCoDangXuLy = baoCaoSuCoService.countSuCoDangXuLyByNguoiDung(currentUser.getCccd());
+        Double tyLeDangXuLy = (tongSuCo > 0) ? (double) soSuCoDangXuLy / tongSuCo * 100 : 0.0;
+        
+        model.addAttribute("suCoStats", new SuCoStatsDTO(tongSuCo, tyLeDaXuLy, tyLeDangXuLy));
+        
+        // --- 6. Dữ liệu Thống kê Hộ gia đình ---
         HoGiaDinhDTO hoGiaDinhStats = new HoGiaDinhDTO();
         hoGiaDinhStats.setTongThanhVien(thanhVienHoService.countThanhVienByHoGiaDinh(hoGiaDinh));
         hoGiaDinhStats.setMaCanHo(canHoInfo.getMaCanHo());
@@ -777,26 +807,35 @@ public String handleBatchPayment(@RequestParam(value = "selectedIds", required =
             return ResponseEntity.internalServerError().build();
         }
     }
-        @GetMapping("/resident/notifications")
+    // 1. API Ajax để đánh dấu đã đọc (Gọi khi click vào chuông hoặc xem chi tiết)
+    @PostMapping("/resident/notifications/mark-read")
+    @ResponseBody
+    public ResponseEntity<String> markAsRead(@RequestParam("id") Integer maThongBao, Authentication auth) {
+        thongBaoService.danhDauDaDoc(maThongBao, auth.getName());
+        return ResponseEntity.ok("Success");
+    }
+
+    // 2. Cập nhật Dashboard/Trang thông báo để hiển thị chuông
+    @GetMapping("/resident/notifications")
     public String hienThiThongBaoChoCuDan(Model model, Authentication auth) {
         DoiTuong currentUser = getCurrentUser(auth);
-        if (currentUser == null) {
-            return "redirect:/login?error=auth";
-        }
-
-        // Thêm thông tin người dùng vào model
         model.addAttribute("user", currentUser);
 
-        // Lấy danh sách thông báo Entity từ service
+        // Lấy danh sách
         List<ThongBao> thongBaos = thongBaoService.layThongBaoChoCuDan(currentUser.getCccd());
         
-        // ✅ CHUYỂN ĐỔI Entity sang DTO
-        List<ThongBaoDTO> thongBaoDTOs = thongBaos.stream()
-            .map(ThongBaoDTO::new) // Sử dụng constructor DTO
-            .collect(Collectors.toList());
+        // Convert sang DTO và check trạng thái đã đọc
+        List<ThongBaoDTO> thongBaoDTOs = thongBaos.stream().map(tb -> {
+            ThongBaoDTO dto = new ThongBaoDTO(tb);
+            dto.setDaDoc(thongBaoService.daDocThongBao(tb.getMaThongBao(), currentUser.getCccd()));
+            return dto;
+        }).collect(Collectors.toList());
             
-        // Truyền danh sách DTO vào model
         model.addAttribute("thongBaos", thongBaoDTOs);
+        
+        // Đếm số chưa đọc để hiện lên Badge (Số đỏ trên chuông)
+        long unreadCount = thongBaoService.demSoThongBaoChuaDoc(currentUser.getCccd());
+        model.addAttribute("unreadCount", unreadCount);
 
         return "notifications-resident"; 
     }
@@ -956,4 +995,5 @@ public String handleBatchPayment(@RequestParam(value = "selectedIds", required =
 
         return "my-household-resident";
     }
+    
 }

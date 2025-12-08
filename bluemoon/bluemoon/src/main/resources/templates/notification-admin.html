@@ -144,11 +144,24 @@
             font-size: 14px;
             margin-top: 10px;
         }
+        
+        /* Style cho badge số lượng người chưa đọc */
+        .unread-badge {
+            background-color: #FEF2F2; 
+            color: #DC2626; 
+            padding: 4px 10px; 
+            border-radius: 20px; 
+            font-size: 12px; 
+            font-weight: 600; 
+            border: 1px solid #FCA5A5;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
     </style>
 </head>
 
 <body>
-    <!-- Sidebar -->
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="logo">
@@ -195,7 +208,6 @@
         </div>
     </aside>
 
-    <!-- Header -->
     <header class="header">
         <div class="header-left">
             <button class="menu-toggle" onclick="toggleSidebar()">
@@ -214,10 +226,8 @@
         </div>
     </header>
 
-    <!-- MAIN CONTENT -->
     <main class="main-content">
         <section class="notification-page">
-            <!-- FORM GỬI THÔNG BÁO -->
             <div class="notification-form">
                 <h2>📢 Gửi Thông Báo Mới</h2>
                 <form th:action="@{/admin/notifications/send}" method="post">
@@ -233,7 +243,6 @@
                 </form>
             </div>
 
-            <!-- DANH SÁCH THÔNG BÁO -->
             <div class="notification-list">
                 <h2>📜 Danh Sách Thông Báo Gần Đây</h2>
 
@@ -242,11 +251,18 @@
                 </div>
 
                 <div th:each="tb : ${thongBaos}" class="notification-item">
-                    <h3 th:text="${tb.tieuDe}">Tiêu đề thông báo</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <h3 th:text="${tb.tieuDe}" style="margin-bottom: 5px;">Tiêu đề thông báo</h3>
+                        
+                        <span class="unread-badge">
+                            <i class="fas fa-eye-slash"></i> 
+                            <span th:text="${tb.soNguoiChuaDoc}">0</span> chưa đọc
+                        </span>
+                    </div>
+
                     <p th:text="${tb.noiDung}">Nội dung thông báo...</p>
                     <small>
-                        🕒 <span th:text="${#temporals.format(tb.thoiGianGui, 'dd/MM/yyyy HH:mm')}">01/10/2025</span> -
-                        👤 <span th:text="${tb.nguoiGui != null ? tb.nguoiGui.hoVaTen : 'Hệ thống'}">Ban Quản Trị</span>
+                        🕒 <span th:text="${#temporals.format(tb.thoiGianGui, 'dd/MM/yyyy HH:mm')}">01/10/2025</span>
                     </small>
                     <br>
                     <button class="view-reply-btn" th:attr="data-id=${tb.maThongBao}" onclick="openRepliesModal(this)">💬 Xem phản hồi</button>
@@ -255,7 +271,6 @@
         </section>
     </main>
 
-    <!-- MODAL PHẢN HỒI -->
     <div id="replyModal" class="modal">
         <div class="modal-content">
             <button class="close-btn" onclick="closeRepliesModal()">&times;</button>
@@ -304,10 +319,7 @@
                         replyList.innerHTML = "<p style='color:gray;'>Chưa có phản hồi nào.</p>";
                     } else {
                         replyList.innerHTML = data.map(r => {
-                            // CHÚ Ý: Chuyển đổi LocalDateTime (ví dụ: 2025-10-28T15:30:00) sang định dạng hiển thị
                             const formattedDate = r.thoiGianGui ? r.thoiGianGui.replace('T', ' ').substring(0, 16) : 'N/A';
-                            
-                            // SỬ DỤNG TÊN THUỘC TÍNH DTO ĐÃ SỬA
                             return `
                                 <div class='reply-item'>
                                     <p><strong>${r.hoVaTenNguoiGui}</strong> (${r.vaiTroNguoiGui})</p>

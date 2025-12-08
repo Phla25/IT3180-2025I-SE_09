@@ -24,4 +24,10 @@ public interface ThongBaoDAO extends JpaRepository<ThongBao, Integer> {
     // Logic: (Gửi cho TẤT CẢ) HOẶC (Gửi riêng cho CCCD này)
     @Query("SELECT t FROM ThongBao t WHERE (t.doiTuongNhan = :typeAll OR t.nguoiNhan.cccd = :cccd) AND t.trangThaiHienThi = true ORDER BY t.thoiGianGui DESC")
     List<ThongBao> findForResident(@Param("cccd") String cccd, @Param("typeAll") RecipientType typeAll);
+
+    @Query("SELECT COUNT(t) FROM ThongBao t " +
+           "WHERE (t.doiTuongNhan = :typeAll OR t.nguoiNhan.cccd = :cccd) " +
+           "AND t.trangThaiHienThi = true " +
+           "AND t.maThongBao NOT IN (SELECT d.thongBao.maThongBao FROM ThongBaoDaDoc d WHERE d.nguoiDoc.cccd = :cccd)")
+    long countUnreadForResident(@Param("cccd") String cccd, @Param("typeAll") RecipientType typeAll);
 }
