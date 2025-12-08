@@ -1,6 +1,7 @@
 package BlueMoon.bluemoon.controllers;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import BlueMoon.bluemoon.entities.BaoCaoSuCo;
 import BlueMoon.bluemoon.entities.DoiTuong;
+import BlueMoon.bluemoon.entities.LichSuRaVao;
 import BlueMoon.bluemoon.entities.TaiSanChungCu; // Import TaiSanChungCu
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.models.ApartmentReportDTO;
@@ -31,7 +33,11 @@ import BlueMoon.bluemoon.services.NguoiDungService;
 import BlueMoon.bluemoon.services.ReportService;
 import BlueMoon.bluemoon.services.TaiSanChungCuService; // Import TaiSanChungCuService
 import BlueMoon.bluemoon.utils.Gender; // Cần thiết nếu dùng Enum trực tiếp
+import BlueMoon.bluemoon.utils.IncidentStatus;
 import BlueMoon.bluemoon.utils.PriorityLevel;
+import BlueMoon.bluemoon.services.CuDanService;
+import BlueMoon.bluemoon.services.HoGiaDinhService;
+import BlueMoon.bluemoon.services.LichSuRaVaoService;
 
 @Controller
 @RequestMapping("/officer")
@@ -39,6 +45,12 @@ public class OfficerController {
 
     @Autowired
     private NguoiDungService nguoiDungService;
+
+    @Autowired 
+    private CuDanService cuDanService;
+
+    @Autowired
+    private HoGiaDinhService hoGiaDinhService;
     
     @Autowired
     private BaoCaoSuCoService suCoService; 
@@ -51,7 +63,9 @@ public class OfficerController {
     
     @Autowired
     private ExportService exportService; 
-
+    
+    @Autowired
+    private LichSuRaVaoService lichSuRaVaoService;
     /**
      * Helper: Lấy đối tượng DoiTuong hiện tại (Cơ Quan Chức Năng)
      */
@@ -417,5 +431,152 @@ public class OfficerController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    /**
+     * Xem Sự Cố - Cơ Quan Chức Năng
+     */
+    // 1. Hiển thị danh sách sự cố (CÓ BỘ LỌC)
+    @GetMapping("/incidents")
+    public String showOfficerIncidents(Model model, 
+                                     @RequestParam(required = false) String keyword,
+                                     @RequestParam(required = false) String reporterName, // Lọc người báo
+                                     @RequestParam(required = false) String assetName, // Lọc theo tên tài sản (Nếu Service hỗ trợ, nếu chưa thì tạm bỏ qua hoặc dùng keyword)
+                                     @RequestParam(required = false) IncidentStatus status,
+                                     @RequestParam(required = false) PriorityLevel priority,
+                                     @RequestParam(required = false) java.time.LocalDate reportDate,
+                                     @RequestParam(required = false) Integer reportHour,
+                                     Authentication auth) {
+        
+        DoiTuong user = getCurrentUser(auth);
+        if (user == null) return "redirect:/login?error=notfound";
+        model.addAttribute("user", user);
+
+        // Gọi Service lọc dữ liệu (Tái sử dụng hàm của Admin)
+        // Lưu ý: Nếu muốn lọc theo "Tên tài sản" riêng biệt, bạn cần nâng cấp Service. 
+        // Ở đây ta tạm dùng keyword để tìm chung cho cả Tiêu đề/Nội dung.
+        List<BaoCaoSuCo> suCoList = suCoService.filterSuCoAdmin(
+            keyword, reporterName, status, priority, null, reportDate, reportHour
+        );
+        
+        model.addAttribute("danhSachSuCo", suCoList);
+        
+        // Truyền lại giá trị để giữ trạng thái Form
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("reporterName", reporterName);
+        model.addAttribute("status", status);
+        model.addAttribute("priority", priority);
+        model.addAttribute("reportDate", reportDate);
+        model.addAttribute("reportHour", reportHour);
+
+        // Enum cho Dropdown
+        model.addAttribute("incidentStatuses", IncidentStatus.values());
+        model.addAttribute("priorityLevels", PriorityLevel.values());
+
+        return "incident-officer"; 
+    }
+
+    // 2. API Lấy chi tiết sự cố cho Modal (QUAN TRỌNG: Trả về Fragment HTML)
+    @GetMapping("/incidents/detail/{id}")
+    public String getIncidentDetailForOfficer(@PathVariable Integer id, Model model) {
+        // SỬA LẠI ĐOẠN NÀY: Không cần ép kiểu (BaoCaoSuCo) hay (Optional) nữa
+        BaoCaoSuCo suCo = suCoService.getSuCoById(id).orElse(null);
+        
+        model.addAttribute("suCo", suCo);
+        
+        // Trả về Fragment
+        return "incident-officer :: detailContent";
+    }
+
+    // =======================================================
+    // BÁO CÁO THỐNG KÊ TỔNG HỢP
+    // =======================================================
+
+    /**
+     * Hiển thị trang báo cáo thống kê tổng hợp cho Cơ quan chức năng
+     * URL: /officer/reports
+     */
+    @GetMapping("/reports")
+    public String showUnifiedReport(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+
+        // === PHẦN 1: DỮ LIỆU TÀI SẢN CHUNG ===
+        java.util.Map<String, Object> assetStats = taiSanChungCuService.getGeneralAssetStatistics();
+        model.addAttribute("assetTypeLabels", assetStats.get("typeLabels"));
+        model.addAttribute("assetTypeData", assetStats.get("typeData"));
+        model.addAttribute("assetStatusLabels", assetStats.get("statusLabels"));
+        model.addAttribute("assetStatusData", assetStats.get("statusData"));
+        model.addAttribute("assetLocationLabels", assetStats.get("locationLabels"));
+        model.addAttribute("assetLocationData", assetStats.get("locationData"));
+
+        // Danh sách bảng tài sản
+        model.addAttribute("assetList", taiSanChungCuService.getGeneralAssetListReport());
+
+        // === PHẦN 2: DỮ LIỆU CƯ DÂN ===
+        // A. Thống kê theo Tòa/Tầng
+        java.util.Map<String, Object> buildingStats = taiSanChungCuService.getChartData();
+
+        // Xử lý dữ liệu Tầng
+        java.util.Map<Integer, Long> floorMap = (java.util.Map<Integer, Long>) buildingStats.get("floorStats");
+        java.util.List<String> floorLabels = new java.util.ArrayList<>();
+        java.util.List<Long> floorData = new java.util.ArrayList<>();
+        for (java.util.Map.Entry<Integer, Long> e : floorMap.entrySet()) {
+            floorLabels.add("Tầng " + e.getKey());
+            floorData.add(e.getValue());
+        }
+        model.addAttribute("floorLabels", floorLabels);
+        model.addAttribute("floorData", floorData);
+
+        // B. Thống kê Giới tính & Trạng thái
+        java.util.Map<String, Object> residentStats = cuDanService.getResidentStatistics();
+        model.addAttribute("genderLabels", residentStats.get("genderLabels"));
+        model.addAttribute("genderData", residentStats.get("genderData"));
+        model.addAttribute("resStatusLabels", residentStats.get("resStatusLabels"));
+        model.addAttribute("resStatusData", residentStats.get("resStatusData"));
+        model.addAttribute("ageLabels", residentStats.get("ageLabels"));
+        model.addAttribute("ageData", residentStats.get("ageData"));
+
+        // === PHẦN 3: DỮ LIỆU HỘ GIA ĐÌNH ===
+        java.util.Map<String, Object> householdStats = hoGiaDinhService.getHouseholdStatistics();
+        model.addAttribute("householdFloorLabels", householdStats.get("householdFloorLabels"));
+        model.addAttribute("householdFloorData", householdStats.get("householdFloorData"));
+        model.addAttribute("averageMembers", householdStats.get("averageMembers"));
+        model.addAttribute("totalHouseholds", householdStats.get("totalHouseholds"));
+        model.addAttribute("totalMembers", householdStats.get("totalMembers"));
+        model.addAttribute("householdSizeLabels", householdStats.get("householdSizeLabels"));
+        model.addAttribute("householdSizeData", householdStats.get("householdSizeData"));
+
+        return "reports-dashboard-officer";
+    }
+    // =======================================================
+    // TRA CỨU LỊCH SỬ RA VÀO (MỚI)
+    // =======================================================
+
+    /**
+     * Hiển thị danh sách ra vào cho Cơ Quan Chức Năng
+     * URL: /officer/entry-exit-logs
+     */
+    @GetMapping("/entry-exit-logs")
+    public String showOfficerEntryExitLogs(Model model, Authentication auth,
+                                           @RequestParam(required = false) String keyword,
+                                           @RequestParam(required = false) LocalDate date,
+                                           @RequestParam(required = false) String gate) {
+        
+        DoiTuong user = getCurrentUser(auth);
+        if (user == null) return "redirect:/login?error=notfound";
+        model.addAttribute("user", user);
+
+        // Sử dụng chung hàm lọc của Service như Admin
+        List<LichSuRaVao> logs = lichSuRaVaoService.getAllLogs(keyword, date, gate);
+
+        model.addAttribute("logs", logs);
+        
+        // Truyền lại params để giữ form search
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("currentDate", date);
+        model.addAttribute("currentGate", gate);
+        
+        model.addAttribute("gates", lichSuRaVaoService.getAllGates()); 
+
+        return "entry-exit-log-officer"; // File HTML riêng cho Officer
     }
 }

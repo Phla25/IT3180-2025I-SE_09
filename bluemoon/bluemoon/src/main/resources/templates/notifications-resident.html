@@ -102,6 +102,82 @@
         .close-btn:hover {
             color: #111827;
         }
+        
+        .notification-item.unread { background-color: #F0F9FF; border-left: 4px solid #3B82F6; }
+        .notification-item.read { background-color: #fff; opacity: 0.8; }
+
+        /* ✨ NEW STYLES FOR BELL DROPDOWN */
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+            margin-right: 20px;
+        }
+
+        .notification-dropdown {
+            display: none; /* Mặc định ẩn */
+            position: absolute;
+            top: 40px;
+            right: -10px;
+            width: 320px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            z-index: 1000;
+            border: 1px solid #e5e7eb;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .notification-dropdown.show {
+            display: block;
+        }
+
+        .dropdown-header {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            font-weight: 600;
+            color: #374151;
+            background: #f9fafb;
+            border-radius: 8px 8px 0 0;
+            font-size: 14px;
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid #f3f4f6;
+            transition: background 0.2s;
+            cursor: pointer;
+            display: block;
+            text-decoration: none;
+        }
+
+        .dropdown-item:hover {
+            background-color: #f0f9ff;
+        }
+
+        .dropdown-item h6 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            color: #111827;
+            font-weight: 600;
+        }
+
+        .dropdown-item p {
+            margin: 0;
+            font-size: 12px;
+            color: #6b7280;
+            display: -webkit-box;
+            -webkit-line-clamp: 2; /* Cắt dòng nếu quá dài */
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .dropdown-empty {
+            padding: 20px;
+            text-align: center;
+            color: #9ca3af;
+            font-size: 13px;
+        }
     </style>
 </head>
 
@@ -138,11 +214,12 @@
                 <i class="fas fa-concierge-bell"></i>
                 <span>Đăng Ký Dịch Vụ</span>
             </a>
-            
-            <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
+            <a th:href="@{/resident/my-household}" class="nav-item">
+                <i class="fas fa-home"></i> <span>Căn Hộ Của Tôi</span>
+            </a>  
+            <a th:href="@{/resident/incidents}" class="nav-item">
                 <i class="fas fa-exclamation-triangle"></i>
                 <span>Báo Cáo Sự Cố</span>
-                <span class="feature-badge">MỚI</span>
             </a>            
             <a th:href="@{/resident/notifications}" class="nav-item active">
                 <i class="fas fa-bell"></i>
@@ -166,6 +243,35 @@
             </button>
             <h1>Thông Báo Cư Dân</h1>
         </div>
+
+        <div class="notification-bell" onclick="toggleBellDropdown(event)">
+            <i class="fas fa-bell" style="font-size: 24px; color: #6B7280;"></i>
+            
+            <span th:if="${unreadCount > 0}" 
+                  class="badge-counter" 
+                  style="position: absolute; top: -5px; right: -5px; background: #EF4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold; border: 2px solid white;"
+                  th:text="${unreadCount}">3</span>
+
+            <div id="bellDropdown" class="notification-dropdown">
+                <div class="dropdown-header">Thông báo chưa đọc</div>
+                
+                <th:block th:each="tb : ${thongBaos}" th:if="${!tb.daDoc}">
+                    <div class="dropdown-item"
+                         th:onclick="'event.stopPropagation(); markReadAndShow(' + ${tb.maThongBao} + ')'">
+                        <h6 th:text="${tb.tieuDe}">Tiêu đề</h6>
+                        <small style="color: #6B7280; font-size: 11px;">
+                            <i class="far fa-clock"></i> <span th:text="${#temporals.format(tb.thoiGianGui, 'dd/MM/yyyy HH:mm')}"></span>
+                        </small>
+                    </div>
+                </th:block>
+
+                <div th:if="${unreadCount == 0}" class="dropdown-empty">
+                    <i class="fas fa-check-circle" style="color: #10B981; font-size: 24px; margin-bottom: 8px;"></i><br>
+                    Bạn đã đọc hết thông báo!
+                </div>
+            </div>
+        </div>
+
         <div class="header-right">
             <div class="user-menu">
                 <div class="user-info">
@@ -189,20 +295,24 @@
                 </div>
 
                 <div th:each="tb : ${thongBaos}" 
-     class="notification-item"
-     th:onclick="'showModal(' + '\'' + ${tb.maThongBao} + '\'' + ')'">
-    <div class="notification-header">
-        <span class="notification-title" th:text="${tb.tieuDe}">Thông Báo Mới</span>
-        <span class="notification-date" 
-              th:text="${#temporals.format(tb.thoiGianGui, 'dd/MM/yyyy HH:mm')}">
-              27/10/2025
-        </span>
-    </div>
-    <div class="notification-content" 
-         th:text="${#strings.abbreviate(tb.noiDung, 120)}">
-         Nội dung thông báo ngắn gọn hiển thị ở đây...
-    </div>
-</div>
+                     class="notification-item"
+                     th:classappend="${tb.daDoc} ? 'read' : 'unread'"
+                     th:onclick="'showModal(' + '\'' + ${tb.maThongBao} + '\'' + ')'">
+                    <div class="notification-header">
+                        <span class="notification-title" th:text="${tb.tieuDe}">Thông Báo Mới</span>
+                        <span class="notification-date" 
+                              th:text="${#temporals.format(tb.thoiGianGui, 'dd/MM/yyyy HH:mm')}">
+                              27/10/2025
+                        </span>
+                    </div>
+                    <div class="notification-content" 
+                         th:text="${#strings.abbreviate(tb.noiDung, 120)}">
+                         Nội dung thông báo ngắn gọn hiển thị ở đây...
+                    </div>
+                    <span th:if="${!tb.daDoc}" style="color: #3B82F6; font-size: 11px; font-weight: bold; display: block; margin-top: 8px;">
+                        ● Chưa đọc
+                    </span>
+                </div>
 
             </div>
         </div>
@@ -250,43 +360,55 @@
         function toggleSidebar() {
             document.querySelector('aside.sidebar').classList.toggle('active');
         }
+        
+        // ✨ NEW: Toggle Dropdown
+        function toggleBellDropdown(event) {
+            event.stopPropagation();
+            const dropdown = document.getElementById('bellDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        // ✨ NEW: Close dropdown on outside click
+        window.onclick = function(event) {
+            const dropdown = document.getElementById('bellDropdown');
+            if (dropdown && dropdown.classList.contains('show') && !event.target.closest('.notification-bell')) {
+                dropdown.classList.remove('show');
+            }
+            
+            // Logic đóng Modal
+            const modal = document.getElementById('notificationModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+                document.getElementById('noiDungPhanHoi').value = ''; 
+            }
+        }
 
         function closeModal(e) {
-            // Chỉ đóng khi click vào nền tối hoặc nút đóng
             if (e.target.classList.contains('modal') || e.target.classList.contains('close-btn')) {
                 document.getElementById('notificationModal').style.display = 'none';
-                // Reset nội dung textarea sau khi đóng
                 document.getElementById('noiDungPhanHoi').value = ''; 
             }
         }
         
         // ------------------- DATA TRANSFER (THYMELEAF TO JS) -------------------
-        // Truyền dữ liệu sang JS. Dùng maThongBao thay vì id.
         window.thongBaoData = /*[[${thongBaos}]]*/ [];
         
         // ------------------- REPLY LOGIC (AJAX) -------------------
-
-        // Hàm định dạng ngày giờ cho đẹp
         function formatDateTime(dateTime) {
             if (!dateTime) return '';
-            // Định dạng từ mảng [year, month, day, hour, minute, second] mà Java LocalDateTime trả về
             const date = new Date(dateTime[0], dateTime[1] - 1, dateTime[2], dateTime[3], dateTime[4], dateTime[5]);
             return date.toLocaleString('vi-VN', { 
                 day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' 
             });
         }
 
-        // Tải và hiển thị danh sách phản hồi
         function loadReplies(maThongBao) {
             const repliesList = document.getElementById('repliesList');
             repliesList.innerHTML = '<p style="color:#6b7280; text-align:center; padding: 10px;">Đang tải...</p>';
             
-            // Gọi AJAX (fetch) để lấy phản hồi
             fetch(`/resident/notifications/${maThongBao}/replies`)
                 .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Lỗi khi tải phản hồi.');
-                    }
+                    if (!response.ok) throw new Error('Lỗi khi tải phản hồi.');
                     return response.json();
                 })
                 .then(replies => {
@@ -299,8 +421,6 @@
                     replies.forEach(reply => {
                         const dateStr = formatDateTime(reply.thoiGianGui);
                         const userName = reply.nguoiGui ? reply.nguoiGui.hoVaTen : 'Người gửi ẩn danh';
-                        
-                        // Kiểm tra vai trò (giả sử có thuộc tính vaiTro) để hiển thị nổi bật
                         const isManager = reply.nguoiGui && reply.nguoiGui.vaiTro === 'QUAN_TRI';
                         const borderStyle = isManager ? 'border-left: 3px solid #F59E0B;' : 'border-left: 3px solid #7C3AED;';
                         const backgroundColor = isManager ? '#FFFBEB' : '#f9f9f9';
@@ -322,65 +442,44 @@
                 });
         }
 
-        // Hiển thị modal thông báo chi tiết
         function showModal(id) {
-            // Tìm thông báo trong danh sách đã được tải sẵn
-            const tb = window.thongBaoData.find(x => x.maThongBao == id);
-
+            // Khi xem chi tiết cũng nên đánh dấu đã đọc
+            markReadAndShow(id, false); // false để không reload ngay lập tức nếu muốn UX mượt hơn, nhưng code gốc của bạn reload
             
+            const tb = window.thongBaoData.find(x => x.maThongBao == id);
             if (tb) {
                 document.getElementById('modalTitle').innerText = tb.tieuDe;
-                // Hiển thị nội dung, thêm khoảng trắng nếu không có
                 document.getElementById('modalBody').innerText = tb.noiDung || "Không có nội dung.";
-                
-                // Đặt maThongBao vào hidden input của form
                 document.getElementById('replyMaThongBao').value = id;
-                
-                // Tải danh sách phản hồi
                 loadReplies(id);
-                
                 document.getElementById('notificationModal').style.display = 'flex';
             }
         }
         
         // ------------------- ALERT (MESSAGES) -------------------
-        // Sử dụng SweetAlert để hiển thị thông báo thành công/thất bại sau khi redirect
         const urlParams = new URLSearchParams(window.location.search);
         const successMessage = '[[${successMessage}]]';
         const errorMessage = '[[${errorMessage}]]';
 
         if (successMessage && successMessage.includes('Phản hồi')) {
-             Swal.fire({
-                icon: 'success',
-                title: 'Thành công!',
-                text: successMessage,
-                confirmButtonColor: '#4F46E5'
-            });
+             Swal.fire({ icon: 'success', title: 'Thành công!', text: successMessage, confirmButtonColor: '#4F46E5' });
         }
-        
         if (errorMessage) {
-            Swal.fire({
-                icon: 'error',
-                title: 'Lỗi!',
-                text: errorMessage,
-                confirmButtonColor: '#4F46E5'
-            });
+            Swal.fire({ icon: 'error', title: 'Lỗi!', text: errorMessage, confirmButtonColor: '#4F46E5' });
         }
-        
-        // Xử lý các thông báo redirect truyền qua URL (ví dụ: replySuccess)
-        if (urlParams.get('replySuccess') === 'true') {
-             Swal.fire({
-                icon: 'success',
-                title: 'Thành công!',
-                text: 'Phản hồi của bạn đã được gửi.',
-                confirmButtonColor: '#4F46E5'
-            });
-        }
-        
     </script>
     <script th:inline="javascript">
-    window.thongBaoData = /*[[${thongBaos}]]*/ [];
-</script>
+        window.thongBaoData = /*[[${thongBaos}]]*/ [];
+    </script>
+    <script>
+        function markReadAndShow(id, reload = true) {
+            // 1. Gọi API đánh dấu đã đọc
+            fetch('/resident/notifications/mark-read?id=' + id, { method: 'POST' })
+            .then(() => {
+                 if(reload) window.location.reload(); 
+            });
+        }
+    </script>
     
 </body>
 </html>

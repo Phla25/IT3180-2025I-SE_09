@@ -78,11 +78,12 @@ public class WebSecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
+            .csrf(csrf -> csrf.disable()
+            )
             .authorizeHttpRequests(auth -> auth
                 // Cho phép truy cập tự do các tài nguyên tĩnh và trang đăng nhập
                 .requestMatchers("/reset-password","/forgot-password","/login", "/register", "/css/**", "/js/**", "/images/**").permitAll()
-
+                .requestMatchers("/mock-vnpay-portal", "/mock-vnpay-submit").permitAll()
                 // Các trang yêu cầu vai trò cụ thể
                 .requestMatchers("/admin/**").hasRole(UserRole.ban_quan_tri.name())
                 .requestMatchers("/accountant/**").hasRole(UserRole.ke_toan.name())

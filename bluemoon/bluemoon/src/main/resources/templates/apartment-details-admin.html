@@ -144,15 +144,19 @@
             <a th:href="@{/admin/resident-list}" class="nav-item"> <i class="fas fa-users"></i> <span>Quản Lý Cư Dân</span> </a>
             <a th:href="@{/admin/apartment-list}" class="nav-item active"> <i class="fas fa-home"></i> <span>Quản Lý Căn Hộ</span> </a>
             <a th:href="@{/admin/household-list}" class="nav-item"> <i class="fas fa-users-cog"></i> <span>Quản Lý Hộ Gia Đình</span> </a>
-            <a th:href="@{/admin/general-asset-list}" class="nav-item"><i class="fas fa-boxes"></i> <span>Quản Lý Tài Sản</span><span class="feature-badge">MỚI</span></a>
+                        <a th:href="@{/admin/entry-exit-logs}" class="nav-item"> <i class="fas fa-history"></i> <span>Lịch Sử Ra Vào</span> </a>
+            <a th:href="@{/admin/general-asset-list}" class="nav-item"> <i class="fas fa-building"></i> <span>Quản Lý Tài Sản</span> </a>
             <a th:href="@{/admin/fees}" class="nav-item"> <i class="fas fa-file-invoice-dollar"></i> <span>Quản Lý Khoản Phí</span> </a>
             <a th:href="@{/admin/service-list}" class="nav-item"><i class="fas fa-concierge-bell"></i><span>Quản Lý Dịch Vụ</span></a>
             <a th:href="@{/admin/service-registrations}" class="nav-item">
                 <i class="fas fa-clipboard-list"></i>
                 <span>Quản Lý Đăng Ký Dịch Vụ</span>
-                <span class="feature-badge">MỚI</span>
+
             </a>
-            <a href="#" class="nav-item"> <i class="fas fa-exclamation-triangle"></i> <span>Xử Lý Sự Cố</span> </a>            
+            <a th:href="@{/admin/incidents}" class="nav-item">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
@@ -236,9 +240,14 @@
                             <span class="detail-label">Trạng Thái:</span>
                             <span class="detail-value" th:text="${apartment.trangThai?.dbValue}">Hoạt Động</span>
                         </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Vị Trí:</span>
+                            <span class="detail-value" th:text="${apartment.viTri} ?: 'N/A'">Tầng 5</span>
+                        </div>
+
                         <div class="detail-item" style="grid-column: 1 / -1;">
-                            <span class="detail-label">Vị Trí / Mô tả:</span>
-                            <span class="detail-value" th:text="${apartment.viTri} ?: 'N/A'">Tầng 5, Tòa A, Cửa sổ hướng Đông Nam</span>
+                            <span class="detail-label">Mô Tả:</span>
+                            <span class="detail-value" th:text="${apartment.moTa} ?: 'Không có mô tả'">Căn góc...</span>
                         </div>
                     </div>
                 </div>

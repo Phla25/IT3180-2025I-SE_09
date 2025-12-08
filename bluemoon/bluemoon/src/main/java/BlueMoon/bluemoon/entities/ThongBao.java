@@ -39,6 +39,10 @@ public class ThongBao {
     @JoinColumn(name = "cccd_nguoi_gui", nullable = false)
     private DoiTuong nguoiGui; // Thường là Ban Quản Trị
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cccd_nguoi_nhan", nullable = true)
+    private DoiTuong nguoiNhan; // Có thể là cá nhân cụ thể
+    
     @Column(name = "tieu_de", nullable = false, length = 255)
     private String tieuDe;
 
@@ -49,7 +53,6 @@ public class ThongBao {
     @JsonManagedReference
     private List<PhanHoiThongBao> phanHoi = new ArrayList<>();
 
-
     @Enumerated(EnumType.STRING)
     @Column(name = "loai_thong_bao", length = 30)
     private NotificationType loaiThongBao = NotificationType.binh_thuong; // NORMAL, URGENT, SYSTEM,...
@@ -57,6 +60,7 @@ public class ThongBao {
     @Enumerated(EnumType.STRING)
     @Column(name = "doi_tuong_nhan", length = 30)
     private RecipientType doiTuongNhan = RecipientType.tat_ca; // ALL_RESIDENTS, MANAGER, ACCOUNTANT,...
+
 
     @Column(name = "thoi_gian_gui")
     private LocalDateTime thoiGianGui;
@@ -162,5 +166,13 @@ public class ThongBao {
 
     public void setPhanHoi(List<PhanHoiThongBao> phanHoi) {
         this.phanHoi = phanHoi;
+    }
+
+    public DoiTuong getNguoiNhan() {
+        return nguoiNhan;
+    }
+
+    public void setNguoiNhan(DoiTuong nguoiNhan) {
+        this.nguoiNhan = nguoiNhan;
     }
 }

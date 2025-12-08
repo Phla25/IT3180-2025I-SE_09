@@ -191,10 +191,6 @@ public class AccountantController {
     // QUẢN LÝ HÓA ĐƠN (CRUD)
     // =======================================================
 
-// =======================================================
-    // QUẢN LÝ HÓA ĐƠN (CRUD)
-    // =======================================================
-
     @GetMapping("/fees")
     public String showAccountantFees(Model model, Authentication auth) {
         model.addAttribute("user", getCurrentUser(auth));
@@ -318,6 +314,62 @@ public class AccountantController {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống khi từ chối xác nhận: " + e.getMessage());
         }
         return "redirect:/accountant/fees"; 
+    }
+    // THÊM VÀO AccountantController.java
+
+    /**
+     * ✨ MỚI: Duyệt nhiều hóa đơn cùng lúc
+     * URL: POST /accountant/fee-confirm-batch
+     */
+    @PostMapping("/fee-confirm-batch")
+    public String handleBatchFeeConfirm(@RequestParam(value = "selectedIds", required = false) List<Integer> selectedIds,
+                                        Authentication auth,
+                                        RedirectAttributes redirectAttributes) {
+    
+        if (selectedIds == null || selectedIds.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn ít nhất một hóa đơn để duyệt.");
+            return "redirect:/accountant/fees";
+        }
+    
+        try {
+            int successCount = hoaDonService.confirmMultiplePayments(selectedIds);
+        
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Đã duyệt thành công " + successCount + "/" + selectedIds.size() + " hóa đơn!");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+        }
+    
+        return "redirect:/accountant/fees";
+    }
+
+    /**
+     * ✨ MỚI: Từ chối nhiều hóa đơn cùng lúc
+     * URL: POST /accountant/fee-reject-batch
+     */
+    @PostMapping("/fee-reject-batch")
+    public String handleBatchFeeReject(@RequestParam(value = "selectedIds", required = false) List<Integer> selectedIds,
+                                       Authentication auth,
+                                       RedirectAttributes redirectAttributes) {
+        DoiTuong currentUser = getCurrentUser(auth);
+    
+        if (selectedIds == null || selectedIds.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn ít nhất một hóa đơn để từ chối.");
+            return "redirect:/accountant/fees";
+        }
+    
+        try {
+            int successCount = hoaDonService.rejectMultiplePayments(selectedIds, currentUser);
+        
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Đã từ chối " + successCount + "/" + selectedIds.size() + " hóa đơn!");
+        
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+        }
+    
+        return "redirect:/accountant/fees";
     }
     /**
      * Báo Cáo Tài Chính (Financial Report) & Lịch Sử Giao Dịch

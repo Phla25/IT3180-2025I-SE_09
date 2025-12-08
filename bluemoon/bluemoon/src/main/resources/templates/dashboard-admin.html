@@ -79,52 +79,27 @@
         </div>
 
         <nav class="sidebar-nav">
-            <a th:href="@{/admin/dashboard}" class="nav-item active">
-                <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
-            </a>
-            <a th:href="@{/admin/resident-list}" class="nav-item">
-                <i class="fas fa-users"></i>
-                <span>Quản Lý Cư Dân</span>
-            </a>
-            <a th:href="@{/admin/apartment-list}" class="nav-item">
-                <i class="fas fa-home"></i>
-                <span>Quản Lý Căn Hộ</span>
-            </a>
-            <a th:href="@{/admin/household-list}" class="nav-item">
-                <i class="fas fa-users-cog"></i>
-                <span>Quản Lý Hộ Gia Đình</span>
-            </a>
-            <a th:href="@{/admin/general-asset-list}" class="nav-item">
-                <i class="fas fa-building"></i>
-                <span>Quản Lý Tài Sản</span>
-            </a>
-            <a th:href="@{/admin/fees}" class="nav-item"> 
-                <i class="fas fa-file-invoice-dollar"></i> 
-                <span>Quản Lý Khoản Phí</span>
-            </a>
-            <a th:href="@{/admin/service-list}" class="nav-item">
-                <i class="fas fa-concierge-bell"></i>
-                <span>Quản Lý Dịch Vụ</span>
-            </a>
+            <a th:href="@{/admin/dashboard}" class="nav-item active"> <i class="fas fa-chart-line"></i> <span>Dashboard</span> </a>
+            <a th:href="@{/admin/resident-list}" class="nav-item"> <i class="fas fa-users"></i> <span>Quản Lý Cư Dân</span> </a>
+            <a th:href="@{/admin/apartment-list}" class="nav-item"> <i class="fas fa-home"></i> <span>Quản Lý Căn Hộ</span> </a>
+            <a th:href="@{/admin/household-list}" class="nav-item"> <i class="fas fa-users-cog"></i> <span>Quản Lý Hộ Gia Đình</span> </a>
+            <a th:href="@{/admin/entry-exit-logs}" class="nav-item"> <i class="fas fa-history"></i> <span>Lịch Sử Ra Vào</span> </a>
+            <a th:href="@{/admin/general-asset-list}" class="nav-item"> <i class="fas fa-building"></i> <span>Quản Lý Tài Sản</span> </a>
+            <a th:href="@{/admin/fees}" class="nav-item"> <i class="fas fa-file-invoice-dollar"></i> <span>Quản Lý Khoản Phí</span> </a>
+            <a th:href="@{/admin/service-list}" class="nav-item"><i class="fas fa-concierge-bell"></i><span>Quản Lý Dịch Vụ</span></a>
             <a th:href="@{/admin/service-registrations}" class="nav-item">
                 <i class="fas fa-clipboard-list"></i>
                 <span>Quản Lý Đăng Ký Dịch Vụ</span>
-                <span class="feature-badge">MỚI</span>
             </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>Xử Lý Sự Cố</span>
-            </a>
+            <a th:href="@{/admin/incidents}" class="nav-item">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
-            <a th:href="@{/admin/reports}" class="nav-item">
-                <i class="fas fa-chart-bar"></i>
-                <span>Báo Cáo Thống Kê</span>
-            </a>
+            <a th:href="@{/admin/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
         </nav>
-
         <div class="sidebar-footer">
              <form th:action="@{/logout}" method="post" style="margin: 0; display: block;">
                 <button type="submit" class="logout-btn" style="width: 100%; border: none; background: none; text-align: left; padding: 0;">
@@ -347,7 +322,7 @@
                     <i class="fas fa-file-invoice"></i>
                     <span>Quản Lý Khoản Phí</span>
                 </a>
-                <a href="#" class="btn btn-outline" style="padding: 16px;">
+                <a th:href="@{/admin/reports}" class="btn btn-outline" style="padding: 16px;">
                     <i class="fas fa-chart-bar"></i>
                     <span>Xem Báo Cáo</span>
                 </a>
@@ -358,7 +333,7 @@
             <div class="content-card">
                 <div class="content-card-header">
                     <h2 class="content-card-title">⚠️ Sự Cố Cần Xử Lý Gấp</h2>
-                    <a href="#" class="btn btn-sm btn-outline">Xem tất cả</a>
+                    <a th:href="@{/admin/incidents}" class="btn btn-sm btn-outline">Xem tất cả</a>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 16px;">
@@ -377,7 +352,7 @@
                                     th:text="|Báo cáo từ: ${suCo.nguoiBaoCao?.hoVaTen ?: 'Cư dân ẩn danh'} - Vị trí: ${suCo.taiSan?.viTri ?: 'N/A'}|">
                                     Báo cáo từ: Hộ Nguyễn Văn A - Căn A-0501
                                 </p>
-                                <span th:class="${isCao} ? 'badge badge-danger' : 'badge badge-warning'" th:text="|Ưu tiên ${suCo.mucDoUuTien?.dbValue} ?: 'N/A'|">Ưu tiên cao</span>
+                                <span th:class="${isCao} ? 'badge badge-danger' : 'badge badge-warning'" th:text="|Ưu tiên ${suCo.mucDoUuTien?.dbValue}|">Ưu tiên cao</span>
                             </div>
                             <button th:class="${isCao} ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-warning'" th:style="${!isCao} ? 'color: white;'">Xử lý ngay</button>
                         </div>

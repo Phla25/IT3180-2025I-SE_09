@@ -103,15 +103,18 @@
             <a th:href="@{/admin/resident-list}" class="nav-item"> <i class="fas fa-users"></i> <span>Quản Lý Cư Dân</span> </a>
             <a th:href="@{/admin/apartment-list}" class="nav-item active"> <i class="fas fa-home"></i> <span>Quản Lý Căn Hộ</span> </a>
             <a th:href="@{/admin/household-list}" class="nav-item"> <i class="fas fa-users-cog"></i> <span>Quản Lý Hộ Gia Đình</span> </a>
+                        <a th:href="@{/admin/entry-exit-logs}" class="nav-item"> <i class="fas fa-history"></i> <span>Lịch Sử Ra Vào</span> </a>
             <a th:href="@{/admin/general-asset-list}" class="nav-item"> <i class="fas fa-building"></i> <span>Quản Lý Tài Sản</span> </a>
             <a th:href="@{/admin/fees}" class="nav-item"> <i class="fas fa-file-invoice-dollar"></i> <span>Quản Lý Khoản Phí</span> </a>
             <a th:href="@{/admin/service-list}" class="nav-item"><i class="fas fa-concierge-bell"></i><span>Quản Lý Dịch Vụ</span></a>
             <a th:href="@{/admin/service-registrations}" class="nav-item">
                 <i class="fas fa-clipboard-list"></i>
                 <span>Quản Lý Đăng Ký Dịch Vụ</span>
-                <span class="feature-badge">MỚI</span>
             </a>
-            <a href="#" class="nav-item"> <i class="fas fa-exclamation-triangle"></i> <span>Xử Lý Sự Cố</span> </a>
+            <a th:href="@{/admin/incidents}" class="nav-item">
+			    <i class="fas fa-exclamation-triangle"></i>
+			    <span>Xử Lý Sự Cố</span>
+			</a>
             <a th:href="@{/admin/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
             </a>
@@ -190,9 +193,14 @@
                             </select>
                         </div>
                         
+                        <div class="form-group">
+                            <label for="viTri" class="form-label">Vị Trí (Tầng/Khu):</label>
+                            <input type="text" id="viTri" th:field="*{viTri}" class="form-control" placeholder="Ví dụ: Tầng 5, Tòa A">
+                        </div>
+
                         <div class="form-group" style="grid-column: 1 / -1;">
-                            <label for="viTri" class="form-label">Vị Trí Cụ Thể / Mô tả:</label>
-                            <textarea id="viTri" th:field="*{viTri}" class="form-textarea" rows="2" placeholder="Ví dụ: Tầng 5, Tòa A, Cửa sổ hướng Đông Nam"></textarea>
+                            <label for="moTa" class="form-label">Mô Tả Chi Tiết:</label>
+                            <textarea id="moTa" th:field="*{moTa}" class="form-textarea" rows="3" placeholder="Ví dụ: Căn góc, view hồ, nội thất cơ bản..."></textarea>
                         </div>
                     </div>
                     

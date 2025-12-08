@@ -137,4 +137,8 @@ public class DangKyDichVuService {
         // Giả định DangKyDichVuDAO có phương thức findAllWithDetails()
         return dangKyDichVuDAO.findAll();
     }
+
+    public int countDichVuDaDangKyByNguoiDung(String cccd) {
+        return dangKyDichVuDAO.countByNguoiDungCccd(cccd);
+    }
 }

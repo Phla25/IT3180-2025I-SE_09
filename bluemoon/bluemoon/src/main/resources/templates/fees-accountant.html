@@ -162,114 +162,183 @@
                     <i class="fas fa-plus"></i> Tạo Hóa Đơn Mới
                 </a>
                 <a th:href="@{/accountant/fees/import}" class="btn-export btn-import">
-                        <i class="fas fa-file-import"></i> Import Excel
+                    <i class="fas fa-file-import"></i> Import Excel
                 </a>
-                <a th:href="@{/accountant/export/invoices}" class="btn-export btn-export-excel" title="Xuất Excel">
+                <a th:href="@{/accountant/export/invoices}" class="btn-export btn-export-excel">
                     <i class="fas fa-file-excel"></i> Excel
                 </a>
-                <a th:href="@{/accountant/export/invoices/pdf}" class="btn-export btn-export-pdf" title="Xuất PDF">
+                <a th:href="@{/accountant/export/invoices/pdf}" class="btn-export btn-export-pdf">
                     <i class="fas fa-file-pdf"></i> PDF
-                </a>                
+                </a>
             </div>
 
-            <div class="content-card">
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Mã HĐ</th>
-                                <th>Hộ Gia Đình</th>
-                                <th>Người Gốc</th> 
-                                <th>Người TT</th> <th>Loại Phí</th>
-                                <th>Số Tiền</th>
-                                <th>Hạn Thanh Toán</th>
-                                <th>Trạng Thái</th>
-                                <th>Hành Động</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="hoaDon : ${hoaDonList}">
-                                <td><strong th:text="'#' + ${hoaDon.maHoaDon}">#HD001</strong></td>
-                                <td th:text="${hoaDon.hoGiaDinh?.tenHo} ?: 'N/A'">Hộ Nguyễn Văn A</td>
-                                
-                                <td th:text="${hoaDon.nguoiDangKyDichVu?.hoVaTen} ?: 'BQT/Hộ Gốc'">Admin/Người đăng ký</td>
-                                
-                                <td th:text="${hoaDon.nguoiThanhToan?.hoVaTen} ?: 'N/A'">Cư dân/Kế toán</td>
+            <!-- ✨ TOOLBAR HÀNH ĐỘNG HÀNG LOẠT -->
+            <form id="batchActionForm" method="post">
+                <div class="bulk-actions-bar" style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #1e3a8a;">
+                        <input type="checkbox" id="selectAll" style="width: 18px; height: 18px; cursor: pointer;"> 
+                        Chọn tất cả hóa đơn chờ xác nhận
+                    </label>
 
-                                <td th:text="${hoaDon.loaiHoaDon?.dbValue} ?: 'N/A'">Phí Quản Lý</td>
-                                <td th:text="${#numbers.formatInteger(hoaDon.soTien, 0, 'POINT')} + ' ₫'">2,500,000 ₫</td>
-                                <td th:text="${hoaDon.hanThanhToan != null ? #temporals.format(hoaDon.hanThanhToan, 'dd/MM/yyyy') : 'N/A'}">31/10/2024</td>
-                                <td>
-                                    <span class="status-badge" 
-                                          th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning')}"
-                                          th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán</span>
-                                </td>
-                                <td>
-                                    <span class="status-badge" 
-                                          th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning')}"
-                                          th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán</span>
-                                </td>
-                                <td>
-                                    <a th:href="@{/accountant/fee-form(id=${hoaDon.maHoaDon})}" class="btn-action" title="Chỉnh Sửa">
-                                        <i class="fas fa-edit"></i>
-                                    </a>
-                                    
-                                    <form th:action="@{/accountant/fee-confirm}" method="post" style="display: inline;" 
-                                          th:if="${hoaDon.trangThai?.name() == 'cho_xac_nhan'}">
-                                        <input type="hidden" name="maHoaDon" th:value="${hoaDon.maHoaDon}">
-                                        <button type="submit" class="btn-action" title="Xác Nhận Thanh Toán" style="border: none; background: none; cursor: pointer; color: #10B981;"
-                                                th:onclick="|return confirm('Xác nhận thanh toán Hóa đơn #' + ${hoaDon.maHoaDon} + '?')|">
-                                            <i class="fas fa-check-circle"></i>
-                                        </button>
-                                    </form>
-                                    
-                                    <form th:action="@{/accountant/fee-reject}" method="post" style="display: inline;" 
-                                          th:if="${hoaDon.trangThai?.name() == 'cho_xac_nhan'}">
-                                        <input type="hidden" name="maHoaDon" th:value="${hoaDon.maHoaDon}">
-                                        <button type="submit" class="btn-action text-warning" title="Từ Chối Xác Nhận" style="border: none; background: none; cursor: pointer; color: #F59E0B;"
-                                                th:onclick="|return confirm('Từ chối xác nhận thanh toán Hóa đơn #' + ${hoaDon.maHoaDon} + '?')|">
-                                            <i class="fas fa-undo"></i>
-                                        </button>
-                                    </form>
+                    <div id="batchButtons" style="display: none; gap: 10px;">
+                        <button type="button" id="confirmBatchBtn" class="btn btn-sm" 
+                                style="background-color: #10B981; color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                            <i class="fas fa-check-circle"></i> Duyệt (<span id="countSelected">0</span>) hóa đơn
+                        </button>
 
-                                    <form th:action="@{/accountant/fee-delete}" method="post" style="display: inline;"
-                                          th:if="${hoaDon.trangThai?.name() != 'da_thanh_toan'}"> 
-                                        <input type="hidden" name="id" th:value="${hoaDon.maHoaDon}">
-                                        <button type="submit" th:onclick="|return confirm('Xóa hóa đơn #' + ${hoaDon.maHoaDon} + '?')|" class="btn-action text-danger" title="Xóa" style="border: none; background: none; cursor: pointer;">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </form>
-                                </td>
-                            </tr>
-                            <tr th:if="${#lists.isEmpty(hoaDonList)}">
-                                <td colspan="7" style="text-align: center; padding: 24px; color: #6B7280;">
-                                    Không có hóa đơn nào.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                        <button type="button" id="rejectBatchBtn" class="btn btn-sm" 
+                                style="background-color: #F59E0B; color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                            <i class="fas fa-undo"></i> Từ chối (<span id="countSelectedReject">0</span>) hóa đơn
+                        </button>
+                    </div>
+                
+                    <span id="noSelectionText" style="color: #64748b; font-size: 14px;">(Chưa chọn hóa đơn nào)</span>
                 </div>
-            </div>
+
+                <div class="content-card">
+                    <div class="table-container">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th width="50" style="text-align: center;">#</th>
+                                    <th>Mã HĐ</th>
+                                    <th>Hộ Gia Đình</th>
+                                    <th>Người Gốc</th> 
+                                    <th>Người TT</th>
+                                    <th>Loại Phí</th>
+                                    <th>Số Tiền</th>
+                                    <th>Hạn Thanh Toán</th>
+                                    <th>Trạng Thái</th>
+                                    <th>Hành Động</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="hoaDon : ${hoaDonList}">
+                                    <!-- CHECKBOX CHỈ HIỆN VỚI HOÁ ĐƠN CHỜ XÁC NHẬN -->
+                                    <td style="text-align: center;">
+                                        <input type="checkbox" name="selectedIds" 
+                                               th:if="${hoaDon.trangThai?.name() == 'cho_xac_nhan'}"
+                                               th:value="${hoaDon.maHoaDon}"
+                                               class="invoice-checkbox"
+                                               style="width: 18px; height: 18px; cursor: pointer;">
+                                    </td>
+
+                                    <td><strong th:text="'#' + ${hoaDon.maHoaDon}">#HD001</strong></td>
+                                    <td th:text="${hoaDon.hoGiaDinh?.tenHo} ?: 'N/A'">Hộ Nguyễn Văn A</td>
+                                    <td th:text="${hoaDon.nguoiDangKyDichVu?.hoVaTen} ?: 'BQT/Hộ Gốc'">Admin/Người đăng ký</td>
+                                    <td th:text="${hoaDon.nguoiThanhToan?.hoVaTen} ?: 'N/A'">Cư dân/Kế toán</td>
+                                    <td th:text="${hoaDon.loaiHoaDon?.dbValue} ?: 'N/A'">Phí Quản Lý</td>
+                                    <td th:text="${#numbers.formatInteger(hoaDon.soTien, 0, 'POINT')} + ' ₫'">2,500,000 ₫</td>
+                                    <td th:text="${hoaDon.hanThanhToan != null ? #temporals.format(hoaDon.hanThanhToan, 'dd/MM/yyyy') : 'N/A'}">31/10/2024</td>
+                                    <td>
+                                        <span class="status-badge" 
+                                              th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning')}"
+                                              th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán</span>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/accountant/fee-form(id=${hoaDon.maHoaDon})}" class="btn-action" title="Chỉnh Sửa">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+
+                                        <!-- ✨ NÚT DUYỆT TỪNG CÁI -->
+                                        <form th:action="@{/accountant/fee-confirm}" method="post" style="display: inline;" 
+                                              th:if="${hoaDon.trangThai?.name() == 'cho_xac_nhan'}">
+                                            <input type="hidden" name="maHoaDon" th:value="${hoaDon.maHoaDon}">
+                                            <button type="submit" class="btn-action" title="Xác Nhận Thanh Toán" 
+                                                    style="border: none; background: none; cursor: pointer; color: #10B981;"
+                                                    th:onclick="|return confirm('Xác nhận thanh toán Hóa đơn #' + ${hoaDon.maHoaDon} + '?')|">
+                                                <i class="fas fa-check-circle"></i>
+                                            </button>
+                                        </form>
+
+                                        <!-- ✨ NÚT TỪ CHỐI TỪNG CÁI -->
+                                        <form th:action="@{/accountant/fee-reject}" method="post" style="display: inline;" 
+                                              th:if="${hoaDon.trangThai?.name() == 'cho_xac_nhan'}">
+                                            <input type="hidden" name="maHoaDon" th:value="${hoaDon.maHoaDon}">
+                                            <button type="submit" class="btn-action text-warning" title="Từ Chối Xác Nhận" 
+                                                style="border: none; background: none; cursor: pointer; color: #F59E0B;"
+                                                    th:onclick="|return confirm('Từ chối xác nhận thanh toán Hóa đơn #' + ${hoaDon.maHoaDon} + '?')|">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                        </form>
+
+                                        <form th:action="@{/accountant/fee-delete}" method="post" style="display: inline;"
+                                              th:if="${hoaDon.trangThai?.name() != 'da_thanh_toan'}"> 
+                                            <input type="hidden" name="id" th:value="${hoaDon.maHoaDon}">
+                                            <button type="submit" th:onclick="|return confirm('Xóa hóa đơn #' + ${hoaDon.maHoaDon} + '?')|" 
+                                                    class="btn-action text-danger" title="Xóa" 
+                                                    style="border: none; background: none; cursor: pointer;">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(hoaDonList)}">
+                                    <td colspan="10" style="text-align: center; padding: 24px; color: #6B7280;">
+                                        Không có hóa đơn nào.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </form>
         </div>
     </main>
 
-    <footer class="footer">
-        <div class="footer-content">
-            <p>&copy; 2025 BlueMoon Apartment Management System. All rights reserved.</p>
-        </div>
-    </footer>
-
+    <!-- ✨ THÊM JAVASCRIPT XỬ LÝ CHỌN VÀ DUYỆT HÀNG LOẠT -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="/js/main.js"></script>
     <script>
-        function toggleSidebar() {
-            document.querySelector('.sidebar').classList.toggle('collapsed');
-            document.querySelector('.main-content').classList.toggle('shifted');
-            document.querySelector('.header').classList.toggle('shifted');
-        }
-        document.querySelector('.user-menu').addEventListener('click', function() {
-            this.querySelector('.dropdown-menu').classList.toggle('show');
+    $(document).ready(function() {
+        // 1. Chọn tất cả
+        $('#selectAll').change(function() {
+            var isChecked = $(this).prop('checked');
+            $('.invoice-checkbox').prop('checked', isChecked);
+            updateToolbar();
         });
+
+        // 2. Chọn từng checkbox
+        $('.invoice-checkbox').change(function() {
+            updateToolbar();
+            if (!$(this).prop('checked')) {
+                $('#selectAll').prop('checked', false);
+            }
+            if ($('.invoice-checkbox:checked').length === $('.invoice-checkbox').length && $('.invoice-checkbox').length > 0) {
+                $('#selectAll').prop('checked', true);
+            }
+        });
+
+        // 3. Cập nhật toolbar
+        function updateToolbar() {
+            var count = $('.invoice-checkbox:checked').length;
+            $('#countSelected').text(count);
+            $('#countSelectedReject').text(count);
+        
+            if (count > 0) {
+                $('#batchButtons').css('display', 'flex');
+                $('#noSelectionText').hide();
+            } else {
+                $('#batchButtons').hide();
+                $('#noSelectionText').show();
+            }
+        }
+
+        // 4. Nút Duyệt hàng loạt
+        $('#confirmBatchBtn').click(function() {
+            var count = $('.invoice-checkbox:checked').length;
+            if (confirm('Xác nhận duyệt ' + count + ' hóa đơn đã chọn?')) {
+                $('#batchActionForm').attr('action', '/accountant/fee-confirm-batch').submit();
+            }
+        });
+
+        // 5. Nút Từ chối hàng loạt
+        $('#rejectBatchBtn').click(function() {
+            var count = $('.invoice-checkbox:checked').length;
+            if (confirm('Xác nhận từ chối ' + count + ' hóa đơn đã chọn?')) {
+                $('#batchActionForm').attr('action', '/accountant/fee-reject-batch').submit();
+            }
+        });
+    });
     </script>
 </body>
 </html>

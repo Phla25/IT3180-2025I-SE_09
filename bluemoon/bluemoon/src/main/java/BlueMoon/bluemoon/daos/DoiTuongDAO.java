@@ -55,7 +55,7 @@ public class DoiTuongDAO {
      */
     public List<DoiTuong> findAll() {
         // Sử dụng JPQL để truy vấn tất cả
-        return entityManager.createQuery("SELECT d FROM DoiTuong d", DoiTuong.class).getResultList();
+        return entityManager.createQuery("SELECT d FROM DoiTuong d ORDER BY d.hoVaTen ASC", DoiTuong.class).getResultList();
     }
     
     /**
@@ -79,7 +79,7 @@ public class DoiTuongDAO {
      * Tìm Entity bằng Email.
      */
     public Optional<DoiTuong> findByEmail(String email) {
-        String jpql = "SELECT d FROM DoiTuong d WHERE d.email = :email";
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.email = :email ORDER BY d.hoVaTen ASC";
         try {
             return Optional.of(
                 entityManager.createQuery(jpql, DoiTuong.class)
@@ -95,7 +95,7 @@ public class DoiTuongDAO {
      * Tìm tất cả người dùng với vai trò cụ thể.
      */
     public List<DoiTuong> findByVaiTro(UserRole vaiTro) {
-        String jpql = "SELECT d FROM DoiTuong d WHERE d.vaiTro = :vaiTro";
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.vaiTro = :vaiTro ORDER BY d.hoVaTen ASC";
         return entityManager.createQuery(jpql, DoiTuong.class)
             .setParameter("vaiTro", vaiTro)
             .getResultList();
@@ -105,7 +105,7 @@ public class DoiTuongDAO {
      * Tìm Dân cư đang ở chung cư.
      */
     public List<DoiTuong> findResidentsInComplex(ResidentStatus trangThaiDanCu) {
-        String jpql = "SELECT d FROM DoiTuong d WHERE d.laCuDan = true AND d.trangThaiDanCu = :trangThai";
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.laCuDan = true AND d.trangThaiDanCu = :trangThai ORDER BY d.hoVaTen ASC";
         return entityManager.createQuery(jpql, DoiTuong.class)
             .setParameter("trangThai", trangThaiDanCu)
             .getResultList();
@@ -114,7 +114,7 @@ public class DoiTuongDAO {
      * Tìm kiếm tài khoản cư dân theo CCCD
      */
     public Optional<DoiTuong> timNguoiDungThuongTheoCCCD(String cccd){
-        String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.vaiTro = :vaiTro";
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.vaiTro = :vaiTro ORDER BY d.hoVaTen ASC";
         try {
             DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class)
                     .setParameter("cccd", cccd)
@@ -129,7 +129,7 @@ public class DoiTuongDAO {
      * Tìm cư dân theo CCCD 
     */
     public Optional<DoiTuong> findResidentByCccd(String cccd) {
-        String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.laCuDan = true";
+        String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.laCuDan = true ORDER BY d.hoVaTen ASC";
         try {
             DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class)
                     .setParameter("cccd", cccd)
@@ -181,7 +181,7 @@ public class DoiTuongDAO {
 		}
 
 // 5. Chuẩn bị truy vấn và thiết lập tham số
-		TypedQuery<DoiTuong> query = entityManager.createQuery(jpql.toString(), DoiTuong.class);
+		TypedQuery<DoiTuong> query = entityManager.createQuery(jpql.append(" ORDER BY d.hoVaTen ASC").toString(), DoiTuong.class);
 
 // Thiết lập tham số cho Trạng Thái Dân Cư
 		if (residentStatus != null) {
@@ -207,13 +207,13 @@ public class DoiTuongDAO {
 		String jpql = "SELECT d FROM DoiTuong d WHERE d.laCuDan = true AND (" + "LOWER(d.cccd) LIKE :kw OR "
 				+ "LOWER(d.hoVaTen) LIKE :kw OR " + "CAST(d.ngaySinh AS string) LIKE :kw OR "
 				+ "LOWER(d.queQuan) LIKE :kw OR " + "LOWER(d.gioiTinh) LIKE :kw OR " + "LOWER(d.soDienThoai) LIKE :kw"
-				+ ")";
+				+ ") ORDER BY d.hoVaTen ASC";
 		String kwParam = "%" + keyword.toLowerCase() + "%";
 		return entityManager.createQuery(jpql, DoiTuong.class).setParameter("kw", kwParam).getResultList();
 	}
 
 	public Optional<DoiTuong> findByEmailandCccd(String cccd, String email) {
-		String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.email = :email";
+		String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.email = :email ORDER BY ho_va_ten ASC";
 		try {
 			DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class).setParameter("cccd", cccd)
 					.setParameter("email", email).getSingleResult();
