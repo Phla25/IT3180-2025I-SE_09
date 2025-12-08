@@ -1,6 +1,7 @@
 package BlueMoon.bluemoon.controllers;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -21,6 +22,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import BlueMoon.bluemoon.entities.BaoCaoSuCo;
 import BlueMoon.bluemoon.entities.DoiTuong;
+import BlueMoon.bluemoon.entities.LichSuRaVao;
 import BlueMoon.bluemoon.entities.TaiSanChungCu; // Import TaiSanChungCu
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.models.ApartmentReportDTO;
@@ -35,6 +37,7 @@ import BlueMoon.bluemoon.utils.IncidentStatus;
 import BlueMoon.bluemoon.utils.PriorityLevel;
 import BlueMoon.bluemoon.services.CuDanService;
 import BlueMoon.bluemoon.services.HoGiaDinhService;
+import BlueMoon.bluemoon.services.LichSuRaVaoService;
 
 @Controller
 @RequestMapping("/officer")
@@ -60,7 +63,9 @@ public class OfficerController {
     
     @Autowired
     private ExportService exportService; 
-
+    
+    @Autowired
+    private LichSuRaVaoService lichSuRaVaoService;
     /**
      * Helper: Lấy đối tượng DoiTuong hiện tại (Cơ Quan Chức Năng)
      */
@@ -541,5 +546,37 @@ public class OfficerController {
         model.addAttribute("householdSizeData", householdStats.get("householdSizeData"));
 
         return "reports-dashboard-officer";
+    }
+    // =======================================================
+    // TRA CỨU LỊCH SỬ RA VÀO (MỚI)
+    // =======================================================
+
+    /**
+     * Hiển thị danh sách ra vào cho Cơ Quan Chức Năng
+     * URL: /officer/entry-exit-logs
+     */
+    @GetMapping("/entry-exit-logs")
+    public String showOfficerEntryExitLogs(Model model, Authentication auth,
+                                           @RequestParam(required = false) String keyword,
+                                           @RequestParam(required = false) LocalDate date,
+                                           @RequestParam(required = false) String gate) {
+        
+        DoiTuong user = getCurrentUser(auth);
+        if (user == null) return "redirect:/login?error=notfound";
+        model.addAttribute("user", user);
+
+        // Sử dụng chung hàm lọc của Service như Admin
+        List<LichSuRaVao> logs = lichSuRaVaoService.getAllLogs(keyword, date, gate);
+
+        model.addAttribute("logs", logs);
+        
+        // Truyền lại params để giữ form search
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("currentDate", date);
+        model.addAttribute("currentGate", gate);
+        
+        model.addAttribute("gates", lichSuRaVaoService.getAllGates()); 
+
+        return "entry-exit-log-officer"; // File HTML riêng cho Officer
     }
 }

@@ -3,6 +3,7 @@ package BlueMoon.bluemoon.controllers;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.security.Principal;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -37,6 +38,7 @@ import BlueMoon.bluemoon.entities.DichVu;
 import BlueMoon.bluemoon.entities.DoiTuong;
 import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.HoaDon;
+import BlueMoon.bluemoon.entities.LichSuRaVao;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.entities.ThongBao;
@@ -53,6 +55,7 @@ import BlueMoon.bluemoon.services.DichVuService;
 import BlueMoon.bluemoon.services.ExportService;
 import BlueMoon.bluemoon.services.HoGiaDinhService;
 import BlueMoon.bluemoon.services.HoaDonService;
+import BlueMoon.bluemoon.services.LichSuRaVaoService;
 import BlueMoon.bluemoon.services.NguoiDungService;
 import BlueMoon.bluemoon.services.PhanHoiThongBaoService;
 import BlueMoon.bluemoon.services.ReportService;
@@ -77,6 +80,7 @@ public class AdminController {
     @Autowired
     private NguoiDungService nguoiDungService;
 
+    @Autowired private LichSuRaVaoService lichSuRaVaoService;
     @Autowired private HoGiaDinhService hoGiaDinhService;
     @Autowired private DichVuService dichVuService;
 
@@ -2154,5 +2158,74 @@ public class AdminController {
             e.printStackTrace();
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+    // =======================================================
+    // QUẢN LÝ RA VÀO (MỚI)
+    // =======================================================
+    /**
+     * 1. Hiển thị danh sách ra vào (Đã có, giữ nguyên logic lọc)
+     * URL: /admin/entry-exit-logs
+     */
+    @GetMapping("/entry-exit-logs")
+    public String showAllEntryExitLogs(Model model, Authentication auth,
+                                       @RequestParam(required = false) String keyword,
+                                       @RequestParam(required = false) LocalDate date,
+                                       @RequestParam(required = false) String gate) {
+        
+        model.addAttribute("user", getCurrentUser(auth));
+
+        // Gọi Service lọc dữ liệu
+        List<LichSuRaVao> logs = lichSuRaVaoService.getAllLogs(keyword, date, gate);
+
+        model.addAttribute("logs", logs);
+        model.addAttribute("keyword", keyword);
+        model.addAttribute("currentDate", date);
+        model.addAttribute("currentGate", gate);
+        
+        // Danh sách cổng để lọc
+        model.addAttribute("gates", lichSuRaVaoService.getAllGates()); 
+
+        return "entry-exit-log-admin"; 
+    }
+
+    /**
+     * 2. Hiển thị trang Import Excel (MỚI)
+     * URL: /admin/entry-exit-import
+     */
+    @GetMapping("/entry-exit-import")
+    public String showImportEntryExitPage(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        return "entry-exit-import-admin"; // Trỏ đến file HTML upload
+    }
+
+    /**
+     * 3. Xử lý Upload File Excel (MỚI)
+     * URL: /admin/entry-exit-import
+     */
+    @PostMapping("/entry-exit-import")
+    public String handleImportEntryExit(@RequestParam("file") MultipartFile file,
+                                        RedirectAttributes redirectAttributes) {
+        if (file.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn file Excel.");
+            return "redirect:/admin/entry-exit-import";
+        }
+
+        try {
+            // Gọi Service xử lý đọc file
+            String result = lichSuRaVaoService.importLichSuRaVaoFromExcel(file);
+            
+            if (result.contains("Thất bại: 0")) {
+                redirectAttributes.addFlashAttribute("successMessage", result);
+            } else {
+                redirectAttributes.addFlashAttribute("warningMessage", result);
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+            return "redirect:/admin/entry-exit-import";
+        }
+        
+        return "redirect:/admin/entry-exit-logs";
     }
 }

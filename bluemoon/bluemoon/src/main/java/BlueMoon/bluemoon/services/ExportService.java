@@ -5,74 +5,66 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
-import org.apache.poi.ss.usermodel.BorderStyle;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellStyle;
-import org.apache.poi.ss.usermodel.FillPatternType;
-import org.apache.poi.ss.usermodel.Font;
-import org.apache.poi.ss.usermodel.HorizontalAlignment;
-import org.apache.poi.ss.usermodel.IndexedColors;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.VerticalAlignment;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.stereotype.Service;
+// Import cho Excel (Apache POI)
 
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
+// Import cho PDF (iText 7 - Đã đồng bộ với dự án của bạn)
+
+import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.layout.Document;
+import com.itextpdf.layout.element.Cell;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.element.Table;
 import com.itextpdf.layout.properties.TextAlignment;
 import com.itextpdf.layout.properties.UnitValue;
 
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import BlueMoon.bluemoon.daos.DoiTuongDAO;
+import BlueMoon.bluemoon.daos.LichSuRaVaoDAO;
+import BlueMoon.bluemoon.entities.DoiTuong;
+import BlueMoon.bluemoon.entities.LichSuRaVao;
 import BlueMoon.bluemoon.models.ApartmentReportDTO;
 import BlueMoon.bluemoon.models.HouseholdReportDTO;
 import BlueMoon.bluemoon.models.InvoiceReportDTO;
 import BlueMoon.bluemoon.models.ResidentReportDTO;
+import BlueMoon.bluemoon.utils.EntryExitType;
+import BlueMoon.bluemoon.utils.UserRole;
 
-/**
- * Service để xuất dữ liệu ra file Excel
- */
 @Service
 public class ExportService {
     
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss");
-    
-    /**
-     * Xuất danh sách căn hộ ra file Excel
-     */
+    @Autowired
+    private LichSuRaVaoDAO lichSuRaVaoDAO;
+    @Autowired
+    private DoiTuongDAO doiTuongDAO;
+
+    // ==========================================
+    // CÁC HÀM XUẤT EXCEL (GIỮ NGUYÊN)
+    // ==========================================
+
     public byte[] exportApartmentsToExcel(List<ApartmentReportDTO> apartments) throws IOException {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Danh Sách Căn Hộ");
+            createExcelHeader(sheet, new String[]{
+                "Mã Tài Sản", "Tên Tài Sản", "Loại", "Trạng Thái", "Diện Tích (m²)", 
+                "Vị Trí", "Giá Trị", "Ngày Thêm", "Mã Hộ", "Tên Hộ", "Chủ Hộ"
+            });
             
-            // Tạo style cho header
-            CellStyle headerStyle = createHeaderStyle(workbook);
-            CellStyle dataStyle = createDataStyle(workbook);
-            
-            // Tạo header row
-            Row headerRow = sheet.createRow(0);
-            String[] columns = {
-                "Mã Tài Sản", "Tên Tài Sản", "Loại", "Trạng Thái", 
-                "Diện Tích (m²)", "Vị Trí", "Giá Trị (VNĐ)", "Ngày Thêm",
-                "Mã Hộ", "Tên Hộ", "Chủ Hộ", "Số Điện Thoại", "Trạng Thái Hộ"
-            };
-            
-            for (int i = 0; i < columns.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(columns[i]);
-                cell.setCellStyle(headerStyle);
-            }
-            
-            // Điền dữ liệu
             int rowNum = 1;
+            CellStyle dataStyle = createDataStyle(workbook);
             for (ApartmentReportDTO apt : apartments) {
                 Row row = sheet.createRow(rowNum++);
-                
                 createCell(row, 0, apt.getMaTaiSan(), dataStyle);
                 createCell(row, 1, apt.getTenTaiSan(), dataStyle);
                 createCell(row, 2, apt.getLoaiTaiSan(), dataStyle);
@@ -84,133 +76,281 @@ public class ExportService {
                 createCell(row, 8, apt.getMaHo(), dataStyle);
                 createCell(row, 9, apt.getTenHo(), dataStyle);
                 createCell(row, 10, apt.getChuHo(), dataStyle);
-                createCell(row, 11, apt.getSoDienThoai(), dataStyle);
-                createCell(row, 12, apt.getTrangThaiHo(), dataStyle);
             }
-            
-            // Auto-size columns
-            for (int i = 0; i < columns.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
-            
-            // Chuyển workbook thành byte array
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            workbook.write(outputStream);
-            return outputStream.toByteArray();
+            autoSizeColumns(sheet, 11);
+            return toByteArray(workbook);
         }
     }
-    
-    /**
-     * Xuất danh sách hóa đơn ra file Excel
-     */
+
+    public byte[] exportEntryExitToExcel(List<LichSuRaVao> logs) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Lịch Sử Ra Vào");
+            createExcelHeader(sheet, new String[]{"ID", "Thời Gian", "Họ Tên", "CCCD", "Hoạt Động", "Cổng"});
+
+            int rowIdx = 1;
+            CellStyle dataStyle = createDataStyle(workbook);
+            for (LichSuRaVao log : logs) {
+                Row row = sheet.createRow(rowIdx++);
+                createCell(row, 0, log.getId(), dataStyle);
+                createCell(row, 1, formatDateTime(log.getThoiGian()), dataStyle);
+                createCell(row, 2, log.getCuDan() != null ? log.getCuDan().getHoVaTen() : "N/A", dataStyle);
+                createCell(row, 3, log.getCuDan() != null ? log.getCuDan().getCccd() : "N/A", dataStyle);
+                createCell(row, 4, log.getLoaiHoatDong(), dataStyle);
+                createCell(row, 5, log.getCongKiemSoat(), dataStyle);
+            }
+            autoSizeColumns(sheet, 6);
+            return toByteArray(workbook);
+        }
+    }
+
     public byte[] exportInvoicesToExcel(List<InvoiceReportDTO> invoices) throws IOException {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Danh Sách Hóa Đơn");
+            createExcelHeader(sheet, new String[]{"Mã HĐ", "Mã Hộ", "Tên Hộ", "Chủ Hộ", "Loại HĐ", "Số Tiền", "Trạng Thái", "Ngày Tạo"});
             
-            CellStyle headerStyle = createHeaderStyle(workbook);
-            CellStyle dataStyle = createDataStyle(workbook);
-            
-            // Tạo header row
-            Row headerRow = sheet.createRow(0);
-            String[] columns = {
-                "Mã Hóa Đơn", "Mã Hộ", "Tên Hộ", "Người Đăng Ký", "Loại Hóa Đơn",
-                "Số Tiền (VNĐ)", "Trạng Thái", "Ngày Tạo", "Hạn Thanh Toán",
-                "Ngày Thanh Toán", "Người Thanh Toán", "Ghi Chú"
-            };
-            
-            for (int i = 0; i < columns.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(columns[i]);
-                cell.setCellStyle(headerStyle);
-            }
-            
-            // Điền dữ liệu
             int rowNum = 1;
-            for (InvoiceReportDTO invoice : invoices) {
+            CellStyle dataStyle = createDataStyle(workbook);
+            for (InvoiceReportDTO inv : invoices) {
                 Row row = sheet.createRow(rowNum++);
-                
-                createCell(row, 0, invoice.getMaHoaDon(), dataStyle);
-                createCell(row, 1, invoice.getMaHo(), dataStyle);
-                createCell(row, 2, invoice.getTenHo(), dataStyle);
-                createCell(row, 3, invoice.getChuHo(), dataStyle);
-                createCell(row, 4, invoice.getLoaiHoaDon(), dataStyle);
-                createCell(row, 5, invoice.getSoTien(), dataStyle);
-                createCell(row, 6, invoice.getTrangThai(), dataStyle);
-                createCell(row, 7, formatDateTime(invoice.getNgayTao()), dataStyle);
-                createCell(row, 8, formatDate(invoice.getHanThanhToan()), dataStyle);
-                createCell(row, 9, formatDateTime(invoice.getNgayThanhToan()), dataStyle);
-                createCell(row, 10, invoice.getNguoiThanhToan(), dataStyle);
-                createCell(row, 11, invoice.getGhiChu(), dataStyle);
+                createCell(row, 0, inv.getMaHoaDon(), dataStyle);
+                createCell(row, 1, inv.getMaHo(), dataStyle);
+                createCell(row, 2, inv.getTenHo(), dataStyle);
+                createCell(row, 3, inv.getChuHo(), dataStyle);
+                createCell(row, 4, inv.getLoaiHoaDon(), dataStyle);
+                createCell(row, 5, inv.getSoTien(), dataStyle);
+                createCell(row, 6, inv.getTrangThai(), dataStyle);
+                createCell(row, 7, formatDateTime(inv.getNgayTao()), dataStyle);
             }
-            
-            // Auto-size columns
-            for (int i = 0; i < columns.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
-            
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            workbook.write(outputStream);
-            return outputStream.toByteArray();
+            autoSizeColumns(sheet, 8);
+            return toByteArray(workbook);
         }
     }
-    
-    /**
-     * Xuất danh sách hộ gia đình ra file Excel
-     */
+
     public byte[] exportHouseholdsToExcel(List<HouseholdReportDTO> households) throws IOException {
         try (Workbook workbook = new XSSFWorkbook()) {
             Sheet sheet = workbook.createSheet("Danh Sách Hộ Gia Đình");
+            createExcelHeader(sheet, new String[]{"Mã Hộ", "Tên Hộ", "Chủ Hộ", "SĐT", "Số TV", "Số CH", "Trạng Thái"});
             
-            CellStyle headerStyle = createHeaderStyle(workbook);
-            CellStyle dataStyle = createDataStyle(workbook);
-            
-            // Tạo header row
-            Row headerRow = sheet.createRow(0);
-            String[] columns = {
-                "Mã Hộ", "Tên Hộ", "Chủ Hộ", "CCCD Chủ Hộ", "Số Điện Thoại",
-                "Email", "Số Thành Viên", "Số Căn Hộ", "Trạng Thái", 
-                "Ngày Thành Lập", "Ghi Chú"
-            };
-            
-            for (int i = 0; i < columns.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(columns[i]);
-                cell.setCellStyle(headerStyle);
-            }
-            
-            // Điền dữ liệu
             int rowNum = 1;
-            for (HouseholdReportDTO household : households) {
+            CellStyle dataStyle = createDataStyle(workbook);
+            for (HouseholdReportDTO h : households) {
                 Row row = sheet.createRow(rowNum++);
-                
-                createCell(row, 0, household.getMaHo(), dataStyle);
-                createCell(row, 1, household.getTenHo(), dataStyle);
-                createCell(row, 2, household.getChuHo(), dataStyle);
-                createCell(row, 3, household.getCccdChuHo(), dataStyle);
-                createCell(row, 4, household.getSoDienThoai(), dataStyle);
-                createCell(row, 5, household.getEmail(), dataStyle);
-                createCell(row, 6, household.getSoThanhVien(), dataStyle);
-                createCell(row, 7, household.getSoCanHo(), dataStyle);
-                createCell(row, 8, household.getTrangThai(), dataStyle);
-                createCell(row, 9, formatDate(household.getNgayThanhLap()), dataStyle);
-                createCell(row, 10, household.getGhiChu(), dataStyle);
+                createCell(row, 0, h.getMaHo(), dataStyle);
+                createCell(row, 1, h.getTenHo(), dataStyle);
+                createCell(row, 2, h.getChuHo(), dataStyle);
+                createCell(row, 3, h.getSoDienThoai(), dataStyle);
+                createCell(row, 4, h.getSoThanhVien(), dataStyle);
+                createCell(row, 5, h.getSoCanHo(), dataStyle);
+                createCell(row, 6, h.getTrangThai(), dataStyle);
             }
-            
-            // Auto-size columns
-            for (int i = 0; i < columns.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
-            
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            workbook.write(outputStream);
-            return outputStream.toByteArray();
+            autoSizeColumns(sheet, 7);
+            return toByteArray(workbook);
         }
     }
+
+    public byte[] exportResidentsToExcel(List<ResidentReportDTO> residents) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook()) {
+            Sheet sheet = workbook.createSheet("Danh Sách Cư Dân");
+            createExcelHeader(sheet, new String[]{"CCCD", "Họ Tên", "Giới Tính", "SĐT", "Email", "Mã Hộ", "Vai Trò"});
+            
+            int rowNum = 1;
+            CellStyle dataStyle = createDataStyle(workbook);
+            for (ResidentReportDTO r : residents) {
+                Row row = sheet.createRow(rowNum++);
+                createCell(row, 0, r.getCccd(), dataStyle);
+                createCell(row, 1, r.getHoVaTen(), dataStyle);
+                createCell(row, 2, r.getGioiTinh(), dataStyle);
+                createCell(row, 3, r.getSoDienThoai(), dataStyle);
+                createCell(row, 4, r.getEmail(), dataStyle);
+                createCell(row, 5, r.getMaHo(), dataStyle);
+                createCell(row, 6, r.getVaiTro(), dataStyle);
+            }
+            autoSizeColumns(sheet, 7);
+            return toByteArray(workbook);
+        }
+    }
+
+    // ==========================================
+    // CÁC HÀM XUẤT PDF (SỬ DỤNG ITEXT 7)
+    // ==========================================
+
+    /**
+     * Xuất PDF Lịch Sử Ra Vào (MỚI - iText 7)
+     */
+    @SuppressWarnings("ConvertToTryWithResources")
+    public byte[] exportEntryExitToPdf(List<LichSuRaVao> logs) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc, PageSize.A4);
+            
+            // Title
+            Paragraph title = new Paragraph("BAO CAO LICH SU RA VAO")
+                .setTextAlignment(TextAlignment.CENTER)
+                .setFontSize(18)
+                .setBold();
+            document.add(title);
+            document.add(new Paragraph("\n"));
+            
+            // Table (5 columns)
+            float[] columnWidths = {3, 4, 3, 2, 3};
+            Table table = new Table(UnitValue.createPercentArray(columnWidths));
+            table.setWidth(UnitValue.createPercentValue(100));
+            
+            // Headers
+            String[] headers = {"Thoi Gian", "Ho Ten", "CCCD", "Hoat Dong", "Cong"};
+            for (String header : headers) {
+                table.addHeaderCell(new Cell().add(new Paragraph(header).setBold()));
+            }
+            
+            // Data
+            for (LichSuRaVao log : logs) {
+                table.addCell(formatDateTime(log.getThoiGian()));
+                table.addCell(log.getCuDan() != null ? log.getCuDan().getHoVaTen() : "N/A");
+                table.addCell(log.getCuDan() != null ? log.getCuDan().getCccd() : "N/A");
+                table.addCell(log.getLoaiHoatDong() != null ? log.getLoaiHoatDong().toString() : "");
+                table.addCell(log.getCongKiemSoat() != null ? log.getCongKiemSoat() : "");
+            }
+            
+            document.add(table);
+            document.close();
+            return baos.toByteArray();
+        } catch (Exception e) {
+            throw new IOException("Error creating PDF: " + e.getMessage(), e);
+        }
+    }
+
+    @SuppressWarnings("ConvertToTryWithResources")
+    public byte[] exportApartmentsToPdf(List<ApartmentReportDTO> apartments) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+            
+            document.add(new Paragraph("BAO CAO DANH SACH CAN HO").setTextAlignment(TextAlignment.CENTER).setBold().setFontSize(18));
+            document.add(new Paragraph("\n"));
+            
+            Table table = new Table(UnitValue.createPercentArray(new float[]{1, 2, 1.5f, 1.5f, 1, 1.5f, 1.5f}));
+            table.setWidth(UnitValue.createPercentValue(100));
+            
+            String[] headers = {"Ma TS", "Ten TS", "Loai", "Trang Thai", "DT", "Vi Tri", "Gia Tri"};
+            for(String h : headers) table.addHeaderCell(new Cell().add(new Paragraph(h).setBold()));
+            
+            for(ApartmentReportDTO a : apartments) {
+                table.addCell(String.valueOf(a.getMaTaiSan()));
+                table.addCell(toString(a.getTenTaiSan()));
+                table.addCell(toString(a.getLoaiTaiSan()));
+                table.addCell(toString(a.getTrangThai()));
+                table.addCell(toString(a.getDienTich()));
+                table.addCell(toString(a.getViTri()));
+                table.addCell(toString(a.getGiaTri()));
+            }
+            document.add(table);
+            document.close();
+            return baos.toByteArray();
+        } catch(Exception e) { throw new IOException(e); }
+    }
+
+    @SuppressWarnings("ConvertToTryWithResources")
+    public byte[] exportInvoicesToPdf(List<InvoiceReportDTO> invoices) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+            
+            document.add(new Paragraph("BAO CAO DANH SACH HOA DON").setTextAlignment(TextAlignment.CENTER).setBold().setFontSize(18));
+            document.add(new Paragraph("\n"));
+            
+            Table table = new Table(UnitValue.createPercentArray(new float[]{1, 2, 2, 2, 2, 2}));
+            table.setWidth(UnitValue.createPercentValue(100));
+            
+            String[] headers = {"Ma HD", "Ten Ho", "Loai HD", "So Tien", "Trang Thai", "Ngay Tao"};
+            for(String h : headers) table.addHeaderCell(new Cell().add(new Paragraph(h).setBold()));
+            
+            for(InvoiceReportDTO i : invoices) {
+                table.addCell(String.valueOf(i.getMaHoaDon()));
+                table.addCell(toString(i.getTenHo()));
+                table.addCell(toString(i.getLoaiHoaDon()));
+                table.addCell(toString(i.getSoTien()));
+                table.addCell(toString(i.getTrangThai()));
+                table.addCell(formatDateTime(i.getNgayTao()));
+            }
+            document.add(table);
+            document.close();
+            return baos.toByteArray();
+        } catch(Exception e) { throw new IOException(e); }
+    }
     
-    // Helper methods
+    @SuppressWarnings("ConvertToTryWithResources")
+    public byte[] exportHouseholdsToPdf(List<HouseholdReportDTO> households) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+            
+            document.add(new Paragraph("BAO CAO HO GIA DINH").setTextAlignment(TextAlignment.CENTER).setBold().setFontSize(18));
+            document.add(new Paragraph("\n"));
+            
+            Table table = new Table(UnitValue.createPercentArray(new float[]{1.5f, 2, 2, 2, 1, 1}));
+            table.setWidth(UnitValue.createPercentValue(100));
+            
+            String[] headers = {"Ma Ho", "Ten Ho", "Chu Ho", "SDT", "So TV", "Trang Thai"};
+            for(String h : headers) table.addHeaderCell(new Cell().add(new Paragraph(h).setBold()));
+            
+            for(HouseholdReportDTO h : households) {
+                table.addCell(toString(h.getMaHo()));
+                table.addCell(toString(h.getTenHo()));
+                table.addCell(toString(h.getChuHo()));
+                table.addCell(toString(h.getSoDienThoai()));
+                table.addCell(toString(h.getSoThanhVien()));
+                table.addCell(toString(h.getTrangThai()));
+            }
+            document.add(table);
+            document.close();
+            return baos.toByteArray();
+        } catch(Exception e) { throw new IOException(e); }
+    }
+
+    @SuppressWarnings("ConvertToTryWithResources")
+    public byte[] exportResidentsToPdf(List<ResidentReportDTO> residents) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        try {
+            PdfWriter writer = new PdfWriter(baos);
+            PdfDocument pdfDoc = new PdfDocument(writer);
+            Document document = new Document(pdfDoc);
+            
+            document.add(new Paragraph("BAO CAO DANH SACH CU DAN").setTextAlignment(TextAlignment.CENTER).setBold().setFontSize(18));
+            document.add(new Paragraph("\n"));            
+            Table table = new Table(UnitValue.createPercentArray(new float[]{2, 3, 1.5f, 2, 2}));
+            table.setWidth(UnitValue.createPercentValue(100));
+            
+            String[] headers = {"CCCD", "Ho Ten", "Gioi Tinh", "SDT", "Ma Ho"};
+            for(String h : headers) table.addHeaderCell(new Cell().add(new Paragraph(h).setBold()));
+            
+            for(ResidentReportDTO r : residents) {
+                table.addCell(toString(r.getCccd()));
+                table.addCell(toString(r.getHoVaTen()));
+                table.addCell(toString(r.getGioiTinh()));
+                table.addCell(toString(r.getSoDienThoai()));
+                table.addCell(toString(r.getMaHo()));
+            }
+            document.add(table);
+            document.close();
+            return baos.toByteArray();
+        } catch(Exception e) { throw new IOException(e); }
+    }
+
+    // ==========================================
+    // HELPER METHODS
+    // ==========================================
+    
     private CellStyle createHeaderStyle(Workbook workbook) {
         CellStyle style = workbook.createCellStyle();
-        Font font = workbook.createFont();
+        org.apache.poi.ss.usermodel.Font font = workbook.createFont();
         font.setBold(true);
         font.setColor(IndexedColors.WHITE.getIndex());
         style.setFont(font);
@@ -218,325 +358,178 @@ public class ExportService {
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         style.setBorderBottom(BorderStyle.THIN);
         style.setBorderTop(BorderStyle.THIN);
-        style.setBorderRight(BorderStyle.THIN);
-        style.setBorderLeft(BorderStyle.THIN);
         style.setAlignment(HorizontalAlignment.CENTER);
-        style.setVerticalAlignment(VerticalAlignment.CENTER);
         return style;
     }
     
     private CellStyle createDataStyle(Workbook workbook) {
         CellStyle style = workbook.createCellStyle();
         style.setBorderBottom(BorderStyle.THIN);
-        style.setBorderTop(BorderStyle.THIN);
-        style.setBorderRight(BorderStyle.THIN);
-        style.setBorderLeft(BorderStyle.THIN);
         style.setVerticalAlignment(VerticalAlignment.CENTER);
         return style;
     }
     
     private void createCell(Row row, int column, Object value, CellStyle style) {
-        Cell cell = row.createCell(column);
-        
-        if (value == null) {
-            cell.setCellValue("");
-        } else if (value instanceof String string) {
-            cell.setCellValue(string);
-        } else if (value instanceof Integer integer) {
-            cell.setCellValue(integer);
-        } else if (value instanceof Long aLong) {
-            cell.setCellValue(aLong);
-        } else if (value instanceof Double aDouble) {
-            cell.setCellValue(aDouble);
-        } else if (value instanceof java.math.BigDecimal bigDecimal ) {
-            cell.setCellValue(bigDecimal.doubleValue());
-        } else {
-            cell.setCellValue(value.toString());
-        }
-        
+        org.apache.poi.ss.usermodel.Cell cell = row.createCell(column);
+        if (value == null) cell.setCellValue("");
+        else if (value instanceof Number number) cell.setCellValue(number.doubleValue());
+        else cell.setCellValue(value.toString());
         cell.setCellStyle(style);
     }
     
-    private String formatDate(LocalDate date) {
-        return date != null ? date.format(DATE_FORMATTER) : "";
+    private void createExcelHeader(Sheet sheet, String[] headers) {
+        Row headerRow = sheet.createRow(0);
+        CellStyle headerStyle = createHeaderStyle(sheet.getWorkbook());
+        for (int i = 0; i < headers.length; i++) {
+            createCell(headerRow, i, headers[i], headerStyle);
+        }
+    }
+    
+    private void autoSizeColumns(Sheet sheet, int count) {
+        for (int i = 0; i < count; i++) sheet.autoSizeColumn(i);
+    }
+    
+    private byte[] toByteArray(Workbook workbook) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        workbook.write(out);
+        return out.toByteArray();
     }
     
     private String formatDateTime(LocalDateTime dateTime) {
         return dateTime != null ? dateTime.format(DATETIME_FORMATTER) : "";
     }
     
-    /**
-     * Xuất danh sách cư dân ra file Excel
-     */
-    public byte[] exportResidentsToExcel(List<ResidentReportDTO> residents) throws IOException {
-        try (Workbook workbook = new XSSFWorkbook()) {
-            Sheet sheet = workbook.createSheet("Danh Sách Cư Dân");
-            
-            CellStyle headerStyle = createHeaderStyle(workbook);
-            CellStyle dataStyle = createDataStyle(workbook);
-            
-            // Tạo header row
-            Row headerRow = sheet.createRow(0);
-            String[] columns = {
-                "CCCD", "Họ và Tên", "Giới Tính", "Ngày Sinh", "Số Điện Thoại",
-                "Email", "Địa Chỉ Thường Trú", "Trạng Thái", "Vai Trò",
-                "Mã Hộ", "Tên Hộ", "Là Chủ Hộ", "Quan Hệ Chủ Hộ"
-            };
-            
-            for (int i = 0; i < columns.length; i++) {
-                Cell cell = headerRow.createCell(i);
-                cell.setCellValue(columns[i]);
-                cell.setCellStyle(headerStyle);
-            }
-            
-            // Điền dữ liệu
-            int rowNum = 1;
-            for (ResidentReportDTO resident : residents) {
-                Row row = sheet.createRow(rowNum++);
-                
-                createCell(row, 0, resident.getCccd(), dataStyle);
-                createCell(row, 1, resident.getHoVaTen(), dataStyle);
-                createCell(row, 2, resident.getGioiTinh(), dataStyle);
-                createCell(row, 3, formatDate(resident.getNgaySinh()), dataStyle);
-                createCell(row, 4, resident.getSoDienThoai(), dataStyle);
-                createCell(row, 5, resident.getEmail(), dataStyle);
-                createCell(row, 6, resident.getDiaChiThuongTru(), dataStyle);
-                createCell(row, 7, resident.getTrangThai(), dataStyle);
-                createCell(row, 8, resident.getVaiTro(), dataStyle);
-                createCell(row, 9, resident.getMaHo(), dataStyle);
-                createCell(row, 10, resident.getTenHo(), dataStyle);
-                createCell(row, 11, resident.getLaChuHo() != null && resident.getLaChuHo() ? "Có" : "Không", dataStyle);
-                createCell(row, 12, resident.getQuanHeChuHo(), dataStyle);
-            }
-            
-            // Auto-size columns
-            for (int i = 0; i < columns.length; i++) {
-                sheet.autoSizeColumn(i);
-            }
-            
-            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-            workbook.write(outputStream);
-            return outputStream.toByteArray();
-        }
+    @SuppressWarnings("unused")
+    private String formatDate(LocalDate date) {
+        return date != null ? date.format(DATE_FORMATTER) : "";
     }
     
-    // ========== PDF EXPORT METHODS ==========
-    
+    private String toString(Object obj) {
+        return obj != null ? obj.toString() : "";
+    }
     /**
-     * Xuất danh sách căn hộ ra file PDF
+     * Import từ Excel
+     * Cột 0: CCCD
+     * Cột 1: Họ Và Tên
+     * Cột 2: Ngày Sinh (dd/MM/yyyy)
+     * Cột 3: Thời gian (dd/MM/yyyy HH:mm)
+     * Cột 4: Loại (VAO/RA)
+     * Cột 5: Cổng
      */
-    @SuppressWarnings("ConvertToTryWithResources")
-    public byte[] exportApartmentsToPdf(List<ApartmentReportDTO> apartments) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        
-        try {
-            PdfWriter writer = new PdfWriter(baos);
-            PdfDocument pdfDoc = new PdfDocument(writer);
-            Document document = new Document(pdfDoc);
-            
-            // Title
-            Paragraph title = new Paragraph("BAO CAO DANH SACH CAN HO")
-                .setTextAlignment(TextAlignment.CENTER)
-                .setFontSize(18)
-                .setBold();
-            document.add(title);
-            
-            document.add(new Paragraph("\n"));
-            
-            // Table
-            float[] columnWidths = {1, 2, 2, 2, 2, 2, 2, 2, 2, 2};
-            Table table = new Table(UnitValue.createPercentArray(columnWidths));
-            table.setWidth(UnitValue.createPercentValue(100));
-            
-            // Headers
-            String[] headers = {"Ma TS", "Ten TS", "Loai", "Trang Thai", "DT (m2)", 
-                               "Vi Tri", "Gia Tri", "Ma Ho", "Ten Ho", "Chu Ho"};
-            for (String header : headers) {
-                table.addHeaderCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(header).setBold()));
+    public String importLichSuRaVaoFromExcel(MultipartFile file) {
+        List<LichSuRaVao> listToSave = new ArrayList<>();
+        int successCount = 0;
+        int failCount = 0;
+        StringBuilder errorLog = new StringBuilder();
+
+        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
+            Sheet sheet = workbook.getSheetAt(0);
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+
+            // Bỏ qua header (row 0), bắt đầu từ row 1
+            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
+                Row row = sheet.getRow(i);
+                if (row == null) continue;
+
+                try {
+                    // 1. Đọc CCCD
+                    String cccd = getCellValueAsString(row.getCell(0));
+                    if (cccd == null || cccd.isEmpty()) continue; // Bỏ qua dòng trống
+                    // Đọc tên
+                    String hoVaTen = getCellValueAsString(row.getCell(1));
+                    String ngaySinh = getCellValueAsString(row.getCell(2));
+                    DateTimeFormatter dobFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+                    // Tìm cư dân
+                    DoiTuong cuDan = doiTuongDAO.findResidentByCccd(cccd).orElse(null);
+                    if (cuDan == null) {
+                        DoiTuong nguoiLa = new DoiTuong();
+                        nguoiLa.setCccd(cccd);
+                        nguoiLa.setMatKhau("0000");
+                        nguoiLa.setVaiTro(UserRole.khong_dung_he_thong);
+                        nguoiLa.setHoVaTen(hoVaTen);
+                        nguoiLa.setLaCuDan(false);
+                        nguoiLa.setNgaySinh(dobFormatter.parse(ngaySinh, LocalDate::from));
+                        cuDan = doiTuongDAO.save(nguoiLa);
+                    }
+
+                    // 2. Đọc Thời gian
+                    String timeStr = getCellValueAsString(row.getCell(3));
+                    LocalDateTime thoiGian;
+                    try {
+                        thoiGian = LocalDateTime.parse(timeStr, formatter);
+                    } catch (Exception e) {
+                        failCount++;
+                        errorLog.append("<br>- Dòng ").append(i + 1).append(": Định dạng ngày sai (").append(timeStr).append(")");
+                        continue;
+                    }
+
+                    // 3. Đọc Loại
+                    String typeStr = getCellValueAsString(row.getCell(4));
+                    EntryExitType type = parseEntryExitType(typeStr);
+
+                    // 4. Đọc Cổng
+                    String gate = getCellValueAsString(row.getCell(5));
+
+                    // Tạo Entity
+                    LichSuRaVao log = new LichSuRaVao();
+                    log.setCuDan(cuDan);
+                    log.setThoiGian(thoiGian);
+                    log.setLoaiHoatDong(type);
+                    log.setCongKiemSoat(gate);
+
+                    listToSave.add(log);
+                    successCount++;
+
+                } catch (Exception e) {
+                    failCount++;
+                    errorLog.append("<br>- Dòng ").append(i + 1).append(": Lỗi dữ liệu ").append(e.getMessage());
+                }
             }
-            
-            // Data
-            for (ApartmentReportDTO apt : apartments) {
-                table.addCell(String.valueOf(apt.getMaTaiSan()));
-                table.addCell(apt.getTenTaiSan() != null ? apt.getTenTaiSan() : "");
-                table.addCell(apt.getLoaiTaiSan() != null ? apt.getLoaiTaiSan() : "");
-                table.addCell(apt.getTrangThai() != null ? apt.getTrangThai() : "");
-                table.addCell(apt.getDienTich() != null ? apt.getDienTich().toString() : "");
-                table.addCell(apt.getViTri() != null ? apt.getViTri() : "");
-                table.addCell(apt.getGiaTri() != null ? apt.getGiaTri().toString() : "");
-                table.addCell(apt.getMaHo() != null ? apt.getMaHo() : "");
-                table.addCell(apt.getTenHo() != null ? apt.getTenHo() : "");
-                table.addCell(apt.getChuHo() != null ? apt.getChuHo() : "");
+
+            // Lưu vào DB
+            if (!listToSave.isEmpty()) {
+                lichSuRaVaoDAO.saveAll(listToSave);
             }
-            
-            document.add(table);
-            document.close();
-            
-            return baos.toByteArray();
-        } catch (Exception e) {
-            throw new IOException("Error creating PDF", e);
+
+            String result = "Thành công: " + successCount + " dòng. Thất bại: " + failCount + " dòng.";
+            if (failCount > 0) {
+                result += " Chi tiết lỗi: " + errorLog.toString();
+            }
+            return result;
+
+        } catch (IOException e) {
+            return "Lỗi đọc file Excel: " + e.getMessage();
         }
     }
-    
-    /**
-     * Xuất danh sách hóa đơn ra file PDF
-     */
-    @SuppressWarnings("ConvertToTryWithResources")
-    public byte[] exportInvoicesToPdf(List<InvoiceReportDTO> invoices) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        
-        try {
-            PdfWriter writer = new PdfWriter(baos);
-            PdfDocument pdfDoc = new PdfDocument(writer);
-            Document document = new Document(pdfDoc);
-            
-            // Title
-            Paragraph title = new Paragraph("BAO CAO DANH SACH HOA DON")
-                .setTextAlignment(TextAlignment.CENTER)
-                .setFontSize(18)
-                .setBold();
-            document.add(title);
-            
-            document.add(new Paragraph("\n"));
-            
-            // Table
-            float[] columnWidths = {1, 1.5f, 1.5f, 1.5f, 2, 2, 2, 2};
-            Table table = new Table(UnitValue.createPercentArray(columnWidths));
-            table.setWidth(UnitValue.createPercentValue(100));
-            
-            // Headers
-            String[] headers = {"Ma HD", "Ma Ho", "Ten Ho", "Chu Ho", "Loai HD", 
-                               "So Tien", "Trang Thai", "Ngay Tao"};
-            for (String header : headers) {
-                table.addHeaderCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(header).setBold()));
+
+    // Helper: Lấy giá trị Cell an toàn
+    private String getCellValueAsString(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null) return "";
+        switch (((org.apache.poi.ss.usermodel.Cell) cell).getCellType()) {
+            case STRING -> {
+                return ((org.apache.poi.ss.usermodel.Cell) cell).getStringCellValue().trim();
             }
-            
-            // Data
-            for (InvoiceReportDTO invoice : invoices) {
-                table.addCell(String.valueOf(invoice.getMaHoaDon()));
-                table.addCell(invoice.getMaHo() != null ? invoice.getMaHo() : "");
-                table.addCell(invoice.getTenHo() != null ? invoice.getTenHo() : "");
-                table.addCell(invoice.getChuHo() != null ? invoice.getChuHo() : "");
-                table.addCell(invoice.getLoaiHoaDon() != null ? invoice.getLoaiHoaDon() : "");
-                table.addCell(invoice.getSoTien() != null ? invoice.getSoTien().toString() : "");
-                table.addCell(invoice.getTrangThai() != null ? invoice.getTrangThai() : "");
-                table.addCell(formatDateTime(invoice.getNgayTao()));
+            case NUMERIC -> {
+                // Xử lý nếu ngày tháng bị Excel format thành số
+                if (DateUtil.isCellDateFormatted((org.apache.poi.ss.usermodel.Cell) cell)) {
+                    DateTimeFormatter fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
+                    return fmt.format(((org.apache.poi.ss.usermodel.Cell) cell).getLocalDateTimeCellValue());
+                }
+                return String.valueOf((long) ((org.apache.poi.ss.usermodel.Cell) cell).getNumericCellValue());
             }
-            
-            document.add(table);
-            document.close();
-            
-            return baos.toByteArray();
-        } catch (Exception e) {
-            throw new IOException("Error creating PDF", e);
+            default -> {
+                return "";
+            }
         }
     }
-    
-    /**
-     * Xuất danh sách hộ gia đình ra file PDF
-     */
-    @SuppressWarnings("ConvertToTryWithResources")
-    public byte[] exportHouseholdsToPdf(List<HouseholdReportDTO> households) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        
-        try {
-            PdfWriter writer = new PdfWriter(baos);
-            PdfDocument pdfDoc = new PdfDocument(writer);
-            Document document = new Document(pdfDoc);
-            
-            // Title
-            Paragraph title = new Paragraph("BAO CAO DANH SACH HO GIA DINH")
-                .setTextAlignment(TextAlignment.CENTER)
-                .setFontSize(18)
-                .setBold();
-            document.add(title);
-            
-            document.add(new Paragraph("\n"));
-            
-            // Table
-            float[] columnWidths = {1.5f, 2, 2, 2, 1.5f, 1, 1, 1.5f};
-            Table table = new Table(UnitValue.createPercentArray(columnWidths));
-            table.setWidth(UnitValue.createPercentValue(100));
-            
-            // Headers
-            String[] headers = {"Ma Ho", "Ten Ho", "Chu Ho", "SDT", "Email", 
-                               "So TV", "So CH", "Trang Thai"};
-            for (String header : headers) {
-                table.addHeaderCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(header).setBold()));
-            }
-            
-            // Data
-            for (HouseholdReportDTO household : households) {
-                table.addCell(household.getMaHo() != null ? household.getMaHo() : "");
-                table.addCell(household.getTenHo() != null ? household.getTenHo() : "");
-                table.addCell(household.getChuHo() != null ? household.getChuHo() : "");
-                table.addCell(household.getSoDienThoai() != null ? household.getSoDienThoai() : "");
-                table.addCell(household.getEmail() != null ? household.getEmail() : "");
-                table.addCell(household.getSoThanhVien() != null ? household.getSoThanhVien().toString() : "");
-                table.addCell(household.getSoCanHo() != null ? household.getSoCanHo().toString() : "");
-                table.addCell(household.getTrangThai() != null ? household.getTrangThai() : "");
-            }
-            
-            document.add(table);
-            document.close();
-            
-            return baos.toByteArray();
-        } catch (Exception e) {
-            throw new IOException("Error creating PDF", e);
+
+    // Helper: Parse Enum
+    private EntryExitType parseEntryExitType(String str) {
+        if (str == null) return EntryExitType.VAO;
+        str = str.trim().toUpperCase();
+        if (str.equals("RA") || str.equals("OUT") || str.equals("EXIT")) {
+            return EntryExitType.RA;
         }
-    }
-    
-    /**
-     * Xuất danh sách cư dân ra file PDF
-     */
-    @SuppressWarnings("ConvertToTryWithResources")
-    public byte[] exportResidentsToPdf(List<ResidentReportDTO> residents) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        
-        try {
-            PdfWriter writer = new PdfWriter(baos);
-            PdfDocument pdfDoc = new PdfDocument(writer);
-            Document document = new Document(pdfDoc);
-            
-            // Title
-            Paragraph title = new Paragraph("BAO CAO DANH SACH CU DAN")
-                .setTextAlignment(TextAlignment.CENTER)
-                .setFontSize(18)
-                .setBold();
-            document.add(title);
-            
-            document.add(new Paragraph("\n"));
-            
-            // Table
-            float[] columnWidths = {2, 3, 1.5f, 2, 2, 2, 1.5f, 1.5f};
-            Table table = new Table(UnitValue.createPercentArray(columnWidths));
-            table.setWidth(UnitValue.createPercentValue(100));
-            
-            // Headers
-            String[] headers = {"CCCD", "Ho Va Ten", "Gioi Tinh", "SDT", "Email", 
-                               "Ma Ho", "Ten Ho", "Chu Ho"};
-            for (String header : headers) {
-                table.addHeaderCell(new com.itextpdf.layout.element.Cell().add(new Paragraph(header).setBold()));
-            }
-            
-            // Data
-            for (ResidentReportDTO resident : residents) {
-                table.addCell(resident.getCccd() != null ? resident.getCccd() : "");
-                table.addCell(resident.getHoVaTen() != null ? resident.getHoVaTen() : "");
-                table.addCell(resident.getGioiTinh() != null ? resident.getGioiTinh() : "");
-                table.addCell(resident.getSoDienThoai() != null ? resident.getSoDienThoai() : "");
-                table.addCell(resident.getEmail() != null ? resident.getEmail() : "");
-                table.addCell(resident.getMaHo() != null ? resident.getMaHo() : "");
-                table.addCell(resident.getTenHo() != null ? resident.getTenHo() : "");
-                table.addCell(resident.getLaChuHo() != null && resident.getLaChuHo() ? "Co" : "Khong");
-            }
-            
-            document.add(table);
-            document.close();
-            
-            return baos.toByteArray();
-        } catch (Exception e) {
-            throw new IOException("Error creating PDF", e);
-        }
+        return EntryExitType.VAO;
     }
 }
