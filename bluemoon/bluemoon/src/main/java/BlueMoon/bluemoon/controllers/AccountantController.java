@@ -259,7 +259,7 @@ public class AccountantController {
      * Xử lý Xóa Hóa đơn (POST).
      * URL: /accountant/fee-delete
      */
-    @PostMapping("/fee-delete")
+    @GetMapping("/fee-remove-action")
     public String handleDeleteFee(@RequestParam("id") Integer maHoaDon, 
                                   RedirectAttributes redirectAttributes) {
         try {

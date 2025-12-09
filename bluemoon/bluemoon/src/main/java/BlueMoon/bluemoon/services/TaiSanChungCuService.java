@@ -168,7 +168,11 @@ public class TaiSanChungCuService {
             throw new IllegalArgumentException("Loại Tài Sản không được để trống.");
         }
     
-        // 3. Lưu
+        if (taiSanMoi.getLoaiTaiSan() == AssetType.can_ho){
+            if (taiSanChungCuDAO.existsByTenCanHo(taiSanMoi.getTenTaiSan())) {
+            throw new IllegalArgumentException("Lỗi: Tên Căn hộ '" + taiSanMoi.getTenTaiSan() + "' đã tồn tại. Vui lòng chọn tên khác.");
+        }
+        }
         return taiSanChungCuDAO.save(taiSanMoi);
     }
     /**
@@ -218,7 +222,11 @@ public class TaiSanChungCuService {
     public TaiSanChungCu capNhatTaiSanChung(Integer maTaiSan, TaiSanChungCu taiSanCapNhat, String maHo) {
         TaiSanChungCu taiSanHienTai = taiSanChungCuDAO.findByID(maTaiSan)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Tài Sản với Mã Tài Sản: " + maTaiSan));
-
+        if (taiSanCapNhat.getLoaiTaiSan() == AssetType.can_ho){
+            if (taiSanChungCuDAO.existsByTenCanHo(taiSanCapNhat.getTenTaiSan())) {
+            throw new IllegalArgumentException("Lỗi: Tên Căn hộ '" + taiSanCapNhat.getTenTaiSan() + "' đã tồn tại. Vui lòng chọn tên khác.");
+        }
+    }
         // Lưu trạng thái cũ để so sánh
         BlueMoon.bluemoon.utils.AssetStatus trangThaiCu = taiSanHienTai.getTrangThai();
 

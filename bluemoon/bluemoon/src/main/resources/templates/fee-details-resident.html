@@ -81,6 +81,23 @@
             border-top: 1px solid #E5E7EB;
             margin-top: 20px;
         }
+        .pdf-container {
+            width: 100%;
+            height: 800px; /* Chiều cao đủ lớn để xem */
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            background-color: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .pdf-viewer {
+            width: 100%;
+            height: 100%;
+            border: none;
+            border-radius: 8px;
+        }
     </style>
 </head>
 <body>
@@ -171,74 +188,88 @@
         </div>
     </header>
 
-<main class="main-content">
-    <div class="container">
-        <div class="detail-item">
-                <span class="detail-label">Người Đăng Ký/Phát Sinh</span>
-                <span class="detail-value" th:if="${hoaDon.nguoiDangKyDichVu != null}" th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen + ' (' + hoaDon.nguoiDangKyDichVu.cccd + ')'}">
-                    Nguyễn Văn B (CCCD: 001...)
-                </span>
-                <span class="detail-value" th:unless="${hoaDon.nguoiDangKyDichVu != null}">
-                    Hộ Gia Đình/Ban Quản Trị
-                </span>
+    <main class="main-content">
+        <div class="container">
+            <div style="margin-bottom: 20px;">
+                <a th:href="@{/resident/fees}" class="btn-secondary" style="text-decoration: none; color: #4b5563;">
+                    <i class="fas fa-arrow-left"></i> Quay lại danh sách
+                </a>
             </div>
-            
-            <div class="detail-item" th:if="${hoaDon.nguoiThanhToan != null}">
-                <span class="detail-label">Người Thực Hiện Thanh Toán</span>
-                <span class="detail-value" th:text="${hoaDon.nguoiThanhToan.hoVaTen + ' (' + hoaDon.nguoiThanhToan.cccd + ')'}">
-                    Trần Văn C (CCCD: 002...)
-                </span>
-            </div>
-        </div>
-        
-        </div>
-        <div class="content-card" style="background-color: #F9FAFB;">
-                <div class="content-card-header">
-                    <h2 class="content-card-title" style="color: #4F46E5;"><i class="fas fa-receipt"></i> Thanh Toán</h2>
-                </div>
+
+            <div class="row" style="display: flex; flex-wrap: wrap; gap: 20px;">
                 
-                <div style="text-align: center; padding: 20px;">
-                    </div>
-                
-                <hr style="margin: 16px 0; border-top: 1px solid #E5E7EB;">
-                
-                <div th:if="${hoaDon.trangThai?.name() == 'chua_thanh_toan' || hoaDon.trangThai?.name() == 'qua_han'}" style="padding: 10px 0; text-align: center;">
-                    <p class="alert alert-warning">
-                        <i class="fas fa-exclamation-triangle"></i> Nhấn **Thanh toán** ở trang danh sách để tạo yêu cầu chuyển khoản.
-                    </p>
-                </div>
-                
-                <div th:if="${hoaDon.trangThai?.name() == 'cho_xac_nhan'}" style="padding: 10px 0; text-align: center;">
-                    <p class="alert alert-info">
-                        <i class="fas fa-hourglass-half"></i> Yêu cầu thanh toán của bạn đang chờ chuyển khoản. Vui lòng thực hiện giao dịch:
-                    </p>
+                <div style="flex: 2; min-width: 600px;">
+                    <h2 style="margin-bottom: 15px; color: #1F2937;">Chi Tiết Hóa Đơn #<span th:text="${hoaDon.maHoaDon}"></span></h2>
                     
-                    <h4 style="color: #1E40AF; margin-top: 15px;">THÔNG TIN CHUYỂN KHOẢN (MOCK)</h4>
-                    <div style="border: 1px solid #DBEAFE; padding: 15px; border-radius: 8px; margin-top: 10px;">
-                        <p style="font-size: 14px; text-align: left;">
-                            **Ngân hàng:** Vietcombank  <br>
-                            **STK:** **0978 1234 5678** <br>
-                            **Chủ TK:** Ban Quản Lý Chung Cư BlueMoon <br>
-                            **Nội dung:** HD<span th:text="${hoaDon.maHoaDon}"></span>.<span th:text="${user.cccd}"></span>
-                        </p>
+                    <div class="pdf-container">
+                        <embed th:src="@{/resident/invoice/preview/{id}(id=${hoaDon.maHoaDon})}" 
+                               type="application/pdf" 
+                               class="pdf-viewer" />
+                        
+                        <noembed>
+                            Trình duyệt của bạn không hỗ trợ xem PDF. 
+                            <a th:href="@{/resident/export/invoice/{id}/pdf(id=${hoaDon.maHoaDon})}">Tải xuống tại đây</a>.
+                        </noembed>
                     </div>
-                    
-                    <p style="margin-top: 15px; font-size: 12px; color: #6B7280;">
-                        Sau khi chuyển khoản, bộ phận Kế toán sẽ xác nhận giao dịch trong vòng 1-2 giờ làm việc.
-                    </p>
                 </div>
 
-                <div th:unless="${hoaDon.trangThai?.name() == 'chua_thanh_toan' || hoaDon.trangThai?.name() == 'qua_han' || hoaDon.trangThai?.name() == 'cho_xac_nhan'}" style="text-align: center; padding: 20px;">
-                    <p style="color: #059669; font-weight: 700;"><i class="fas fa-check-circle"></i> Hóa đơn này đã được <span th:text="${hoaDon.trangThai?.dbValue}">thanh toán</span>.</p>
-                </div>
-                <div class="export-buttons">
-                    <h4 style="color: #4F46E5; margin-bottom: 15px;"><i class="fas fa-download"></i> Xuất Thông Tin Hóa Đơn</h4>
-                    <a th:href="@{/resident/export/invoice/{maHoaDon}(maHoaDon=${hoaDon.maHoaDon})}" class="btn-export btn-export-excel">
-                        <i class="fas fa-file-excel"></i> Xuất Excel
-                    </a>
-                    <a th:href="@{/resident/export/invoice/{maHoaDon}/pdf(maHoaDon=${hoaDon.maHoaDon})}" class="btn-export btn-export-pdf">
-                        <i class="fas fa-file-pdf"></i> Xuất PDF
-                    </a>
+                <div style="flex: 1; min-width: 300px;">
+                    
+                    <div class="content-card" style="background-color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: sticky; top: 20px;">
+                        <h3 style="color: #4F46E5; margin-top: 0;"><i class="fas fa-receipt"></i> Thông Tin Thanh Toán</h3>
+                        <hr style="margin: 15px 0; border-top: 1px dashed #e5e7eb;">
+                        
+                        <div style="margin-bottom: 15px;">
+                            <p style="margin: 5px 0; color: #6b7280; font-size: 14px;">Tổng tiền phải trả:</p>
+                            <p style="font-size: 24px; font-weight: bold; color: #DC2626; margin: 0;" 
+                               th:text="${#numbers.formatDecimal(hoaDon.soTien, 0, 'COMMA', 0, 'POINT')} + ' ₫'">
+                                500,000 ₫
+                            </p>
+                        </div>
+
+                        <div style="margin-bottom: 20px;">
+                            <span class="status-badge" 
+                                  th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : 
+                                                  (hoaDon.trangThai?.name() == 'cho_xac_nhan' ? 'badge-info' : 
+                                                  (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning'))}"
+                                  th:text="${hoaDon.trangThai?.dbValue}">
+                                Chưa thanh toán
+                            </span>
+                        </div>
+
+                        <div th:if="${hoaDon.trangThai?.name() == 'chua_thanh_toan' || hoaDon.trangThai?.name() == 'qua_han'}">
+                            <form th:action="@{/resident/fee-pay}" method="post">
+                                <input type="hidden" name="maHoaDon" th:value="${hoaDon.maHoaDon}">
+                                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 12px; font-size: 16px; background-color: #4F46E5; color: white; border: none; border-radius: 8px; cursor: pointer;">
+                                    <i class="fas fa-credit-card"></i> Thanh Toán Ngay
+                                </button>
+                            </form>
+                            <p style="margin-top: 10px; font-size: 12px; color: #6b7280; text-align: center;">
+                                <i class="fas fa-info-circle"></i> Nhấn để xác nhận chuyển khoản.
+                            </p>
+                        </div>
+
+                        <div th:if="${hoaDon.trangThai?.name() == 'cho_xac_nhan'}" style="background: #EFF6FF; padding: 15px; border-radius: 8px; border: 1px solid #BFDBFE;">
+                            <h4 style="margin: 0 0 10px 0; font-size: 14px; color: #1E40AF;">Thông tin chuyển khoản:</h4>
+                            <p style="font-size: 13px; margin: 0; line-height: 1.6;">
+                                <b>Bank:</b> Vietcombank<br>
+                                <b>STK:</b> 0978 1234 5678<br>
+                                <b>Chủ TK:</b> BQL BlueMoon<br>
+                                <b>ND:</b> HD<span th:text="${hoaDon.maHoaDon}"></span>.<span th:text="${user.cccd}"></span>
+                            </p>
+                        </div>
+
+                        <hr style="margin: 20px 0; border-top: 1px solid #e5e7eb;">
+
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <a th:href="@{/resident/export/invoice/{id}(id=${hoaDon.maHoaDon})}" class="btn-export btn-export-excel" style="text-align: center; justify-content: center;">
+                                <i class="fas fa-file-excel"></i> Tải Excel
+                            </a>
+                            <a th:href="@{/resident/export/invoice/{id}/pdf(id=${hoaDon.maHoaDon})}" class="btn-export btn-export-pdf" style="text-align: center; justify-content: center;">
+                                <i class="fas fa-file-pdf"></i> Tải PDF
+                            </a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -713,6 +714,36 @@ public String handleBatchPayment(@RequestParam(value = "selectedIds", required =
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_PDF);
             headers.setContentDispositionFormData("attachment", "BaoCao_HoaDon_CuDan_" + System.currentTimeMillis() + ".pdf");
+            
+            return ResponseEntity.ok()
+                    .headers(headers)
+                    .body(pdfData);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    /**
+     * API: Xem trước hóa đơn PDF (Inline Preview)
+     * URL: /resident/invoice/preview/{maHoaDon}
+     */
+    @GetMapping("/resident/invoice/preview/{maHoaDon}")
+    public ResponseEntity<byte[]> previewInvoicePdf(@PathVariable Integer maHoaDon) {
+        try {
+            // Lấy dữ liệu chi tiết hóa đơn
+            List<InvoiceReportDTO> invoice = reportService.getInvoiceDetailReport(maHoaDon);
+            
+            if (invoice.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            // Tạo file PDF từ Service (Sử dụng hàm exportInvoicesToPdf hiện có)
+            byte[] pdfData = exportService.exportInvoicesToPdf(invoice);
+            
+            // Trả về với header INLINE để trình duyệt hiển thị luôn
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            // Quan trọng: "inline" giúp hiển thị trên trình duyệt, "attachment" là tải về
+            headers.setContentDisposition(ContentDisposition.inline().filename("HoaDon_" + maHoaDon + ".pdf").build());
             
             return ResponseEntity.ok()
                     .headers(headers)

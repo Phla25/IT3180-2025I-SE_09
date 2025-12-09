@@ -253,32 +253,90 @@ public class ExportService {
         } catch(Exception e) { throw new IOException(e); }
     }
 
-    @SuppressWarnings("ConvertToTryWithResources")
+    @SuppressWarnings({ "ConvertToTryWithResources", "resource" })
     public byte[] exportInvoicesToPdf(List<InvoiceReportDTO> invoices) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try {
             PdfWriter writer = new PdfWriter(baos);
             PdfDocument pdfDoc = new PdfDocument(writer);
-            Document document = new Document(pdfDoc);
+            Document document = new Document(pdfDoc, PageSize.A4);
+            document.setMargins(30, 30, 30, 30);
+
+            // Giả sử chỉ in 1 hóa đơn chi tiết (lấy phần tử đầu tiên nếu list có 1)
+            // Nếu list nhiều hóa đơn thì lặp, ở đây tối ưu cho view chi tiết 1 hóa đơn
+            if (invoices.isEmpty()) return null;
+            InvoiceReportDTO inv = invoices.get(0);
+
+            // --- HEADER ---
+            Table headerTable = new Table(UnitValue.createPercentArray(new float[]{1, 1}));
+            headerTable.setWidth(UnitValue.createPercentValue(100));
             
-            document.add(new Paragraph("BAO CAO DANH SACH HOA DON").setTextAlignment(TextAlignment.CENTER).setBold().setFontSize(18));
+            // Bên trái: Thông tin công ty/BQL
+            Cell leftHeader = new Cell().add(new Paragraph("BAN QUẢN LÝ CHUNG CƯ BLUEMOON").setBold().setFontSize(16).setFontColor(com.itextpdf.kernel.colors.ColorConstants.BLUE))
+                                        .add(new Paragraph("Địa chỉ: 123 Đường ABC, Quận XYZ, TP. Hà Nội").setFontSize(10))
+                                        .add(new Paragraph("Hotline: 1900 1234 - Email: support@bluemoon.vn").setFontSize(10))
+                                        .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+            
+            // Bên phải: Số hóa đơn & Ngày
+            Cell rightHeader = new Cell().add(new Paragraph("HÓA ĐƠN TIỀN DỊCH VỤ").setBold().setFontSize(18).setTextAlignment(TextAlignment.RIGHT))
+                                         .add(new Paragraph("Số: HD-" + inv.getMaHoaDon()).setFontSize(12).setTextAlignment(TextAlignment.RIGHT))
+                                         .add(new Paragraph("Ngày: " + formatDateTime(inv.getNgayTao())).setFontSize(10).setTextAlignment(TextAlignment.RIGHT))
+                                         .setBorder(com.itextpdf.layout.borders.Border.NO_BORDER);
+            
+            headerTable.addCell(leftHeader);
+            headerTable.addCell(rightHeader);
+            document.add(headerTable);
+            
             document.add(new Paragraph("\n"));
             
-            Table table = new Table(UnitValue.createPercentArray(new float[]{1, 2, 2, 2, 2, 2}));
-            table.setWidth(UnitValue.createPercentValue(100));
+            // --- THÔNG TIN KHÁCH HÀNG ---
+            Table customerTable = new Table(UnitValue.createPercentArray(new float[]{1}));
+            customerTable.setWidth(UnitValue.createPercentValue(100));
+            customerTable.addCell(new Cell().add(new Paragraph("THÔNG TIN KHÁCH HÀNG").setBold().setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.LIGHT_GRAY)));
             
-            String[] headers = {"Ma HD", "Ten Ho", "Loai HD", "So Tien", "Trang Thai", "Ngay Tao"};
-            for(String h : headers) table.addHeaderCell(new Cell().add(new Paragraph(h).setBold()));
+            String customerInfo = "Chủ hộ/Người nhận: " + toString(inv.getChuHo()) + "\n" +
+                                  "Căn hộ/Mã hộ: " + toString(inv.getTenHo()) + " (" + toString(inv.getMaHo()) + ")\n" +
+                                  "Loại phí: " + toString(inv.getLoaiHoaDon());
             
-            for(InvoiceReportDTO i : invoices) {
-                table.addCell(String.valueOf(i.getMaHoaDon()));
-                table.addCell(toString(i.getTenHo()));
-                table.addCell(toString(i.getLoaiHoaDon()));
-                table.addCell(toString(i.getSoTien()));
-                table.addCell(toString(i.getTrangThai()));
-                table.addCell(formatDateTime(i.getNgayTao()));
-            }
-            document.add(table);
+            customerTable.addCell(new Cell().add(new Paragraph(customerInfo)).setPadding(10));
+            document.add(customerTable);
+            
+            document.add(new Paragraph("\n"));
+
+            // --- CHI TIẾT THANH TOÁN (TABLE) ---
+            Table itemTable = new Table(UnitValue.createPercentArray(new float[]{1, 4, 2}));
+            itemTable.setWidth(UnitValue.createPercentValue(100));
+            
+            // Header
+            itemTable.addHeaderCell(new Cell().add(new Paragraph("STT").setBold()).setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.GRAY));
+            itemTable.addHeaderCell(new Cell().add(new Paragraph("Nội dung thu").setBold()).setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.GRAY));
+            itemTable.addHeaderCell(new Cell().add(new Paragraph("Thành tiền (VNĐ)").setBold()).setBackgroundColor(com.itextpdf.kernel.colors.ColorConstants.GRAY).setTextAlignment(TextAlignment.RIGHT));
+            
+            // Data Row (Chỉ có 1 dòng chính)
+            itemTable.addCell(new Cell().add(new Paragraph("1")).setTextAlignment(TextAlignment.CENTER));
+            itemTable.addCell(new Cell().add(new Paragraph("Thanh toán " + toString(inv.getLoaiHoaDon()) + " tháng " + inv.getNgayTao().getMonthValue() + "/" + inv.getNgayTao().getYear())));
+            itemTable.addCell(new Cell().add(new Paragraph(String.format("%,.0f", inv.getSoTien()))).setTextAlignment(TextAlignment.RIGHT));
+            
+            // Footer Row (Tổng cộng)
+            itemTable.addCell(new Cell(1, 2).add(new Paragraph("TỔNG CỘNG").setBold()).setTextAlignment(TextAlignment.RIGHT));
+            itemTable.addCell(new Cell().add(new Paragraph(String.format("%,.0f", inv.getSoTien()))).setBold().setTextAlignment(TextAlignment.RIGHT));
+            
+            document.add(itemTable);
+            
+            document.add(new Paragraph("\n"));
+            
+            // --- FOOTER CHỮ KÝ ---
+            Table signTable = new Table(UnitValue.createPercentArray(new float[]{1, 1}));
+            signTable.setWidth(UnitValue.createPercentValue(100));
+            
+            signTable.addCell(new Cell().add(new Paragraph("Người lập phiếu\n(Ký, họ tên)").setTextAlignment(TextAlignment.CENTER).setItalic()).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            signTable.addCell(new Cell().add(new Paragraph("Người nộp tiền\n(Ký, họ tên)").setTextAlignment(TextAlignment.CENTER).setItalic()).setBorder(com.itextpdf.layout.borders.Border.NO_BORDER));
+            
+            document.add(signTable);
+            
+            // Note cuối
+            document.add(new Paragraph("\n\nCảm ơn quý khách đã sử dụng dịch vụ của BlueMoon!").setTextAlignment(TextAlignment.CENTER).setItalic().setFontSize(10));
+
             document.close();
             return baos.toByteArray();
         } catch(Exception e) { throw new IOException(e); }

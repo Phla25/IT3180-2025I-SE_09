@@ -224,6 +224,15 @@
                     <div th:unless="${apartment != null}" class="alert alert-warning">
                         Hộ gia đình này chưa được gán căn hộ chính nào.
                     </div>
+                    <div th:if="${household.trangThai.name() == 'hoat_dong'}" style="margin-top: 15px; text-align: right;">
+                        <form th:action="@{/admin/household-dissolve}" method="post" 
+                              onsubmit="return confirm('CẢNH BÁO CỰC KỲ NGHIÊM TRỌNG:\n\nBạn đang thực hiện GIẢI THỂ hộ gia đình này.\n- Tất cả thành viên sẽ bị set trạng thái Rời đi.\n- Căn hộ sẽ được trả lại trạng thái Trống.\n- Hộ gia đình sẽ chuyển sang trạng thái Giải thể.\n\nBạn có chắc chắn muốn tiếp tục?');">
+                            <input type="hidden" name="maHo" th:value="${household.maHo}">
+                            <button type="submit" class="btn-action" style="background-color: #DC2626; color: white; padding: 8px 15px; border-radius: 6px; border: none; cursor: pointer;">
+                                <i class="fas fa-ban"></i> Giải Thể Hộ (Rời đi)
+                            </button>
+                        </form>
+                    </div>
                 </div>
 
                 <div class="detail-section" style="border-bottom: none; padding-bottom: 0;">
@@ -261,14 +270,35 @@
                                 </td>
                                 <td th:text="${member.id.ngayBatDau} ? ${#temporals.format(member.id.ngayBatDau, 'dd/MM/yyyy')} : 'N/A'">01/01/2023</td>
                                 <td>
-                                    <a th:if="${!member.laChuHo}" th:href="@{/admin/household-change-owner(maHo=${household.maHo})}" class="btn-action" title="Chuyển làm Chủ Hộ" 
+                                    <a th:if="${!member.laChuHo}" 
+                                       th:href="@{/admin/household-change-owner(maHo=${household.maHo})}" 
+                                       class="btn-action" 
+                                       title="Chuyển làm Chủ Hộ" 
                                        onclick="return confirm('Bạn có chắc chắn muốn chuyển Chủ hộ sang người này không?')">
                                         <i class="fas fa-user-tie"></i>
                                     </a>
-                                    <a th:if="${!member.laChuHo}" href="#" class="btn-action-small" title="Rút hộ" 
-                                       onclick="return confirm('Bạn có chắc chắn muốn xóa thành viên này khỏi hộ không?')">
-                                        <i class="fas fa-user-times"></i>
-                                    </a>
+
+                                    <th:block th:if="${!member.laChuHo}">
+                                        <form th:if="${!member.laChuHo}" 
+                                          th:id="'removeForm-' + ${member.doiTuong.cccd}" 
+                                          th:action="@{/admin/household-member-remove}" 
+                                          method="post" 
+                                          style="display: inline;">
+    
+                                            <input type="hidden" name="maHo" th:value="${household.maHo}">
+                                            <input type="hidden" name="cccdThanhVien" th:value="${member.doiTuong.cccd}">
+                                            <input type="hidden" name="lyDo" value="chuyen_di">
+
+                                            <button type="button" 
+                                                class="btn-action-small" 
+                                                title="Rút hộ" 
+                                                style="border: none; background: transparent; cursor: pointer;"
+                                                th:data-form-id="'removeForm-' + ${member.doiTuong.cccd}"
+                                                onclick="if(confirm('Bạn có chắc chắn muốn xóa thành viên này khỏi hộ không?')) { document.getElementById(this.getAttribute('data-form-id')).submit(); }">
+                                                <i class="fas fa-user-times"></i>
+                                            </button>
+                                        </form>
+                                    </th:block>
                                 </td>
                             </tr>
                         </tbody>

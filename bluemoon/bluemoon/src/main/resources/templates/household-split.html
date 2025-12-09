@@ -10,7 +10,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* CSS cũ giữ nguyên */
         .form-card { background-color: white; border-radius: 12px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); padding: 30px; margin-top: 20px; max-width: 900px; margin-left: auto; margin-right: auto; }
         .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
         .feature-badge { background: linear-gradient(45deg, #FF6B6B, #4ECDC4); color: white; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 8px; margin-left: auto; animation: pulse 2s infinite; }        
@@ -164,33 +163,39 @@
             document.querySelector('.main-content').classList.toggle('shifted');
             document.querySelector('.header').classList.toggle('shifted');
         }
-        document.querySelector('.user-menu').addEventListener('click', function() {
-            this.querySelector('.dropdown-menu').classList.toggle('show');
-        });
-        document.addEventListener('click', function(e) {
-            if (!e.target.closest('.user-menu')) {
-                document.querySelectorAll('.dropdown-menu').forEach(menu => {
-                    menu.classList.remove('show');
-                });
-            }
-        });
         
         // === LOGIC CASCADING DROPDOWN (TÒA -> TẦNG -> CĂN) ===
         
         // 1. Load danh sách Tòa khi trang tải xong
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔍 Bắt đầu load danh sách tòa nhà...');
+            
             fetch('/admin/api/buildings')
-                .then(res => res.json())
+                .then(res => {
+                    console.log('✅ Response status:', res.status);
+                    return res.json();
+                })
                 .then(data => {
+                    console.log('📦 Dữ liệu tòa nhà:', data);
+                    
                     const select = document.getElementById('buildingSelect');
+                    if (!select) {
+                        console.error('❌ Không tìm thấy element #buildingSelect');
+                        return;
+                    }
+                    
                     data.forEach(b => {
                         let opt = document.createElement('option');
                         opt.value = b;
                         opt.text = "Tòa " + b;
                         select.add(opt);
                     });
+                    
+                    console.log('✅ Đã load', data.length, 'tòa nhà');
                 })
-                .catch(err => console.error("Lỗi tải tòa nhà:", err));
+                .catch(err => {
+                    console.error("❌ Lỗi tải tòa nhà:", err);
+                });
         });
 
         // 2. Khi chọn Tòa -> Load Tầng
@@ -198,6 +203,8 @@
             const building = document.getElementById('buildingSelect').value;
             const floorSelect = document.getElementById('floorSelect');
             const aptSelect = document.getElementById('apartmentSelect');
+            
+            console.log('🏢 Đã chọn tòa:', building);
             
             // Reset dropdown con
             floorSelect.innerHTML = '<option value="">-- Tầng --</option>';
@@ -209,6 +216,8 @@
                 fetch(`/admin/api/floors?building=${building}`)
                     .then(res => res.json())
                     .then(data => {
+                        console.log('📦 Tầng của tòa', building + ':', data);
+                        
                         data.forEach(f => {
                             let opt = document.createElement('option');
                             opt.value = f;
@@ -216,7 +225,8 @@
                             floorSelect.add(opt);
                         });
                         floorSelect.disabled = false;
-                    });
+                    })
+                    .catch(err => console.error('❌ Lỗi load tầng:', err));
             }
         }
 
@@ -226,6 +236,8 @@
             const floor = document.getElementById('floorSelect').value;
             const aptSelect = document.getElementById('apartmentSelect');
 
+            console.log('🏠 Đã chọn tầng:', floor);
+
             aptSelect.innerHTML = '<option value="">-- Chọn Căn Hộ Mới --</option>';
             aptSelect.disabled = true;
 
@@ -233,6 +245,8 @@
                 fetch(`/admin/api/apartments?building=${building}&floor=${floor}`)
                     .then(res => res.json())
                     .then(data => {
+                        console.log('📦 Căn hộ trống:', data);
+                        
                         if (data.length === 0) {
                             let opt = document.createElement('option');
                             opt.text = "Hết căn trống";
@@ -240,13 +254,14 @@
                         } else {
                             data.forEach(apt => {
                                 let opt = document.createElement('option');
-                                opt.value = apt.maTaiSan; // Gửi mã tài sản (maCanHoLienKet)
+                                opt.value = apt.maTaiSan;
                                 opt.text = `${apt.tenTaiSan} (${apt.dienTich} m²)`;
                                 aptSelect.add(opt);
                             });
                             aptSelect.disabled = false;
                         }
-                    });
+                    })
+                    .catch(err => console.error('❌ Lỗi load căn hộ:', err));
             }
         }
     </script>

@@ -117,7 +117,8 @@ public class AdminController {
 
         // 2. Thống kê số liệu tổng quan (Cards)
         model.addAttribute("tongCuDan", cuDanService.layDanhSachCuDan().size());
-        model.addAttribute("tongHoGiaDinh", hoGiaDinhDAO.countAll());
+        Long tongHoGiaDinh = hoGiaDinhDAO.countActiveHouseholds();
+        model.addAttribute("tongHoGiaDinh", tongHoGiaDinh);
         
         long suCoChuaXuLy = suCoDAO.countByTrangThai(IncidentStatus.moi_tiep_nhan);
         long suCoDangXuLy = suCoDAO.countByTrangThai(IncidentStatus.dang_xu_ly);
@@ -272,31 +273,43 @@ public class AdminController {
     }
 
     /**
-     * XỬ LÝ XÓA MỀM (Chuyển đi/Mất)
-     * Đường dẫn: /admin/resident-delete
-     * Phương thức: POST (hoặc GET đơn giản)
+     * XỬ LÝ XÓA MỀM / CẬP NHẬT TRẠNG THÁI CƯ DÂN
+     * URL: /admin/resident-delete
      */
-    @GetMapping("/resident-delete") // Dùng GET cho đơn giản với link href/redirect
+    @GetMapping("/resident-delete") 
+    @SuppressWarnings("CallToPrintStackTrace")
     public String deleteResident(@RequestParam String cccd, 
-                             @RequestParam ResidentStatus lyDo, 
-                             RedirectAttributes redirectAttributes) {
+                                 @RequestParam ResidentStatus lyDo, 
+                                 RedirectAttributes redirectAttributes) {
         try {
-            // Kiểm tra lý do hợp lệ (chỉ chấp nhận roi_di hoặc da_chet)
-            if (lyDo != ResidentStatus.roi_di && lyDo != ResidentStatus.da_chet) {
-             throw new IllegalArgumentException("Lý do xóa không hợp lệ.");
-            }
-        
-            cuDanService.xoaCuDan(cccd, lyDo);
+            // 1. Cập nhật trạng thái trong bảng DoiTuong (Cư dân)
+            cuDanService.xoaCuDan(cccd, lyDo); 
 
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Đã cập nhật trạng thái cư dân " + cccd + " thành công (Lý do: " + lyDo.getDbValue() + ").");
+            String message = "";
+
+            if (null == lyDo) {
+                message = "Đã cập nhật trạng thái cư dân thành công.";
+            } 
+            else             // 2. Gọi Service xử lý biến động hộ khẩu
+                message = switch (lyDo) {
+                case da_chet -> hoGiaDinhService.xuLyBienDongThanhVien(cccd, TerminationReason.qua_doi);
+                case roi_di -> hoGiaDinhService.xuLyBienDongThanhVien(cccd, TerminationReason.chuyen_di);
+                default -> "Đã cập nhật trạng thái cư dân thành công.";
+            }; // Trường hợp Qua Đời -> Lý do kết thúc là qua_doi
+            // Trường hợp Rời Đi -> Lý do kết thúc là chuyen_ho
+            // Logic: Rời đi cũng cắt khẩu và kiểm tra giải thể y hệt Qua đời
+            
+
+            redirectAttributes.addFlashAttribute("successMessage", message);
 
         } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi xóa cư dân: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
         }
         return "redirect:/admin/resident-list";
     }
-    // Trong AdminController.java
 
     // 1. GET: Hiển thị Form với Dữ liệu Cũ
     @GetMapping("/resident-edit")
@@ -612,6 +625,7 @@ public class AdminController {
         
         return "household-details"; 
     }
+    
     /**
      * HIỂN THỊ FORM TÁCH HỘ (GET)
      * Đường dẫn: /admin/household-split
@@ -760,10 +774,11 @@ public class AdminController {
      */
     @PostMapping("/household-change-owner")
     public String handleChangeChuHo(@RequestParam("maHo") String maHo,
+                                    @RequestParam("quanHeVoiChuHoMoi") String quanHeVoiChuHoMoi,
                                      @RequestParam("cccdChuHoMoi") String cccdChuHoMoi,
                                      RedirectAttributes redirectAttributes) {
         try {
-            hoGiaDinhService.capNhatChuHo(maHo, cccdChuHoMoi);
+            hoGiaDinhService.capNhatChuHo(maHo, cccdChuHoMoi, quanHeVoiChuHoMoi);
         
             redirectAttributes.addFlashAttribute("successMessage", 
                 "Đã chuyển Chủ hộ cho Hộ " + maHo + " thành công (CCCD mới: " + cccdChuHoMoi + ").");
@@ -827,6 +842,75 @@ public class AdminController {
         model.addAttribute("assetStatuses", BlueMoon.bluemoon.utils.AssetStatus.values());
 
         return "apartment-list-admin"; 
+    }
+    /**
+     * XỬ LÝ XÓA THÀNH VIÊN (POST)
+     * URL: /admin/household-member-remove
+     */
+    @PostMapping("/household-member-remove")
+    public String handleRemoveMember(@RequestParam("maHo") String maHo,
+                                     @RequestParam("cccdThanhVien") String cccdThanhVien,
+                                     @RequestParam("lyDo") String lyDoStr,
+                                     RedirectAttributes redirectAttributes) {
+        try {
+            // Chuyển string lý do sang Enum
+            BlueMoon.bluemoon.utils.TerminationReason lyDo = 
+                BlueMoon.bluemoon.utils.TerminationReason.valueOf(lyDoStr);
+
+            // Gọi Service
+            hoGiaDinhService.xoaThanhVienKhoiHo(cccdThanhVien, lyDo);
+
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Đã xóa thành viên CCCD " + cccdThanhVien + " khỏi hộ thành công.");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi khi xóa thành viên: " + e.getMessage());
+        }
+        
+        // Quay lại trang chi tiết hộ
+        return "redirect:/admin/household-detail?maHo=" + maHo;
+    }
+    /**
+     * XỬ LÝ GIẢI THỂ HỘ GIA ĐÌNH (Toàn bộ rời đi)
+     * URL: POST /admin/household-dissolve
+     */
+    @PostMapping("/household-dissolve")
+    public String handleDissolveHousehold(@RequestParam("maHo") String maHo,
+                                          @RequestParam(value = "lyDo", defaultValue = "Chuyển đi nơi khác") String lyDo,
+                                          RedirectAttributes redirectAttributes) {
+        try {
+            hoGiaDinhService.giaiTheHoGiaDinh(maHo, lyDo);
+            redirectAttributes.addFlashAttribute("successMessage", "Đã giải thể Hộ gia đình " + maHo + " thành công.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi giải thể: " + e.getMessage());
+            return "redirect:/admin/household-detail?maHo=" + maHo;
+        }
+        return "redirect:/admin/household-list";
+    }
+    /**
+     * XỬ LÝ BÁO TỬ (Thành viên mất)
+     * URL: POST /admin/household-member-death
+     */
+    @PostMapping("/household-member-death")
+    public String handleMemberDeath(@RequestParam("maHo") String maHo,
+                                    @RequestParam("cccd") String cccd,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            hoGiaDinhService.baoTuThanhVien(cccd);
+            
+            // Kiểm tra lại xem hộ còn hoạt động không để redirect đúng chỗ
+            HoGiaDinh hgd = hoGiaDinhService.getHouseholdById(maHo).orElse(null);
+            if (hgd != null && hgd.getTrangThai() == HouseholdStatus.giai_the) {
+                redirectAttributes.addFlashAttribute("warningMessage", 
+                    "Đã ghi nhận báo tử. Vì đây là thành viên cuối cùng, Hộ gia đình đã được GIẢI THỂ.");
+                return "redirect:/admin/household-list";
+            }
+
+            redirectAttributes.addFlashAttribute("successMessage", "Đã cập nhật trạng thái 'Qua đời' cho thành viên.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi báo tử: " + e.getMessage());
+        }
+        return "redirect:/admin/household-detail?maHo=" + maHo;
     }
 
     /**
@@ -1236,6 +1320,7 @@ public class AdminController {
      * URL: /admin/fee-save
      */
     @PostMapping("/fee-save")
+    @SuppressWarnings("CallToPrintStackTrace")
     public String handleSaveFee(@ModelAttribute("hoaDon") HoaDon hoaDon,
                                 @RequestParam(value = "maHo", required = false) String maHo,
                                 @RequestParam(value = "nguoiDangKyCccd", required = false) String nguoiDangKyCccd,
@@ -1346,7 +1431,7 @@ public class AdminController {
     /**
      * Admin delete: URL: /admin/fee-delete (Tái sử dụng logic Service)
      */
-    @PostMapping("/fee-delete")
+    @GetMapping("/fee-remove-action")
     public String handleAdminDeleteFee(@RequestParam("id") Integer maHoaDon, 
                                   RedirectAttributes redirectAttributes) {
         try {
@@ -2135,6 +2220,7 @@ public class AdminController {
     // 5. MỚI: API Cập nhật trạng thái sự cố (Dùng cho Modal)
     @org.springframework.web.bind.annotation.PutMapping("/incidents/update/{id}")
     @org.springframework.web.bind.annotation.ResponseBody 
+    @SuppressWarnings("CallToPrintStackTrace")
     public ResponseEntity<?> updateIncidentStatus(@PathVariable Integer id, 
                                                   @RequestBody Map<String, String> payload) {
         try {
@@ -2203,6 +2289,7 @@ public class AdminController {
      * URL: /admin/entry-exit-import
      */
     @PostMapping("/entry-exit-import")
+    @SuppressWarnings("CallToPrintStackTrace")
     public String handleImportEntryExit(@RequestParam("file") MultipartFile file,
                                         RedirectAttributes redirectAttributes) {
         if (file.isEmpty()) {

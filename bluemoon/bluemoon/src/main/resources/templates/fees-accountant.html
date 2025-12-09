@@ -262,15 +262,13 @@
                                             </button>
                                         </form>
 
-                                        <form th:action="@{/accountant/fee-delete}" method="post" style="display: inline;"
-                                              th:if="${hoaDon.trangThai?.name() != 'da_thanh_toan'}"> 
-                                            <input type="hidden" name="id" th:value="${hoaDon.maHoaDon}">
-                                            <button type="submit" th:onclick="|return confirm('Xóa hóa đơn #' + ${hoaDon.maHoaDon} + '?')|" 
-                                                    class="btn-action text-danger" title="Xóa" 
-                                                    style="border: none; background: none; cursor: pointer;">
-                                                <i class="fas fa-trash"></i>
-                                            </button>
-                                        </form>
+                                        <a th:if="${hoaDon.trangThai?.name() != 'da_thanh_toan'}"
+                                               th:href="@{/accountant/fee-remove-action(id=${hoaDon.maHoaDon})}" 
+                                               class="btn-action text-danger" 
+                                               title="Xóa"
+                                               onclick="return confirm('Xác nhận XÓA hóa đơn này? Hành động không thể hoàn tác.')">
+                                            <i class="fas fa-trash"></i>
+                                        </a>
                                     </td>
                                 </tr>
                                 <tr th:if="${#lists.isEmpty(hoaDonList)}">

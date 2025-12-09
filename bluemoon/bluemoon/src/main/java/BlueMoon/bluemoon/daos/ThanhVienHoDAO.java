@@ -91,4 +91,26 @@ public class ThanhVienHoDAO {
                             .getSingleResult()
                             .intValue();
     }
+
+    public long countActiveByHoGiaDinh(String maHo) {
+        String jpql = "SELECT COUNT(tvh) FROM ThanhVienHo tvh WHERE tvh.hoGiaDinh.maHo = :maHo AND tvh.ngayKetThuc IS NULL";
+        Long count = entityManager.createQuery(jpql, Long.class)
+                                  .setParameter("maHo", maHo)
+                                  .getSingleResult();
+        return count != null ? count : 0;
+    }
+    public Long countNotChuHoByHoGiaDinh(String maHo) {
+        String jpql = "SELECT COUNT(tvh) FROM ThanhVienHo tvh WHERE tvh.hoGiaDinh.maHo = :maHo AND tvh.laChuHo = false AND tvh.ngayKetThuc IS NULL";
+        Long count = entityManager.createQuery(jpql, Long.class)
+                                  .setParameter("maHo", maHo)
+                                  .getSingleResult();
+        return count != null ? count : 0;
+    }
+
+    public HoGiaDinh findHoByThanhVienHo(String cccd) {
+        String jpql = "SELECT tvh.hoGiaDinh FROM ThanhVienHo tvh WHERE tvh.doiTuong.cccd = :cccd AND tvh.ngayKetThuc IS NULL";
+        return entityManager.createQuery(jpql, HoGiaDinh.class)
+                            .setParameter("cccd", cccd)
+                            .getSingleResult();
+    }
 }

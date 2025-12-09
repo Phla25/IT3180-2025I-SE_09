@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import BlueMoon.bluemoon.entities.HoGiaDinh;
+import BlueMoon.bluemoon.utils.HouseholdStatus;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.transaction.Transactional;
@@ -43,8 +44,8 @@ public class HoGiaDinhDAO {
      * Đếm tổng số hộ gia đình đang hoạt động
      */
     public Long countActiveHouseholds() {
-        String jpql = "SELECT COUNT(hgd) FROM HoGiaDinh hgd WHERE hgd.dangHoatDong = true";
-        Long count = entityManager.createQuery(jpql, Long.class).getSingleResult();
+        String jpql = "SELECT COUNT(hgd) FROM HoGiaDinh hgd WHERE hgd.trangThai =: trangThai";
+        Long count = entityManager.createQuery(jpql, Long.class).setParameter("trangThai", HouseholdStatus.hoat_dong).getSingleResult();
         return count != null ? count : 0;
     }
     /**

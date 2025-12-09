@@ -18,6 +18,7 @@ import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.TaiSanChungCu;
 import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.entities.ThanhVienHoID;
+import BlueMoon.bluemoon.utils.AccountStatus;
 import BlueMoon.bluemoon.utils.AssetStatus;
 import BlueMoon.bluemoon.utils.HouseholdStatus;
 import BlueMoon.bluemoon.utils.TerminationReason;
@@ -140,35 +141,49 @@ public class HoGiaDinhService {
      */
     @Transactional
     public ThanhVienHo themThanhVien(String maHo, String cccdThanhVien, Boolean laChuHo, String quanHe, TerminationReason lyDoKetThuc) {
+        // 1. Kiểm tra dữ liệu đầu vào
         HoGiaDinh hgd = hoGiaDinhDAO.findById(maHo)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình với Mã Hộ: " + maHo));
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình đích: " + maHo));
+            
         DoiTuong doiTuong = doiTuongDAO.findResidentByCccd(cccdThanhVien)
-                                   .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy cư dân với CCCD: " + cccdThanhVien));
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy cư dân với CCCD: " + cccdThanhVien));
 
-        // 1. Kiểm tra và kết thúc mối quan hệ cũ (nếu có)
-        thanhVienHoDAO.findCurrentByCccd(cccdThanhVien).ifPresent(thanhVienCu -> {
-            thanhVienCu.setNgayKetThuc(LocalDate.now());
-            thanhVienCu.setLyDoKetThuc(lyDoKetThuc);
-            thanhVienHoDAO.save(thanhVienCu);
-        });
+        // 2. Kiểm tra trạng thái hiện tại của người này
+        Optional<ThanhVienHo> tvhCuOpt = thanhVienHoDAO.findCurrentByCccd(cccdThanhVien);
+        
+        if (tvhCuOpt.isPresent()) {
+            ThanhVienHo tvhCu = tvhCuOpt.get();
+            
+            // Nếu người này đang ở hộ khác
+            if (!tvhCu.getHoGiaDinh().getMaHo().equals(maHo)) {
+                // >>> CHẶN TUYỆT ĐỐI <<<
+                throw new IllegalStateException("Cư dân này đang thuộc hộ gia đình: " 
+                    + tvhCu.getHoGiaDinh().getTenHo() 
+                    + " (Mã: " + tvhCu.getHoGiaDinh().getMaHo() + "). "
+                    + "Vui lòng thực hiện thủ tục Rút Hộ (Xóa thành viên) khỏi hộ cũ trước khi thêm vào hộ mới.");
+            } else {
+                throw new IllegalArgumentException("Thành viên này ĐÃ CÓ trong hộ gia đình này rồi.");
+            }
+        }
 
-        // 2. Tạo ID mới và Entity ThanhVienHo mới
+        // 3. Nếu chưa thuộc hộ nào (tvhCuOpt rỗng) -> Tạo quan hệ mới
         @SuppressWarnings("rawtypes")
         ThanhVienHoID id = new ThanhVienHoID(cccdThanhVien, LocalDate.now());
         ThanhVienHo tvh = new ThanhVienHo(id, doiTuong, hgd, laChuHo, quanHe);
-        ThanhVienHo savedTvh = thanhVienHoDAO.save(tvh);
-        return savedTvh;
+        
+        return thanhVienHoDAO.save(tvh);
     }
 
     /**
      * Cập nhật Chủ hộ mới. Đảm bảo Chủ hộ cũ bị set `laChuHo = false`.
      */
     @Transactional
-    public void capNhatChuHo(String maHo, String cccdChuHoMoi) {
+    public void capNhatChuHo(String maHo, String cccdChuHoMoi, String quanHeVoiChuHo) {
         // 1. Tìm Chủ hộ hiện tại và hạ cấp
         thanhVienHoDAO.findCurrentChuHoByHo(maHo).ifPresent(chuHoCu -> {
             if (!chuHoCu.getDoiTuong().getCccd().equals(cccdChuHoMoi)) {
                 chuHoCu.setLaChuHo(false);
+                chuHoCu.setQuanHeVoiChuHo(quanHeVoiChuHo);
                 thanhVienHoDAO.save(chuHoCu);
             }
         });
@@ -197,21 +212,34 @@ public class HoGiaDinhService {
         ThanhVienHo tvh = thanhVienHoDAO.findCurrentByCccd(cccdThanhVien)
             .orElseThrow(() -> new IllegalArgumentException("Thành viên không thuộc Hộ gia đình nào."));
         
-        // KHÔNG được xóa nếu là Chủ hộ và hộ vẫn còn thành viên khác
-        if (tvh.getLaChuHo() && hoGiaDinhDAO.countMembersInHousehold(tvh.getHoGiaDinh().getMaHo()) > 1) {
-             throw new IllegalStateException("Không thể xóa Chủ hộ khi hộ còn thành viên khác. Vui lòng chuyển Chủ hộ trước.");
+        String maHo = tvh.getHoGiaDinh().getMaHo();
+        
+        // 1. Kiểm tra logic Chủ hộ
+        if (tvh.getLaChuHo()) {
+            // Đếm số thành viên ĐANG HOẠT ĐỘNG còn lại trong hộ
+            long soThanhVienConLai = thanhVienHoDAO.countActiveByHoGiaDinh(maHo);
+            
+            if (soThanhVienConLai > 1) {
+                 throw new IllegalStateException("KHÔNG THỂ XÓA CHỦ HỘ: Hộ gia đình vẫn còn thành viên khác. Vui lòng chuyển quyền Chủ hộ cho người khác trước khi xóa.");
+            }
+            
+            // Nếu chỉ còn 1 mình chủ hộ -> Cho phép xóa và đánh dấu hộ giải thể
+            HoGiaDinh hgd = tvh.getHoGiaDinh();
+            hgd.setTrangThai(HouseholdStatus.giai_the);
+            hoGiaDinhDAO.save(hgd);
+            
+            // Giải phóng căn hộ (nếu có) để người khác thuê
+            taiSanChungCuDAO.findApartmentByHo(maHo).ifPresent(canHo -> {
+                canHo.setHoGiaDinh(null);
+                canHo.setTrangThai(BlueMoon.bluemoon.utils.AssetStatus.hoat_dong); // Trả về trạng thái trống
+                taiSanChungCuDAO.save(canHo);
+            });
         }
 
+        // 2. Thực hiện xóa (kết thúc)
         tvh.setNgayKetThuc(LocalDate.now());
         tvh.setLyDoKetThuc(lyDo);
         thanhVienHoDAO.save(tvh);
-        
-        // Tùy chọn: Xử lý nếu người đó là Chủ hộ và là thành viên cuối cùng -> Đánh dấu hộ không hoạt động
-        if (tvh.getLaChuHo() && hoGiaDinhDAO.countMembersInHousehold(tvh.getHoGiaDinh().getMaHo()) == 1) {
-            HoGiaDinh hgd = tvh.getHoGiaDinh();
-            hgd.setTrangThai(HouseholdStatus.giai_the); // Đánh dấu hộ không hoạt động
-            hoGiaDinhDAO.save(hgd);
-        }
     }
 
     // =======================================================
@@ -228,60 +256,79 @@ public class HoGiaDinhService {
      * @return HoGiaDinh mới được tạo
      */
     @Transactional
-    public HoGiaDinh tachHo(String maHoCu, List<String> cccdThanhVienDuocTach, String chuHoMoiCccd, String tenHoMoi, Integer maTaiSan) { // <-- CẬP NHẬT
-        
+    public HoGiaDinh tachHo(String maHoCu, List<String> cccdThanhVienDuocTach, String chuHoMoiCccd, String tenHoMoi, Integer maTaiSan) {
+    
         // 1. Kiểm tra đầu vào
         if (!cccdThanhVienDuocTach.contains(chuHoMoiCccd)) {
             throw new IllegalArgumentException("Chủ hộ mới phải nằm trong danh sách thành viên được tách.");
         }
+    
+        @SuppressWarnings("unused")
         HoGiaDinh hgdCu = hoGiaDinhDAO.findById(maHoCu)
             .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình cũ."));
 
-        // 2. Tạo Hộ gia đình mới và Chủ hộ (Sử dụng hàm themHoGiaDinh mới)
-        HoGiaDinh hoMoi = new HoGiaDinh();
-        hoMoi.setTenHo(tenHoMoi);
-        // Gọi hàm themHoGiaDinh đã cập nhật (có gán căn hộ)
-        HoGiaDinh savedHoMoi = themHoGiaDinh(hoMoi, chuHoMoiCccd, "Chủ hộ", maTaiSan); // <-- GỌI HÀM CẬP NHẬT
-
-        // 3. Xử lý các thành viên còn lại được tách
+        // 2. 🚫 KHÔNG CHO PHÉP TÁCH CHỦ HỘ CŨ
+        Optional<ThanhVienHo> chuHoCuOpt = thanhVienHoDAO.findCurrentChuHoByHo(maHoCu);
+        if (chuHoCuOpt.isPresent()) {
+            String cccdChuHoCu = chuHoCuOpt.get().getDoiTuong().getCccd();
+            if (cccdThanhVienDuocTach.contains(cccdChuHoCu)) {
+                throw new IllegalArgumentException(
+                    "Không thể tách Chủ hộ cũ. Vui lòng chuyển Chủ hộ trước hoặc chỉ tách thành viên khác."
+                );
+            }
+        }
+    
+        // 3. Kết thúc mối quan hệ cũ của các thành viên được tách
         for (String cccd : cccdThanhVienDuocTach) {
-            // Chủ hộ mới đã được xử lý ở bước 2, ta chỉ cần xử lý các thành viên khác
-            if (cccd.equals(chuHoMoiCccd)) continue; 
-            
             Optional<ThanhVienHo> tvhCuOpt = thanhVienHoDAO.findCurrentByCccd(cccd);
-            
+
             if (tvhCuOpt.isPresent() && tvhCuOpt.get().getHoGiaDinh().getMaHo().equals(maHoCu)) {
                 ThanhVienHo tvhCu = tvhCuOpt.get();
-
-                // a) Kết thúc tư cách thành viên ở hộ cũ
                 tvhCu.setNgayKetThuc(LocalDate.now());
                 tvhCu.setLyDoKetThuc(TerminationReason.tach_ho);
                 thanhVienHoDAO.save(tvhCu);
+            }
+        }
 
-                // b) Thêm vào hộ mới (Giả định quan hệ là "Thành viên")
-                DoiTuong thanhVien = doiTuongDAO.findResidentByCccd(cccd)
-                                          .orElseThrow(() -> new RuntimeException("Lỗi dữ liệu: Không tìm thấy CCCD " + cccd));
-                
-                @SuppressWarnings("rawtypes")
-                ThanhVienHoID idMoi = new ThanhVienHoID(cccd, LocalDate.now());
-                ThanhVienHo tvhMoi = new ThanhVienHo(idMoi, thanhVien, savedHoMoi, false, "Thành viên");
-                thanhVienHoDAO.save(tvhMoi);
+        // 4. Tạo Hộ gia đình mới
+        HoGiaDinh hoMoi = new HoGiaDinh();
+        hoMoi.setMaHo(generateUniqueMaHo());
+        hoMoi.setTenHo(tenHoMoi);
+        hoMoi.setNgayThanhLap(LocalDate.now());
+        hoMoi.setTrangThai(HouseholdStatus.hoat_dong);
+        HoGiaDinh savedHoMoi = hoGiaDinhDAO.save(hoMoi);
+    
+        // 5. Gán căn hộ cho hộ mới (nếu có)
+        if (maTaiSan != null) {
+            TaiSanChungCu canHo = taiSanChungCuDAO.findByID(maTaiSan)
+                .orElseThrow(() -> new IllegalArgumentException("Mã Tài Sản Căn Hộ không hợp lệ."));
+
+            if (canHo.getHoGiaDinh() != null) {
+                throw new IllegalStateException("Căn hộ đã có chủ. Vui lòng chọn căn hộ khác.");
             }
-        }
-        
-        // 4. Kiểm tra và xử lý Chủ hộ cũ (nếu Chủ hộ cũ bị tách)
-        Optional<ThanhVienHo> chuHoCuOpt = thanhVienHoDAO.findCurrentChuHoByHo(maHoCu);
-        if (chuHoCuOpt.isPresent() && cccdThanhVienDuocTach.contains(chuHoCuOpt.get().getDoiTuong().getCccd())) {
-            
-            if (hoGiaDinhDAO.countMembersInHousehold(maHoCu) > 0) { // Nếu còn thành viên sau khi tách
-                 throw new IllegalStateException("Hộ cũ còn thành viên. Vui lòng chọn Chủ hộ mới cho Hộ cũ (" + maHoCu + ") trước khi tách Chủ hộ cũ.");
-            } else {
-                 // Nếu hộ cũ không còn ai, đánh dấu hộ cũ không hoạt động
-                 hgdCu.setTrangThai(HouseholdStatus.giai_the);
-                 hoGiaDinhDAO.save(hgdCu);
+            if (canHo.getLoaiTaiSan() != BlueMoon.bluemoon.utils.AssetType.can_ho) {
+                throw new IllegalArgumentException("Tài sản được chọn không phải là Căn Hộ.");
             }
-        }
         
+            canHo.setTrangThai(AssetStatus.da_duoc_thue);
+            canHo.setHoGiaDinh(savedHoMoi);
+            taiSanChungCuDAO.save(canHo);
+        }
+    
+        // 6. Thêm thành viên vào hộ mới
+        for (String cccd : cccdThanhVienDuocTach) {
+            DoiTuong thanhVien = doiTuongDAO.findResidentByCccd(cccd)
+                .orElseThrow(() -> new RuntimeException("Lỗi dữ liệu: Không tìm thấy CCCD " + cccd));
+        
+            boolean laChuHo = cccd.equals(chuHoMoiCccd);
+            String quanHe = laChuHo ? "Chủ hộ" : "Thành viên";
+        
+            @SuppressWarnings("rawtypes")
+            ThanhVienHoID idMoi = new ThanhVienHoID(cccd, LocalDate.now());
+            ThanhVienHo tvhMoi = new ThanhVienHo(idMoi, thanhVien, savedHoMoi, laChuHo, quanHe);
+            thanhVienHoDAO.save(tvhMoi);
+        }
+    
         return savedHoMoi;
     }
     /**
@@ -453,5 +500,138 @@ public class HoGiaDinhService {
             return "Tầng " + matcher.group(1);
         }
         return null;
+    }
+    // =======================================================
+    // 5. GIẢI THỂ HỘ GIA ĐÌNH (MỚI)
+    // =======================================================
+
+    /**
+     * Trường hợp 1: Giải thể toàn bộ hộ (Ví dụ: Cả hộ chuyển đi nơi khác)
+     * - Kết thúc tất cả thành viên.
+     * - Trả căn hộ về trạng thái trống.
+     * - Đổi trạng thái hộ sang 'giai_the'.
+     */
+    @Transactional
+    public void giaiTheHoGiaDinh(String maHo, String lyDoChiTiet) {
+        HoGiaDinh hgd = hoGiaDinhDAO.findById(maHo)
+            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình: " + maHo));
+
+        // 1. Kết thúc tất cả thành viên đang hoạt động
+        List<ThanhVienHo> activeMembers = thanhVienHoDAO.findActiveByMaHo(maHo);
+        for (ThanhVienHo tvh : activeMembers) {
+            tvh.setNgayKetThuc(LocalDate.now());
+            // Nếu lý do không được truyền, mặc định là chuyển hộ
+            tvh.setLyDoKetThuc(TerminationReason.chuyen_di); 
+            thanhVienHoDAO.save(tvh);
+            
+            // Cập nhật trạng thái Cư dân thành "Rời đi" (nếu chưa chết)
+            DoiTuong cuDan = tvh.getDoiTuong();
+            if (cuDan.getTrangThaiDanCu() != BlueMoon.bluemoon.utils.ResidentStatus.da_chet) {
+                cuDan.setTrangThaiDanCu(BlueMoon.bluemoon.utils.ResidentStatus.roi_di);
+                doiTuongDAO.save(cuDan);
+            }
+        }
+
+        // 2. Trả Căn hộ (nếu có)
+        taiSanChungCuDAO.findApartmentByHo(maHo).ifPresent(canHo -> {
+            canHo.setHoGiaDinh(null);
+            canHo.setTrangThai(BlueMoon.bluemoon.utils.AssetStatus.hoat_dong); // Trạng thái 'Trống'
+            taiSanChungCuDAO.save(canHo);
+        });
+
+        // 3. Cập nhật trạng thái Hộ
+        hgd.setTrangThai(HouseholdStatus.giai_the);
+        // Có thể lưu lý do vào ghi chú
+        String ghiChuCu = hgd.getGhiChu() != null ? hgd.getGhiChu() : "";
+        hgd.setGhiChu(ghiChuCu + " | [Đã giải thể ngày " + LocalDate.now() + ": " + lyDoChiTiet + "]");
+        
+        hoGiaDinhDAO.save(hgd);
+    }
+
+    /**
+     * Trường hợp 2: Báo tử thành viên.
+     * - Nếu là người cuối cùng -> Tự động giải thể hộ.
+     */
+    @Transactional
+    public void baoTuThanhVien(String cccd) {
+        // 1. Tìm thành viên
+        ThanhVienHo tvh = thanhVienHoDAO.findCurrentByCccd(cccd)
+            .orElseThrow(() -> new IllegalArgumentException("Không Thấy Thành Viên"));
+
+        // 2. Cập nhật trạng thái Cư dân -> Đã chết
+        DoiTuong cuDan = tvh.getDoiTuong();
+        cuDan.setTrangThaiDanCu(BlueMoon.bluemoon.utils.ResidentStatus.da_chet);
+        doiTuongDAO.save(cuDan);
+
+        // 3. Kết thúc quan hệ thành viên
+        tvh.setNgayKetThuc(LocalDate.now());
+        tvh.setLyDoKetThuc(TerminationReason.qua_doi);
+        thanhVienHoDAO.save(tvh);
+        HoGiaDinh hgd = tvh.getHoGiaDinh();
+        String maHo = hgd.getMaHo();
+        // 4. Kiểm tra xem còn ai trong hộ không?
+        long soThanhVienConLai = thanhVienHoDAO.countActiveByHoGiaDinh(maHo);
+
+        if (soThanhVienConLai == 0) {
+            // Nếu không còn ai -> Giải thể hộ luôn
+            giaiTheHoGiaDinh(maHo, "Tự động giải thể do thành viên cuối cùng đã qua đời.");
+        } else if (tvh.getLaChuHo()) {
+            // Nếu còn người nhưng người chết là Chủ hộ -> Yêu cầu chuyển chủ hộ (hoặc xử lý logic tạm thời)
+            // Ở đây ta có thể ném Exception nhắc nhở hoặc tự động gán người khác (tùy nghiệp vụ)
+            // Hiện tại ta để hộ tồn tại nhưng không có chủ hộ active (cần Admin vào sửa thủ công)
+        }
+    }
+// =======================================================
+    // XỬ LÝ BIẾN ĐỘNG (CHẾT HOẶC RỜI ĐI) TỪ DANH SÁCH CƯ DÂN
+    // =======================================================
+
+    /**
+     * Hàm xử lý chung khi Admin set trạng thái cư dân là "Đã chết" hoặc "Rời đi".
+     * @param cccd CCCD của người bị đổi trạng thái
+     * @param lyDoKetThuc Lý do kết thúc trong bảng ThanhVienHo (qua_doi hoặc chuyen_ho)
+     */
+    @Transactional
+    public String xuLyBienDongThanhVien(String cccd, TerminationReason lyDoKetThuc) {
+        // 1. Tìm xem người này đang ở hộ nào
+        Optional<ThanhVienHo> tvhOpt = thanhVienHoDAO.findCurrentByCccd(cccd);
+
+        if (tvhOpt.isEmpty()) {
+            return "Đã cập nhật trạng thái cư dân (Người này không thuộc hộ gia đình nào).";
+        }
+
+        ThanhVienHo tvh = tvhOpt.get();
+        String maHo = tvh.getHoGiaDinh().getMaHo();
+        String tenCuDan = tvh.getDoiTuong().getHoVaTen();
+
+        // 2. Kết thúc tư cách thành viên của người này trong hộ
+        tvh.setNgayKetThuc(LocalDate.now());
+        tvh.setLyDoKetThuc(lyDoKetThuc);
+        tvh.setLaChuHo(false);
+        thanhVienHoDAO.save(tvh);
+        Optional<DoiTuong> doiTuong = doiTuongDAO.findByCccd(cccd);
+        DoiTuong dt = doiTuong.get();
+        dt.setLaCuDan(false);
+        dt.setTrangThaiTaiKhoan(AccountStatus.tam_ngung);
+        doiTuongDAO.save(dt);
+        // 3. Kiểm tra số thành viên CÒN LẠI trong hộ
+        long soThanhVienConLai = thanhVienHoDAO.countActiveByHoGiaDinh(maHo);
+
+        if (soThanhVienConLai == 0) {
+            // TRƯỜNG HỢP 1: Hết người -> Tự động giải thể
+            String lyDoGiaiThe = (lyDoKetThuc == TerminationReason.qua_doi) 
+                ? "Tự động giải thể do thành viên cuối cùng qua đời." 
+                : "Tự động giải thể do thành viên cuối cùng rời đi.";
+                
+            giaiTheHoGiaDinh(maHo, lyDoGiaiThe);
+            
+            return "Cư dân " + tenCuDan + " là thành viên cuối cùng. Hộ gia đình " + maHo + " đã được TỰ ĐỘNG GIẢI THỂ.";
+        } else {
+            // TRƯỜNG HỢP 2: Vẫn còn người
+            if (tvh.getLaChuHo()) {
+                return "Cảnh báo: " + tenCuDan + " là CHỦ HỘ. Vui lòng vào chi tiết hộ để chuyển quyền chủ hộ cho thành viên khác.";
+            } else {
+                return "Đã cập nhật danh sách thành viên hộ " + maHo + ".";
+            }
+        }
     }
 }
