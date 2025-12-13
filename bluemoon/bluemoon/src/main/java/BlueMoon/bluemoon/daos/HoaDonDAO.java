@@ -2,6 +2,7 @@ package BlueMoon.bluemoon.daos;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,6 +13,7 @@ import BlueMoon.bluemoon.entities.HoGiaDinh;
 import BlueMoon.bluemoon.entities.HoaDon;
 import BlueMoon.bluemoon.utils.InvoiceStatus;
 import BlueMoon.bluemoon.utils.InvoiceType;
+import BlueMoon.bluemoon.utils.UserRole;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.NoResultException;
 import jakarta.persistence.Query;
@@ -150,21 +152,26 @@ public class HoaDonDAO {
     }
 
     /**
-     * [CHUẨN] TÍNH TỔNG CHI (EXPENSE)
-     * Logic: Hóa đơn KHÔNG thuộc về Hộ gia đình nào (ma_ho IS NULL).
-     * Đây là các khoản chi hoạt động do BQT tạo.
+     * [SỬA LẠI] TÍNH TỔNG CHI (EXPENSE)
+     * Logic: Dựa hoàn toàn vào VAI TRÒ của người tạo (nguoiDangKyDichVu).
+     * Nếu người tạo là ADMIN hoặc KẾ TOÁN -> Đây là khoản CHI.
      */
     public BigDecimal sumTongChiByDateRange(InvoiceStatus status, LocalDateTime start, LocalDateTime end) {
+        // JOIN bảng DoiTuong (u) qua nguoiDangKyDichVu
         String jpql = "SELECT SUM(h.soTien) FROM HoaDon h " +
+                      "JOIN h.nguoiDangKyDichVu u " + 
                       "WHERE h.trangThai = :status " +
                       "AND h.ngayThanhToan BETWEEN :start AND :end " +
-                      "AND h.hoGiaDinh IS NULL"; // <--- Quan trọng: Không có hộ
+                      "AND u.vaiTro IN (:adminRoles)"; // Chỉ lấy người có quyền quản trị
         
+        List<UserRole> adminRoles = Arrays.asList(UserRole.ban_quan_tri, UserRole.ke_toan);
+
         try {
             BigDecimal sum = entityManager.createQuery(jpql, BigDecimal.class)
                     .setParameter("status", status)
                     .setParameter("start", start)
                     .setParameter("end", end)
+                    .setParameter("adminRoles", adminRoles)
                     .getSingleResult();
             return sum != null ? sum : BigDecimal.ZERO;
         } catch (NoResultException e) {
@@ -173,21 +180,26 @@ public class HoaDonDAO {
     }
 
     /**
-     * [CHUẨN] TÍNH TỔNG THU (REVENUE)
-     * Logic: Hóa đơn CÓ gắn với Hộ gia đình (ma_ho IS NOT NULL).
-     * Đây là tiền cư dân đóng.
+     * [SỬA LẠI] TÍNH TỔNG THU (REVENUE)
+     * Logic: Ngược lại với Chi.
+     * Người tạo là CƯ DÂN hoặc NULL (Hệ thống tự tạo định kỳ).
      */
     public BigDecimal sumTongThuByDateRange(InvoiceStatus status, LocalDateTime start, LocalDateTime end) {
+        // LEFT JOIN để lấy cả trường hợp nguoiDangKyDichVu là NULL
         String jpql = "SELECT SUM(h.soTien) FROM HoaDon h " +
+                      "LEFT JOIN h.nguoiDangKyDichVu u " +
                       "WHERE h.trangThai = :status " +
                       "AND h.ngayThanhToan BETWEEN :start AND :end " +
-                      "AND h.hoGiaDinh IS NOT NULL"; // <--- Quan trọng: Có hộ
+                      "AND u.vaiTro IN (:residentRoles)"; // Không phải Admin/Kế toán
         
+        List<UserRole> residentRoles = Arrays.asList(UserRole.khong_dung_he_thong, UserRole.nguoi_dung_thuong);
+
         try {
             BigDecimal sum = entityManager.createQuery(jpql, BigDecimal.class)
                     .setParameter("status", status)
                     .setParameter("start", start)
                     .setParameter("end", end)
+                    .setParameter("residentRoles", residentRoles)
                     .getSingleResult();
             return sum != null ? sum : BigDecimal.ZERO;
         } catch (NoResultException e) {
