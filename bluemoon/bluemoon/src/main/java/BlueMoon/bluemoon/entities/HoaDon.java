@@ -8,6 +8,7 @@ import org.hibernate.annotations.DynamicUpdate;
 
 import BlueMoon.bluemoon.utils.InvoiceStatus;
 import BlueMoon.bluemoon.utils.InvoiceType;
+import BlueMoon.bluemoon.utils.UserRole;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -20,6 +21,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 
 @Entity
 @Table(name = "hoa_don")
@@ -33,7 +35,7 @@ public class HoaDon {
 
     // Liên kết với hộ gia đình
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "ma_ho", nullable = false)
+    @JoinColumn(name = "ma_ho", nullable = true)
     private HoGiaDinh hoGiaDinh;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -224,5 +226,16 @@ public class HoaDon {
     @PreUpdate
     public void preUpdate() {
         this.ngayCapNhat = LocalDateTime.now();
+    }
+    @Transient
+    public boolean isPhieuChi() {
+        return this.nguoiDangKyDichVu != null && 
+               (this.nguoiDangKyDichVu.getVaiTro() == UserRole.ban_quan_tri || 
+                this.nguoiDangKyDichVu.getVaiTro() == UserRole.ke_toan);
+    }
+
+    @Transient
+    public String getLoaiGiaoDichHienThi() {
+        return isPhieuChi() ? "PHIẾU CHI" : "PHIẾU THU";
     }
 }

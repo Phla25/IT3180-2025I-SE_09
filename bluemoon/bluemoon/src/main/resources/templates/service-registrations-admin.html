@@ -3,32 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Đăng Ký Dịch Vụ - Admin - BlueMoon Portal</title>
+    <title>Quản Lý Đăng Ký Dịch Vụ - Admin</title>
     
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .feature-badge {
-            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-            color: white;
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 8px;
-            margin-left: auto;
-            animation: pulse 2s infinite;
-        }        
-        .status-badge {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: 600;
+        /* ... (Giữ nguyên các style cũ) ... */
+        .feature-badge { background: linear-gradient(45deg, #FF6B6B, #4ECDC4); color: white; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 8px; margin-left: auto; animation: pulse 2s infinite; }        
+        .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
+        .badge-success { background-color: #D1FAE5; color: #065F46; } /* Đã Duyệt */
+        .badge-warning { background-color: #FEF3C7; color: #B45309; } /* Chờ Duyệt */
+        .badge-danger { background-color: #FEE2E2; color: #991B1B; } /* Từ Chối */
+
+        /* --- CSS CHO MODAL (POPUP) --- */
+        .modal {
+            display: none; position: fixed; z-index: 1000; left: 0; top: 0;
+            width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.5);
         }
-        .badge-success { background-color: #D1FAE5; color: #065F46; }
-        .badge-warning { background-color: #FEF3C7; color: #B45309; }
-        .badge-danger { background-color: #FEE2E2; color: #991B1B; }
+        .modal-content {
+            background-color: #fefefe; margin: 5% auto; padding: 25px; border-radius: 10px;
+            width: 50%; max-width: 600px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+            position: relative; animation: slideDown 0.3s ease-out;
+        }
+        .close {
+            color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;
+            position: absolute; right: 20px; top: 15px;
+        }
+        .close:hover { color: black; }
+        
+        /* Style cho nội dung chi tiết */
+        .detail-row { display: flex; justify-content: space-between; border-bottom: 1px solid #f3f4f6; padding: 12px 0; }
+        .detail-label { font-weight: 600; color: #4B5563; }
+        .detail-value { font-weight: 500; color: #111827; text-align: right; }
+        
+        .modal-actions { margin-top: 25px; display: flex; justify-content: flex-end; gap: 10px; padding-top: 20px; border-top: 1px solid #e5e7eb; }
+        .btn-approve { background-color: #10B981; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        .btn-reject { background-color: #EF4444; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+        
+        @keyframes slideDown { from {transform: translateY(-50px); opacity: 0;} to {transform: translateY(0); opacity: 1;} }
     </style>
 </head>
 <body>
@@ -112,17 +125,15 @@
 
     <main class="main-content">
         <div class="container">
-            <h1>Quản Lý Đăng Ký Dịch Vụ</h1>
-
-            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Thông báo thành công</div>
-            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
             <div class="content-card">
                 <div class="table-container">
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Mã ĐK</th>
+                                <th>Mã</th>
                                 <th>Dịch Vụ</th>
                                 <th>Người Đăng Ký</th>
                                 <th>Ngày ĐK</th>
@@ -132,24 +143,30 @@
                         </thead>
                         <tbody>
                             <tr th:each="reg : ${allRegistrations}">
-                                <td th:text="${reg.maDangKy}">1</td>
-                                <td><strong th:text="${reg.dichVu?.tenDichVu}">Phí Gửi Xe Máy</strong></td>
+                                <td th:text="'#' + ${reg.maDangKy}">#1</td>
+                                <td><strong style="color: #2563EB;" th:text="${reg.dichVu?.tenDichVu}">Gửi Xe</strong></td>
                                 <td>
-                                    <span th:text="${reg.nguoiDung?.hoVaTen}">Nguyễn Văn A</span>
-                                    <span style="color: #6B7280;">(<span th:text="${reg.nguoiDung?.cccd}">1234</span>)</span>
+                                    <div th:text="${reg.nguoiDung?.hoVaTen}">Nguyen A</div>
+                                    <small style="color: #6B7280;" th:text="${reg.nguoiDung?.cccd}">0123...</small>
                                 </td>
-                                <td th:text="${#temporals.format(reg.ngayDangKy, 'dd/MM/yyyy HH:mm')}">10/10/2025</td>
+                                <td th:text="${#temporals.format(reg.ngayDangKy, 'dd/MM/yyyy HH:mm')}"></td>
                                 <td>
-                                    <span class="status-badge" th:text="${reg.trangThai?.getDescription()}">Chờ Duyệt</span>
+                                    <span class="status-badge"
+                                          th:classappend="${reg.trangThai?.name() == 'da_duyet' ? 'badge-success' : (reg.trangThai?.name() == 'tu_choi' ? 'badge-danger' : 'badge-warning')}"
+                                          th:text="${reg.trangThai?.getDescription() ?: reg.trangThai}">
+                                        Chờ Duyệt
+                                    </span>
                                 </td>
                                 <td>
-                                    <a href="#" class="btn-action" title="Xem Chi Tiết">
+                                    <button class="btn-action" title="Xem & Xử Lý" 
+                                            th:onclick="'openDetailModal(' + ${reg.maDangKy} + ')'"
+                                            style="background: none; border: none; cursor: pointer; color: #3B82F6; font-size: 1.1em;">
                                         <i class="fas fa-eye"></i>
-                                    </a>
+                                    </button>
                                 </td>
                             </tr>
                             <tr th:if="${#lists.isEmpty(allRegistrations)}">
-                                <td colspan="6" style="text-align: center; padding: 20px;">Không có yêu cầu đăng ký dịch vụ nào.</td>
+                                <td colspan="6" style="text-align: center; padding: 20px; color: #666;">Không có yêu cầu đăng ký nào.</td>
                             </tr>
                         </tbody>
                     </table>
@@ -157,10 +174,129 @@
             </div>
         </div>
     </main>
-    <footer class="footer">
-        <div class="footer-content">
-            <p>&copy; 2025 BlueMoon Apartment Management System. All rights reserved.</p>
+
+    <div id="registrationModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal()">&times;</span>
+            <h2 style="color: #1e3a8a; margin-top: 0; margin-bottom: 20px; border-bottom: 2px solid #E5E7EB; padding-bottom: 10px;">
+                Chi Tiết Đăng Ký
+            </h2>
+            
+            <div id="modalBody">
+                <div style="text-align: center; padding: 30px; color: #6B7280;">
+                    <i class="fas fa-spinner fa-spin fa-2x"></i><br>Đang tải dữ liệu...
+                </div>
+            </div>
         </div>
-    </footer>
+    </div>
+
+    <th:block th:fragment="detailContent">
+        <div th:if="${reg != null}">
+            <div class="detail-row">
+                <span class="detail-label">Mã Đăng Ký:</span>
+                <span class="detail-value" th:text="'#' + ${reg.maDangKy}"></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Dịch Vụ Yêu Cầu:</span>
+                <span class="detail-value" style="color: #2563EB; font-weight: bold;" th:text="${reg.dichVu?.tenDichVu}"></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Người Đăng Ký:</span>
+                <span class="detail-value">
+                    <span th:text="${reg.nguoiDung?.hoVaTen}"></span><br>
+                    <small style="color: #6B7280;" th:text="'CCCD: ' + ${reg.nguoiDung?.cccd}"></small>
+                </span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Thời Gian Gửi:</span>
+                <span class="detail-value" th:text="${#temporals.format(reg.ngayDangKy, 'dd/MM/yyyy HH:mm')}"></span>
+            </div>
+            <div class="detail-row">
+                <span class="detail-label">Ghi Chú Của Dân:</span>
+                <span class="detail-value" style="font-style: italic;" th:text="${reg.ghiChu ?: 'Không có'}"></span>
+            </div>
+
+            <div style="margin-top: 20px; background-color: #F9FAFB; padding: 20px; border-radius: 8px; border: 1px solid #E5E7EB;">
+                <form th:action="@{/admin/service-registrations/process}" method="post">
+                    <input type="hidden" name="maDangKy" th:value="${reg.maDangKy}">
+                    
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">
+                            <i class="fas fa-tasks"></i> Trạng Thái Xử Lý:
+                        </label>
+                        <select name="trangThai" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #D1D5DB; font-size: 14px; background-color: white;">
+                            <option value="cho_duyet" th:selected="${reg.trangThai?.name() == 'cho_duyet'}">⏳ Chờ Duyệt</option>
+                            <option value="da_duyet" th:selected="${reg.trangThai?.name() == 'da_duyet'}">✅ Đã Duyệt (Đang sử dụng)</option>
+                            <option value="tu_choi" th:selected="${reg.trangThai?.name() == 'tu_choi'}">⛔ Từ Chối</option>
+                            <option value="da_huy" th:selected="${reg.trangThai?.name() == 'da_huy'}">❌ Đã Hủy (Bởi người dùng)</option>
+                            <option value="da_ket_thuc" th:selected="${reg.trangThai?.name() == 'da_ket_thuc'}">🏁 Đã Kết Thúc</option>
+                        </select>
+                    </div>
+
+                    <div style="margin-bottom: 15px;">
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">
+                            <i class="fas fa-comment-alt"></i> Phản hồi / Ghi chú:
+                        </label>
+                        <textarea name="phanHoi" rows="3" 
+                                  style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #D1D5DB; font-family: inherit; box-sizing: border-box;" 
+                                  placeholder="Nhập ghi chú cho cư dân (nếu cần)..." 
+                                  th:text="${reg.ghiChu}"></textarea> </div>
+
+                    <div class="modal-actions" style="margin-top: 0; padding-top: 15px; border-top: 1px solid #E5E7EB;">
+                        <button type="button" onclick="closeModal()" style="padding: 10px 20px; background: #6B7280; color: white; border: none; border-radius: 6px; cursor: pointer; margin-right: 10px;">
+                            Đóng
+                        </button>
+                        <button type="submit" class="btn-approve" style="width: auto; justify-content: center;">
+                            <i class="fas fa-save"></i> Cập Nhật Trạng Thái
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <div th:unless="${reg != null}" style="color: red; text-align: center; padding: 20px;">
+            <i class="fas fa-exclamation-triangle"></i> Không tìm thấy dữ liệu!
+        </div>
+    </th:block>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('collapsed');
+            document.querySelector('.main-content').classList.toggle('shifted');
+            document.querySelector('.header').classList.toggle('shifted');
+        }
+
+        // --- Logic Modal ---
+        function openDetailModal(id) {
+            var modal = document.getElementById("registrationModal");
+            var body = document.getElementById("modalBody");
+            
+            // 1. Hiện khung modal
+            modal.style.display = "block";
+            // 2. Reset nội dung loading
+            body.innerHTML = '<div style="text-align: center; padding: 30px; color: #6B7280;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Đang tải dữ liệu...</div>';
+
+            // 3. Gọi AJAX về Server (Endpoint: /admin/service-registrations/detail/{id})
+            $.get("/admin/service-registrations/detail/" + id, function(data) {
+                // 4. Server trả về HTML fragment, nhúng vào body modal
+                body.innerHTML = data;
+            }).fail(function() {
+                body.innerHTML = '<div style="color: red; text-align: center; padding: 20px;"><i class="fas fa-exclamation-circle"></i> Lỗi kết nối đến máy chủ!</div>';
+            });
+        }
+
+        function closeModal() {
+            document.getElementById("registrationModal").style.display = "none";
+        }
+
+        // Đóng khi click ra ngoài vùng modal
+        window.onclick = function(event) {
+            var modal = document.getElementById("registrationModal");
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+    </script>
 </body>
 </html>

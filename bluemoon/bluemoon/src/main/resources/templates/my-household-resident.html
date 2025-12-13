@@ -103,8 +103,9 @@
             <a th:href="@{/resident/my-household}" class="nav-item active">
                 <i class="fas fa-home"></i> <span>Căn Hộ Của Tôi</span>
             </a>    
-            <a href="javascript:void(0)" class="nav-item" onclick="featureToggle('Báo Cáo Sự Cố', 'Nộp yêu cầu xử lý sự cố tại căn hộ hoặc khu vực chung.')">
-                <i class="fas fa-exclamation-triangle"></i> <span>Báo Cáo Sự Cố</span>
+            <a th:href="@{/resident/incidents}" class="nav-item">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Báo Cáo Sự Cố</span>
             </a>
             <a th:href="@{/resident/notifications}" class="nav-item">
                 <i class="fas fa-bell"></i> <span>Thông Báo</span>

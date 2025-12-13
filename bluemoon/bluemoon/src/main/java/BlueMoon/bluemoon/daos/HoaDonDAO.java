@@ -1,6 +1,7 @@
 package BlueMoon.bluemoon.daos;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -66,13 +67,11 @@ public class HoaDonDAO {
                     .setParameter("maHo", maHo)
                     .getResultList();
     }
+// [SỬA 1] Hàm findById: Dùng LEFT JOIN để tìm được cả Phiếu Chi (không có hộ)
     public Optional<HoaDon> findById(Integer maHoaDon) {
-        // Sử dụng Integer cho maHoaDon
         String jpql = "SELECT hd FROM HoaDon hd "
-                + "JOIN FETCH hd.hoGiaDinh h " 
-                // SỬA: Dùng tên thuộc tính mới cho Người tạo HĐ/Người đăng ký
+                + "LEFT JOIN FETCH hd.hoGiaDinh h " // <--- SỬA THÀNH LEFT JOIN
                 + "LEFT JOIN FETCH hd.nguoiDangKyDichVu ndkdv " 
-                // SỬA: Dùng tên thuộc tính mới cho Người Thanh Toán/Xác nhận
                 + "LEFT JOIN FETCH hd.nguoiThanhToan ntt "
                 + "WHERE hd.maHoaDon = :maHoaDon";
         try {
@@ -84,6 +83,26 @@ public class HoaDonDAO {
             return Optional.empty();
         }
     }
+
+    // [SỬA 2] Hàm lấy danh sách hiển thị cho Admin/Kế toán
+    public List<HoaDon> findAllWithDetails() {
+        String jpql = "SELECT hd FROM HoaDon hd "
+                    + "LEFT JOIN FETCH hd.hoGiaDinh h " // <--- SỬA THÀNH LEFT JOIN (Quan trọng nhất)
+                    + "LEFT JOIN FETCH hd.nguoiDangKyDichVu ndkdv " 
+                    + "LEFT JOIN FETCH hd.nguoiThanhToan ntt " 
+                    + "ORDER BY hd.ngayTao DESC";
+        return entityManager.createQuery(jpql, HoaDon.class).getResultList();
+    }
+    
+    // [SỬA 3] Hàm lọc theo trạng thái (nếu có dùng để hiển thị list)
+    public List<HoaDon> findByTrangThaiOrderByNgayTao(InvoiceStatus trangThai) {
+        String jpql = "SELECT hd FROM HoaDon hd "
+                    + "LEFT JOIN FETCH hd.hoGiaDinh h " // <--- SỬA THÀNH LEFT JOIN
+                    + "WHERE hd.trangThai = :trangThai ORDER BY hd.ngayTao DESC";
+        return entityManager.createQuery(jpql, HoaDon.class)
+            .setParameter("trangThai", trangThai)
+            .getResultList();
+    }
     public BigDecimal sumSoTienByTrangThai(InvoiceStatus trangThai) {
         String jpql = "SELECT SUM(hd.soTien) FROM HoaDon hd WHERE hd.trangThai = :trangThai";
         BigDecimal sum = entityManager.createQuery(jpql, BigDecimal.class)
@@ -94,15 +113,6 @@ public class HoaDonDAO {
     public List<HoaDon> findAllWithHoGiaDinh() {
         // Tái sử dụng phương thức findAllWithDetails mới
         return findAllWithDetails();
-    }
-    
-    // PHƯƠNG THỨC MỚI ĐỂ GIẢI QUYẾT LỖI BIÊN DỊCH
-    public List<HoaDon> findByTrangThaiOrderByNgayTao(InvoiceStatus trangThai) {
-        // Tạm thời sử dụng truy vấn đơn giản nhất
-        String jpql = "SELECT hd FROM HoaDon hd JOIN FETCH hd.hoGiaDinh h WHERE hd.trangThai = :trangThai ORDER BY hd.ngayTao DESC";
-        return entityManager.createQuery(jpql, HoaDon.class)
-            .setParameter("trangThai", trangThai)
-            .getResultList();
     }
     
     @SuppressWarnings("unchecked")
@@ -138,17 +148,50 @@ public class HoaDonDAO {
     public void delete(HoaDon hd) {
         entityManager.remove(hd);
     }
+
     /**
-     * CẬP NHẬT: Lấy tất cả hóa đơn với Fetch Join (Cho Admin/Kế toán)
-     * Đảm bảo tải: HoGiaDinh, NguoiDangKyDichVu, NguoiThanhToan
+     * [CHUẨN] TÍNH TỔNG CHI (EXPENSE)
+     * Logic: Hóa đơn KHÔNG thuộc về Hộ gia đình nào (ma_ho IS NULL).
+     * Đây là các khoản chi hoạt động do BQT tạo.
      */
-    public List<HoaDon> findAllWithDetails() {
-        String jpql = "SELECT hd FROM HoaDon hd "
-                    + "JOIN FETCH hd.hoGiaDinh h " 
-                    + "LEFT JOIN FETCH hd.nguoiDangKyDichVu ndkdv " // Người đăng ký dịch vụ/Người tạo hóa đơn
-                    + "LEFT JOIN FETCH hd.nguoiThanhToan ntt " // Người thanh toán/Xác nhận
-                    + "ORDER BY hd.ngayTao DESC";
-        return entityManager.createQuery(jpql, HoaDon.class).getResultList();
+    public BigDecimal sumTongChiByDateRange(InvoiceStatus status, LocalDateTime start, LocalDateTime end) {
+        String jpql = "SELECT SUM(h.soTien) FROM HoaDon h " +
+                      "WHERE h.trangThai = :status " +
+                      "AND h.ngayThanhToan BETWEEN :start AND :end " +
+                      "AND h.hoGiaDinh IS NULL"; // <--- Quan trọng: Không có hộ
+        
+        try {
+            BigDecimal sum = entityManager.createQuery(jpql, BigDecimal.class)
+                    .setParameter("status", status)
+                    .setParameter("start", start)
+                    .setParameter("end", end)
+                    .getSingleResult();
+            return sum != null ? sum : BigDecimal.ZERO;
+        } catch (NoResultException e) {
+            return BigDecimal.ZERO;
+        }
     }
-    
+
+    /**
+     * [CHUẨN] TÍNH TỔNG THU (REVENUE)
+     * Logic: Hóa đơn CÓ gắn với Hộ gia đình (ma_ho IS NOT NULL).
+     * Đây là tiền cư dân đóng.
+     */
+    public BigDecimal sumTongThuByDateRange(InvoiceStatus status, LocalDateTime start, LocalDateTime end) {
+        String jpql = "SELECT SUM(h.soTien) FROM HoaDon h " +
+                      "WHERE h.trangThai = :status " +
+                      "AND h.ngayThanhToan BETWEEN :start AND :end " +
+                      "AND h.hoGiaDinh IS NOT NULL"; // <--- Quan trọng: Có hộ
+        
+        try {
+            BigDecimal sum = entityManager.createQuery(jpql, BigDecimal.class)
+                    .setParameter("status", status)
+                    .setParameter("start", start)
+                    .setParameter("end", end)
+                    .getSingleResult();
+            return sum != null ? sum : BigDecimal.ZERO;
+        } catch (NoResultException e) {
+            return BigDecimal.ZERO;
+        }
+    }
 }

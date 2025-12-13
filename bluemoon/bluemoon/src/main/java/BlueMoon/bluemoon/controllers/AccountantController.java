@@ -1,6 +1,7 @@
 package BlueMoon.bluemoon.controllers;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -238,15 +239,21 @@ public class AccountantController {
     // [CẬP NHẬT] Xử lý lưu hóa đơn
     @PostMapping("/fee-save")
     public String handleFeeSave(@ModelAttribute("hoaDon") HoaDon hoaDon, 
-                                @RequestParam("maHo") String maHo, 
-                                @RequestParam(value = "nguoiDangKyCccd", required = false) String nguoiDangKyCccd, // <-- Tham số mới
+                                @RequestParam("maHo") String maHo, // Bắt buộc phải có vì là Phiếu Thu
+                                @RequestParam(value = "nguoiDangKyCccd", required = false) String nguoiDangKyCccd,
                                 Authentication auth,
                                 RedirectAttributes redirectAttributes) {
+        
         DoiTuong currentUser = getCurrentUser(auth);
+
         try {
-            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser); 
+            // [QUAN TRỌNG] Tham số cuối cùng là boolean isPhieuChi
+            // Ta truyền cứng là FALSE -> Kế toán chỉ được tạo Phiếu Thu (gắn với Hộ dân)
+            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser, false); 
+            
             redirectAttributes.addFlashAttribute("successMessage", "Lưu hóa đơn thành công!");
             return "redirect:/accountant/fees";
+
         } catch (IllegalArgumentException e) {
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
             return "redirect:/accountant/fee-form?id=" + (hoaDon.getMaHoaDon() != null ? hoaDon.getMaHoaDon() : "");
@@ -370,23 +377,6 @@ public class AccountantController {
         }
     
         return "redirect:/accountant/fees";
-    }
-    /**
-     * Báo Cáo Tài Chính (Financial Report) & Lịch Sử Giao Dịch
-     * URL: /accountant/reports/financial
-     */
-    @GetMapping("/reports/financial")
-    public String showFinancialReports(Model model, Authentication auth) {
-        model.addAttribute("user", getCurrentUser(auth));
-        
-        // Thống kê cơ bản
-        model.addAttribute("stats", hoaDonService.getAccountantStats());
-        
-        // Lịch sử giao dịch (Hóa đơn đã thanh toán)
-        List<HoaDon> paidInvoices = hoaDonService.getAllPaidHoaDon(); 
-        model.addAttribute("paidInvoices", paidInvoices);
-        
-        return "financial-report-accountant"; // Tên file Thymeleaf mới
     }
     
     // ========== EXPORT REPORTS ==========
@@ -516,5 +506,47 @@ public class AccountantController {
         } catch (IOException e) {
             return ResponseEntity.internalServerError().build();
         }
+    }
+    // =======================================================
+    // 1. BÁO CÁO TÀI CHÍNH (BIỂU ĐỒ & THỐNG KÊ)
+    // URL: /accountant/reports/financial
+    // =======================================================
+    @GetMapping("/reports/financial")
+    public String showFinancialReports(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        
+        // 1. Thống kê tổng quan (Cards)
+        HoaDonStatsDTO stats = hoaDonService.getAccountantStats();
+        model.addAttribute("stats", stats);
+        
+        // 2. Dữ liệu biểu đồ doanh thu 6 tháng (MỚI)
+        Map<String, BigDecimal> chartDataMap = hoaDonService.getMonthlyRevenueStats();
+        model.addAttribute("chartLabels", chartDataMap.keySet());
+        model.addAttribute("chartData", chartDataMap.values());
+        
+        return "financial-report-accountant"; // Trỏ đến file HTML mới
+    }
+
+    // =======================================================
+    // 2. LỊCH SỬ GIAO DỊCH (DANH SÁCH ĐÃ THANH TOÁN)
+    // URL: /accountant/history/transactions
+    // =======================================================
+    @GetMapping("/history/transactions")
+    public String showTransactionHistory(Model model, Authentication auth) {
+        model.addAttribute("user", getCurrentUser(auth));
+        
+        // Lấy tất cả hóa đơn đã thanh toán
+        List<HoaDon> paidInvoices = hoaDonService.getAllPaidHoaDon(); 
+        
+        // Sắp xếp: Mới nhất lên đầu (dựa theo ngày thanh toán)
+        paidInvoices.sort((h1, h2) -> {
+            if (h1.getNgayThanhToan() == null) return 1;
+            if (h2.getNgayThanhToan() == null) return -1;
+            return h2.getNgayThanhToan().compareTo(h1.getNgayThanhToan());
+        });
+        
+        model.addAttribute("transactions", paidInvoices);
+        
+        return "transaction-history-accountant"; // Trỏ đến file HTML mới
     }
 }

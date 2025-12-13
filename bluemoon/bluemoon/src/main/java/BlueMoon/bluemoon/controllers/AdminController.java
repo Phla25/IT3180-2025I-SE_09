@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.security.Principal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -123,8 +124,9 @@ public class AdminController {
         long suCoChuaXuLy = suCoDAO.countByTrangThai(IncidentStatus.moi_tiep_nhan);
         long suCoDangXuLy = suCoDAO.countByTrangThai(IncidentStatus.dang_xu_ly);
         model.addAttribute("suCoChuaXuLy", suCoChuaXuLy + suCoDangXuLy);
-        
-        BigDecimal tongThu = hoaDonDAO.sumSoTienByTrangThai(InvoiceStatus.da_thanh_toan);
+        LocalDateTime start = LocalDate.now().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime end = LocalDate.now().withDayOfMonth(LocalDate.now().lengthOfMonth()).atTime(23, 59, 59);
+        BigDecimal tongThu = hoaDonDAO.sumTongThuByDateRange(InvoiceStatus.da_thanh_toan, start, end);
         model.addAttribute("doanhThuThang", tongThu); 
 
         // 3. Thống kê tỷ lệ (Progress bars)
@@ -1324,13 +1326,14 @@ public class AdminController {
     public String handleSaveFee(@ModelAttribute("hoaDon") HoaDon hoaDon,
                                 @RequestParam(value = "maHo", required = false) String maHo,
                                 @RequestParam(value = "nguoiDangKyCccd", required = false) String nguoiDangKyCccd,
+                                @RequestParam(value = "isPhieuChi", defaultValue = "false") boolean isPhieuChi, // <--- THAM SỐ MỚI
                                 Authentication auth,
                                 RedirectAttributes redirectAttributes) {
         try {
             DoiTuong currentUser = getCurrentUser(auth); // Người thực hiện (Admin)
 
-            // Gọi Service để lưu (Logic đã có trong HoaDonService)
-            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser);
+            // Gọi Service để lưu (Logic đã có trong HoaDonService, cần cập nhật signature hàm này trong Service trước)
+            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser, isPhieuChi); // <--- TRUYỀN THAM SỐ MỚI
 
             redirectAttributes.addFlashAttribute("successMessage", "Lưu hóa đơn thành công!");
             return "redirect:/admin/fees";
@@ -1561,6 +1564,58 @@ public class AdminController {
         model.addAttribute("registrationStatuses", BlueMoon.bluemoon.utils.RegistrationStatus.values());
         
         return "service-registrations-admin"; // Trỏ đến file Thymeleaf mới
+    }
+    // =======================================================
+    // XỬ LÝ DUYỆT/TỪ CHỐI ĐĂNG KÝ DỊCH VỤ (AJAX & POST)
+    // =======================================================
+
+    /**
+     * 1. API Lấy chi tiết đăng ký (Trả về Fragment HTML cho Modal)
+     * URL: /admin/service-registrations/detail/{id}
+     */
+    @GetMapping("/service-registrations/detail/{id}")
+    public String getRegistrationDetail(@PathVariable Integer id, Model model) {
+        // Gọi Service lấy thông tin (Bạn cần đảm bảo Service đã có hàm getDangKyById)
+        Optional<DangKyDichVu> regOpt = dangKyDichVuService.getDangKyById(id);
+        
+        if (regOpt.isPresent()) {
+            model.addAttribute("reg", regOpt.get());
+        } else {
+            model.addAttribute("reg", null);
+        }
+        
+        // Trả về fragment "detailContent" nằm trong file service-registrations-admin.html
+        return "service-registrations-admin :: detailContent"; 
+    }
+
+    /**
+     * 2. Action Xử lý Duyệt hoặc Từ chối
+     * URL: /admin/service-registrations/process
+     */
+    // [CẬP NHẬT] Xử lý cập nhật trạng thái từ Dropdown
+    @PostMapping("/service-registrations/process")
+    @SuppressWarnings("CallToPrintStackTrace")
+    public String processRegistration(@RequestParam("maDangKy") Integer maDangKy,
+                                      @RequestParam("trangThai") String trangThaiStr, // Nhận chuỗi từ select box
+                                      @RequestParam(value = "phanHoi", required = false) String phanHoi,
+                                      RedirectAttributes redirectAttributes) {
+        try {
+            // 1. Convert chuỗi sang Enum
+            BlueMoon.bluemoon.utils.RegistrationStatus status = 
+                BlueMoon.bluemoon.utils.RegistrationStatus.valueOf(trangThaiStr);
+
+            // 2. Gọi Service xử lý
+            dangKyDichVuService.xuLyDangKy(maDangKy, status, phanHoi);
+            
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Cập nhật trạng thái đăng ký #" + maDangKy + " thành: " + status.getDescription());
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi xử lý: " + e.getMessage());
+        }
+
+        return "redirect:/admin/service-registrations";
     }
         // ========== EXPORT REPORTS ==========
     

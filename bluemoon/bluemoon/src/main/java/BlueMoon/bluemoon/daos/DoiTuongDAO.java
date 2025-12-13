@@ -213,7 +213,7 @@ public class DoiTuongDAO {
 	}
 
 	public Optional<DoiTuong> findByEmailandCccd(String cccd, String email) {
-		String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.email = :email ORDER BY ho_va_ten ASC";
+		String jpql = "SELECT d FROM DoiTuong d WHERE d.cccd = :cccd AND d.email = :email";
 		try {
 			DoiTuong doiTuong = entityManager.createQuery(jpql, DoiTuong.class).setParameter("cccd", cccd)
 					.setParameter("email", email).getSingleResult();

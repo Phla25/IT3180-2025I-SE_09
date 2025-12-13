@@ -9,69 +9,16 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        .feature-badge {
-            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
-            color: white;
-            font-size: 10px;
-            font-weight: 600;
-            padding: 2px 6px;
-            border-radius: 8px;
-            margin-left: auto;
-            animation: pulse 2s infinite;
-        }        
-        .form-group {
-            margin-bottom: 20px;
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #374151; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 10px; border: 1px solid #D1D5DB; border-radius: 8px; font-size: 14px; box-sizing: border-box;
         }
-        .form-group label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
-            color: #374151;
-        }
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #D1D5DB;
-            border-radius: 8px;
-            font-size: 14px;
-            box-sizing: border-box; /* Quan trọng để không bị vỡ layout */
-        }
-        .form-group textarea {
-            min-height: 100px;
-            resize: vertical;
-        }
-        .form-actions {
-            display: flex;
-            gap: 12px;
-            margin-top: 24px;
-            justify-content: flex-end;
-        }
-        .btn-save {
-            background-color: #10B981;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-        }
-        .btn-cancel {
-            background-color: #6B7280;
-            color: white;
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            text-decoration: none;
-            display: inline-block;
-        }
-        .spinner {
-            display: none;
-            margin-left: 10px;
-            color: #10B981;
-        }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .form-actions { display: flex; gap: 12px; margin-top: 24px; justify-content: flex-end; }
+        .btn-save { background-color: #10B981; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+        .btn-cancel { background-color: #6B7280; color: white; padding: 12px 24px; border: none; border-radius: 8px; font-weight: 600; text-decoration: none; display: inline-block; }
+        .spinner { display: none; margin-left: 10px; color: #10B981; }
     </style>
 </head>
 <body>
@@ -156,41 +103,54 @@
     <main class="main-content">
         <div class="container">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <a th:href="@{/admin/fees}" class="btn btn-secondary btn-sm">
+                <a th:href="@{/admin/fees}" class="btn-cancel" style="padding: 8px 16px; font-size: 14px;">
                     <i class="fas fa-arrow-left"></i> Quay lại
                 </a>
             </div>
 
-            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}">Thông báo thành công</div>
-            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}">Thông báo lỗi</div>
+            <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+            <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
 
             <div class="content-card">
                 <form th:action="@{/admin/fee-save}" method="post" th:object="${hoaDon}">
-                    <input type="hidden" th:field="*{maHoaDon}" th:if="${hoaDon.maHoaDon != null}" />
+                    <input type="hidden" th:field="*{maHoaDon}" />
                     
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         
-                        <div class="form-group">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="form-label">Loại Giao Dịch (*)</label>
+                            <div style="display: flex; gap: 20px;">
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                    <input type="radio" name="isPhieuChi" value="false" checked onclick="toggleMode(false)">
+                                    <span style="font-weight: bold; color: #10B981;">PHIẾU THU</span> (Thu từ cư dân)
+                                </label>
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                    <input type="radio" name="isPhieuChi" value="true" onclick="toggleMode(true)">
+                                    <span style="font-weight: bold; color: #EF4444;">PHIẾU CHI</span> (Chi hoạt động)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="householdSelectSection" class="form-group">
                             <label for="maHo"><i class="fas fa-home"></i> Hộ Gia Đình <span style="color: red;">*</span></label>
                             <select id="maHo" name="maHo" required="required" onchange="loadMembers(this.value)">
                                 <option value="">-- Chọn Hộ Gia Đình --</option>
-                                <option th:each="ho : ${allHo}" 
-                                        th:value="${ho.maHo}" 
+                                <option th:each="ho : ${allHo}"
+                                        th:value="${ho.maHo}"
                                         th:text="${ho.tenHo + ' (Mã: ' + ho.maHo + ')'}"
                                         th:selected="${hoaDon.hoGiaDinh != null and hoaDon.hoGiaDinh.maHo == ho.maHo}">
-                                    Hộ Nguyễn Văn A (Mã: HGD001)
+                                    Hộ Gia Đình
                                 </option>
                             </select>
                         </div>
 
-                        <div class="form-group">
+                        <div id="memberSelectSection" class="form-group">
                             <label for="memberSelect">
                                 <i class="fas fa-user"></i> Người Đứng Tên Hóa Đơn
                                 <i class="fas fa-spinner fa-spin spinner" id="memberLoader"></i>
                             </label>
                             <select name="nguoiDangKyCccd" id="memberSelect">
                                 <option value="">-- Mặc định (Chủ Hộ) --</option>
-                                
                                 <option th:if="${hoaDon.nguoiDangKyDichVu != null}"
                                         th:value="${hoaDon.nguoiDangKyDichVu.cccd}"
                                         th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen}"
@@ -199,15 +159,23 @@
                             <small style="color: gray; font-size: 0.85em; margin-top: 5px; display: block;">Để trống sẽ tự động gán cho Chủ Hộ.</small>
                         </div>
 
+                        <div id="adminInfoSection" class="form-group" style="display: none;">
+                            <label><i class="fas fa-user-shield"></i> Người Thực Hiện (Chi Tiền)</label>
+                            <div style="padding: 12px; background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; color: #1E40AF; display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-user-check" style="font-size: 1.2em;"></i>
+                                <div>
+                                    <strong th:text="${user.hoVaTen}">Admin Name</strong>
+                                    <br>
+                                    <span style="font-size: 0.9em; opacity: 0.8;">(Hệ thống sẽ ghi nhận bạn là người tạo phiếu chi này)</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="form-group">
                             <label for="loaiHoaDon"><i class="fas fa-tag"></i> Loại Hóa Đơn <span style="color: red;">*</span></label>
                             <select id="loaiHoaDon" th:field="*{loaiHoaDon}" required="required">
-                                <option value="">-- Chọn Loại Hóa Đơn --</option>
-                                <option th:each="type : ${invoiceTypes}" 
-                                        th:value="${type}" 
-                                        th:text="${type.dbValue}">
-                                    Phí Quản Lý
-                                </option>
+                                <option value="">-- Chọn Loại --</option>
+                                <option th:each="type : ${invoiceTypes}" th:value="${type}" th:text="${type.dbValue}"></option>
                             </select>
                         </div>
 
@@ -233,75 +201,83 @@
 
                     <div class="form-group">
                         <label for="ghiChu"><i class="fas fa-sticky-note"></i> Ghi Chú</label>
-                        <textarea id="ghiChu" th:field="*{ghiChu}" placeholder="Nhập ghi chú (tùy chọn)"></textarea>
+                        <textarea id="ghiChu" th:field="*{ghiChu}" placeholder="Nhập ghi chú..."></textarea>
                     </div>
 
                     <div class="form-actions">
-                        <button type="submit" class="btn-save">
-                            <i class="fas fa-save"></i> Lưu Hóa Đơn
-                        </button>
-                        <a th:href="@{/admin/fees}" class="btn-cancel">
-                            <i class="fas fa-times"></i> Hủy
-                        </a>
+                        <button type="submit" class="btn-save"><i class="fas fa-save"></i> Lưu Hóa Đơn</button>
+                        <a th:href="@{/admin/fees}" class="btn-cancel"><i class="fas fa-times"></i> Hủy</a>
                     </div>
                 </form>
             </div>
         </div>
     </main>
 
-    <footer class="footer">
-        <div class="footer-content">
-            <p>&copy; 2025 BlueMoon Apartment Management System. All rights reserved.</p>
-        </div>
-    </footer>
-
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="/js/main.js"></script>
     <script>
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('collapsed');
             document.querySelector('.main-content').classList.toggle('shifted');
             document.querySelector('.header').classList.toggle('shifted');
         }
-        document.querySelector('.user-menu').addEventListener('click', function() {
-            this.querySelector('.dropdown-menu').classList.toggle('show');
-        });
 
-        // --- SCRIPT AJAX LOAD MEMBER ---
+        // --- HÀM ẨN HIỆN FORM THU/CHI ---
+        function toggleMode(isChi) {
+            const householdSection = document.getElementById('householdSelectSection');
+            const householdSelect = document.getElementById('maHo');
+            const memberSection = document.getElementById('memberSelectSection');
+            const adminSection = document.getElementById('adminInfoSection');
+
+            if (isChi) {
+                // CHẾ ĐỘ CHI: Ẩn chọn Hộ, Bỏ Required, Hiện Admin
+                if(householdSection) householdSection.style.display = 'none';
+                if(memberSection) memberSection.style.display = 'none';
+                if(householdSelect) householdSelect.removeAttribute('required'); // QUAN TRỌNG
+                if(adminSection) adminSection.style.display = 'block';
+            } else {
+                // CHẾ ĐỘ THU: Hiện chọn Hộ, Thêm Required, Ẩn Admin
+                if(householdSection) householdSection.style.display = 'block';
+                if(memberSection) memberSection.style.display = 'block';
+                if(householdSelect) householdSelect.setAttribute('required', 'required');
+                if(adminSection) adminSection.style.display = 'none';
+            }
+        }
+
         function loadMembers(maHo) {
             const memberSelect = document.getElementById('memberSelect');
             const loader = document.getElementById('memberLoader');
-            
-            // Reset dropdown
             memberSelect.innerHTML = '<option value="">-- Mặc định (Chủ Hộ) --</option>';
-            
             if (!maHo) return;
 
             loader.style.display = 'inline-block';
             memberSelect.disabled = true;
 
-            // Gọi API Admin (Vì đây là trang Admin)
             fetch(`/admin/api/households/${maHo}/members`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Không tìm thấy dữ liệu');
-                    return response.json();
-                })
+                .then(r => r.ok ? r.json() : Promise.reject('Lỗi'))
                 .then(data => {
-                    data.forEach(member => {
-                        const option = document.createElement('option');
-                        option.value = member.cccd;
-                        option.text = member.hoVaTen;
-                        memberSelect.appendChild(option);
+                    data.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.cccd;
+                        opt.text = m.hoVaTen;
+                        memberSelect.appendChild(opt);
                     });
                 })
-                .catch(error => {
-                    console.error('Error:', error);
-                })
+                .catch(e => console.error(e))
                 .finally(() => {
                     loader.style.display = 'none';
                     memberSelect.disabled = false;
                 });
         }
+
+        // Chạy khi load trang để set đúng trạng thái (cho trường hợp Edit)
+        document.addEventListener("DOMContentLoaded", function() {
+            // Kiểm tra xem radio Chi có đang được check không
+            // (Lưu ý: Nếu tạo mới thì mặc định Thu checked, nếu Edit thì tuỳ dữ liệu)
+            // Nếu bạn muốn hỗ trợ edit loại giao dịch, cần thêm th:checked vào radio button.
+            // Ở đây ta check theo DOM
+            const isChi = document.querySelector('input[name="isPhieuChi"][value="true"]').checked;
+            toggleMode(isChi);
+        });
     </script>
 </body>
 </html>

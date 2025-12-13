@@ -141,4 +141,34 @@ public class DangKyDichVuService {
     public int countDichVuDaDangKyByNguoiDung(String cccd) {
         return dangKyDichVuDAO.countByNguoiDungCccd(cccd);
     }
+
+    /**
+     * Xử lý Duyệt hoặc Từ chối yêu cầu đăng ký dịch vụ của cư dân.
+     * @param maDangKy Mã yêu cầu đăng ký
+     * @param status Trạng thái mới (da_duyet hoặc tu_choi)
+     * @param phanHoi Nội dung phản hồi hoặc lý do từ chối
+     */
+    @Transactional
+    public void xuLyDangKy(Integer maDangKy, RegistrationStatus status, String phanHoi) {
+        DangKyDichVu dk = dangKyDichVuDAO.findById(maDangKy)
+                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy mã đăng ký: " + maDangKy));
+
+        // Cập nhật trạng thái
+        dk.setTrangThai(status);
+        
+        // Cập nhật ghi chú/phản hồi nếu có
+        if (phanHoi != null && !phanHoi.trim().isEmpty()) {
+            dk.setGhiChu(phanHoi);
+        }
+        
+        // Logic bổ sung (Tùy chọn):
+        // Nếu duyệt (da_duyet), có thể bạn muốn tạo hóa đơn thanh toán ngay tại đây 
+        // hoặc set ngày bắt đầu/kết thúc hiệu lực.
+        if (status == RegistrationStatus.da_duyet) {
+            // Ví dụ: Set ngày bắt đầu là ngày duyệt
+            // dk.setNgayBatDau(LocalDate.now()); 
+        }
+
+        dangKyDichVuDAO.save(dk);
+    }
 }

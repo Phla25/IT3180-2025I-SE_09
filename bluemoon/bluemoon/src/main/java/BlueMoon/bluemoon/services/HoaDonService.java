@@ -7,7 +7,9 @@ import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -104,40 +106,92 @@ public class HoaDonService {
         return list.size() > limit ? list.subList(0, limit) : list;
     }
         
-    /**
-     * Tính toán các số liệu tài chính quan trọng cho Dashboard Kế Toán.
-     */
+    // =======================================================
+    // CHỨC NĂNG 1: BÁO CÁO TÀI CHÍNH (THỐNG KÊ TỔNG QUAN)
+    // =======================================================
     public HoaDonStatsDTO getAccountantStats() {   
-        // 1. TÍNH TỔNG THU (Total Revenue)
-        BigDecimal tongThuThangNay = hoaDonDAO.sumSoTienByTrangThai(InvoiceStatus.da_thanh_toan);
+        HoaDonStatsDTO stats = new HoaDonStatsDTO();
         
-        // 2. DỮ LIỆU CÒN LẠI (Chưa Thu, Quá Hạn)
+        // 1. Xác định thời gian tháng hiện tại (Từ ngày 1 đến cuối tháng)
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startOfMonth = now.toLocalDate().withDayOfMonth(1).atStartOfDay();
+        LocalDateTime endOfMonth = now.toLocalDate().withDayOfMonth(now.toLocalDate().lengthOfMonth()).atTime(23, 59, 59);
+
+        // 2. Tính TỔNG THU THÁNG NAY (Chỉ tính tiền về trong tháng này)
+        BigDecimal tongThu = hoaDonDAO.sumTongThuByDateRange(
+            InvoiceStatus.da_thanh_toan, startOfMonth, endOfMonth
+        );
+        
+        // 3. Tính TỔNG CHI THÁNG NAY (Chỉ tính tiền chi trong tháng này)
+        BigDecimal tongChi = hoaDonDAO.sumTongChiByDateRange(
+            InvoiceStatus.da_thanh_toan, startOfMonth, endOfMonth
+        );
+
+        // 4. Tính CÔNG NỢ (Tổng số tiền chưa thu được từ trước tới nay)
+        // Dùng hàm cũ sumSoTienByTrangThai (tính all time) cho trạng thái chưa thanh toán
         BigDecimal tongChuaThu = hoaDonDAO.sumSoTienByTrangThai(InvoiceStatus.chua_thanh_toan);
-        Long soHoaDonChuaThu = hoaDonDAO.countByTrangThai(InvoiceStatus.chua_thanh_toan);
         
-        // Quá Hạn
-        List<HoaDon> allPendingInvoices = hoaDonDAO.findByTrangThai(InvoiceStatus.chua_thanh_toan);
-        LocalDate today = LocalDate.now();
-        List<HoaDon> overdueInvoices = allPendingInvoices.stream()
-            .filter(hd -> hd.getHanThanhToan() != null && hd.getHanThanhToan().isBefore(today))
-            .collect(Collectors.toList());
-            
-        BigDecimal tongQuaHan = overdueInvoices.stream()
+        // 5. Tính NỢ QUÁ HẠN
+        List<HoaDon> pendingInvoices = hoaDonDAO.findByTrangThai(InvoiceStatus.chua_thanh_toan);
+        BigDecimal tongQuaHan = pendingInvoices.stream()
+            .filter(hd -> hd.getHanThanhToan() != null && hd.getHanThanhToan().isBefore(now.toLocalDate()))
             .map(HoaDon::getSoTien)
             .reduce(BigDecimal.ZERO, BigDecimal::add);
-        Long soHoaDonQuaHan = (long) overdueInvoices.size();
-        
-        // 3. Đóng gói kết quả
-        HoaDonStatsDTO stats = new HoaDonStatsDTO();
-        stats.tongThuThangNay = tongThuThangNay;
-        stats.tongChuaThanhToan = tongChuaThu; 
-        stats.tongHoaDonChuaThanhToan = soHoaDonChuaThu.intValue(); 
-        
+
+        // Gán dữ liệu vào DTO
+        stats.tongThuThangNay = tongThu; 
+        stats.tongChiThangNay = tongChi; 
+        stats.loiNhuanRong = tongThu.subtract(tongChi);
+        stats.tongChuaThanhToan = tongChuaThu;
         stats.tongQuaHan = tongQuaHan;
-        stats.soHoaDonQuaHan = soHoaDonQuaHan.intValue();
-        stats.phanTramTangTruong = 15.0; // Vẫn mock 15% 
         
         return stats;
+    }
+
+    // =======================================================
+    // CHỨC NĂNG 2: BIỂU ĐỒ DOANH THU (6 THÁNG GẦN NHẤT)
+    // =======================================================
+    public Map<String, BigDecimal> getMonthlyRevenueStats() {
+        Map<String, BigDecimal> stats = new LinkedHashMap<>(); // Giữ thứ tự chèn
+        LocalDate today = LocalDate.now();
+
+        // Lặp 6 tháng gần nhất (bao gồm tháng hiện tại)
+        for (int i = 5; i >= 0; i--) {
+            LocalDate date = today.minusMonths(i);
+            
+            // Tính ngày đầu tháng và cuối tháng của tháng đó
+            LocalDateTime start = date.withDayOfMonth(1).atStartOfDay();
+            LocalDateTime end = date.withDayOfMonth(date.lengthOfMonth()).atTime(23, 59, 59);
+            
+            // Gọi DAO để tính tổng thu của tháng đó
+            BigDecimal revenue = hoaDonDAO.sumTongThuByDateRange(
+                InvoiceStatus.da_thanh_toan, start, end
+            );
+            
+            // Tạo key hiển thị (Ví dụ: "Tháng 12/2024")
+            String key = "Tháng " + date.getMonthValue() + "/" + date.getYear();
+            stats.put(key, revenue);
+        }
+        return stats;
+    }
+
+    // =======================================================
+    // CHỨC NĂNG 3: LỊCH SỬ GIAO DỊCH
+    // =======================================================
+    public List<HoaDon> getTransactionHistory() {
+        // Lấy tất cả hóa đơn đã thanh toán
+        List<HoaDon> list = hoaDonDAO.findByTrangThai(InvoiceStatus.da_thanh_toan);
+        
+        // Sắp xếp: Giao dịch mới nhất lên đầu (dựa theo ngày thanh toán thực tế)
+        list.sort((h1, h2) -> {
+            LocalDateTime d1 = h1.getNgayThanhToan();
+            LocalDateTime d2 = h2.getNgayThanhToan();
+            if (d1 == null) return 1;
+            if (d2 == null) return -1;
+            return d2.compareTo(d1); // Giảm dần
+        });
+        
+        return list;
     }
     /**
      * Lấy tất cả hóa đơn của một hộ gia đình.
@@ -198,53 +252,65 @@ public class HoaDonService {
      */
     /**
      * [QUAN TRỌNG] Lưu Hóa đơn và gán Người Đứng Tên (DoiTuong)
+     * Cập nhật thêm tham số isPhieuChi
      */
     @Transactional
-    public HoaDon saveOrUpdateHoaDon(HoaDon hoaDon, String maHo, String nguoiDangKyCccd, DoiTuong nguoiThucHien) {
+    public HoaDon saveOrUpdateHoaDon(HoaDon hoaDon, String maHo, String nguoiDangKyCccd, DoiTuong nguoiThucHien, boolean isPhieuChi) {
     
         final boolean isNewInvoice = hoaDon.getMaHoaDon() == null;
     
-        // 1. Gán Hộ gia đình
-        HoGiaDinh hoGiaDinh = hoGiaDinhService.getHouseholdById(maHo)
-            .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hộ gia đình: " + maHo));
-        hoaDon.setHoGiaDinh(hoGiaDinh);
+        if (isPhieuChi) {
+            // LOGIC PHIẾU CHI
+            // 1. Người đứng tên hóa đơn là chính Admin/Kế toán đang login
+            hoaDon.setNguoiDangKyDichVu(nguoiThucHien);
+            
+            // 2. Gán vào Hộ BQT hoặc để null (nếu DB cho phép null)
+            // Vì entity HoaDon của bạn có: @JoinColumn(name = "ma_ho", nullable = true) -> Có thể để null
+            hoaDon.setHoGiaDinh(null); 
+            
+            // 3. Set trạng thái là đã thanh toán luôn (thường phiếu chi là chi ngay)
+            if (isNewInvoice) {
+                hoaDon.setTrangThai(InvoiceStatus.da_thanh_toan); 
+                hoaDon.setNgayThanhToan(LocalDateTime.now());
+            }
+        } else {
+            // LOGIC PHIẾU THU (Logic cũ)
+            if (maHo == null || maHo.isEmpty()) {
+                 throw new IllegalArgumentException("Vui lòng chọn Hộ gia đình cho phiếu thu.");
+            }
+            
+            Optional<HoGiaDinh> hoGiaDinhopt = hoGiaDinhService.getHouseholdById(maHo);
+            HoGiaDinh hoGiaDinh = hoGiaDinhopt.orElseThrow(() -> new IllegalArgumentException("Mã hộ không tồn tại"));
+            hoaDon.setHoGiaDinh(hoGiaDinh);
 
-        // 2. Logic cập nhật (giữ dữ liệu cũ nếu không đổi)
-        if (!isNewInvoice) {
-            HoaDon hdOriginal = hoaDonDAO.findAllWithHoGiaDinh().stream()
-                .filter(h -> h.getMaHoaDon().equals(hoaDon.getMaHoaDon()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hóa đơn gốc."));
+            // Xử lý người đứng tên (như cũ)
+            if (nguoiDangKyCccd != null && !nguoiDangKyCccd.isEmpty()) {
+                DoiTuong nguoiDangKy = doiTuongDAO.findByCccd(nguoiDangKyCccd)
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy cư dân"));
+                
+                // Check thành viên...
+                boolean isMember = hoGiaDinh.getThanhVienHoList().stream()
+                    .anyMatch(tvh -> tvh.getDoiTuong().getCccd().equals(nguoiDangKyCccd));
+
+                if (!isMember) {
+                    throw new IllegalArgumentException("Người được chọn không thuộc hộ gia đình này!");
+                }
+                hoaDon.setNguoiDangKyDichVu(nguoiDangKy);
+            }
             
-            if (hoaDon.getNguoiThanhToan() == null) hoaDon.setNguoiThanhToan(hdOriginal.getNguoiThanhToan());
-            
-            // Nếu form không chọn người mới -> giữ nguyên người cũ
-            if (nguoiDangKyCccd == null || nguoiDangKyCccd.isEmpty()) {
-                hoaDon.setNguoiDangKyDichVu(hdOriginal.getNguoiDangKyDichVu());
+            // Logic cập nhật cũ...
+            if (!isNewInvoice) {
+                HoaDon hdOriginal = hoaDonDAO.findById(hoaDon.getMaHoaDon()) // Dùng findById thay vì stream lọc
+                    .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy Hóa đơn gốc."));
+                
+                if (hoaDon.getNguoiThanhToan() == null) hoaDon.setNguoiThanhToan(hdOriginal.getNguoiThanhToan());
+                if (nguoiDangKyCccd == null || nguoiDangKyCccd.isEmpty()) {
+                    hoaDon.setNguoiDangKyDichVu(hdOriginal.getNguoiDangKyDichVu());
+                }
             }
         }
-    
-        // XỬ LÝ NGƯỜI ĐỨNG TÊN
-        if (nguoiDangKyCccd != null && !nguoiDangKyCccd.isEmpty()) {
-            
-            // Tìm đối tượng
-            DoiTuong nguoiDangKy = doiTuongDAO.findByCccd(nguoiDangKyCccd)
-                .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy cư dân"));
 
-            // [LOGIC BẢO VỆ] Kiểm tra xem người này có đúng là thành viên của Hộ không?
-            boolean isMember = hoGiaDinh.getThanhVienHoList().stream()
-                .anyMatch(tvh -> tvh.getDoiTuong().getCccd().equals(nguoiDangKyCccd));
-
-            if (!isMember) {
-                // Nếu UI làm đúng, lỗi này KHÔNG BAO GIỜ xảy ra.
-                // Nhưng nếu hacker cố tình gửi request sai, dòng này sẽ chặn lại.
-                throw new IllegalArgumentException("Người được chọn không thuộc hộ gia đình này!");
-            }
-
-            hoaDon.setNguoiDangKyDichVu(nguoiDangKy);
-        }
-
-        // 4. Thiết lập mặc định
+        // 4. Thiết lập mặc định chung
         if (isNewInvoice) {
             if (hoaDon.getNgayTao() == null) hoaDon.setNgayTao(LocalDateTime.now());
             if (hoaDon.getTrangThai() == null) hoaDon.setTrangThai(InvoiceStatus.chua_thanh_toan);
@@ -253,10 +319,10 @@ public class HoaDonService {
         return hoaDonDAO.save(hoaDon);
     }
     
-    // Giữ lại hàm cũ (Overload) để tương thích ngược
+    // Giữ lại hàm cũ (Overload) để tương thích ngược (nếu cần)
     @Transactional
-    public HoaDon saveOrUpdateHoaDon(HoaDon hoaDon, String maHo, DoiTuong nguoiThucHien) {
-        return saveOrUpdateHoaDon(hoaDon, maHo, null, nguoiThucHien);
+    public HoaDon saveOrUpdateHoaDon(HoaDon hoaDon, String maHo, String nguoiDangKyCccd, DoiTuong nguoiThucHien) {
+        return saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, nguoiThucHien, false); // Mặc định là Thu
     }
     /**
      * Lấy danh sách hóa đơn đang ở trạng thái chờ xác nhận.
@@ -634,4 +700,5 @@ public class HoaDonService {
     
         return successCount;
     }
+    
 }

@@ -9,22 +9,22 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        /* (Giữ nguyên style cũ) */
         .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .feature-badge { background: linear-gradient(45deg, #FF6B6B, #4ECDC4); color: white; font-size: 10px; font-weight: 600; padding: 2px 6px; border-radius: 8px; margin-left: auto; animation: pulse 2s infinite; }        
         .btn-add { background-color: #10B981; color: white; padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; }
         .btn-export { padding: 10px 15px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-flex; align-items: center; gap: 8px; border: none; cursor: pointer; }
         .btn-export-excel { background-color: #10B981; color: white; }
         .btn-export-pdf { background-color: #EF4444; color: white; }
+        .btn-import { background-color: #2563EB; color: white; }
+        
         .status-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 0.8rem; font-weight: 600; }
         .badge-success { background-color: #D1FAE5; color: #065F46; }
         .badge-warning { background-color: #FEF3C7; color: #B45309; }
         .badge-danger { background-color: #FEE2E2; color: #991B1B; }
-        /* Style cho nút Import */
-        .btn-import {
-            background-color: #2563EB; /* Màu xanh dương */
-            color: white;
-        }
+
+        /* CSS MỚI CHO BADGE THU/CHI */
+        .type-badge { padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; font-weight: 700; margin-right: 5px; text-transform: uppercase; }
+        .type-thu { background-color: #D1FAE5; color: #065F46; border: 1px solid #A7F3D0; } /* Màu xanh lá */
+        .type-chi { background-color: #FEE2E2; color: #991B1B; border: 1px solid #FECACA; } /* Màu đỏ */
     </style>
 </head>
 <body>
@@ -44,24 +44,16 @@
 
         <nav class="sidebar-nav">
             <a th:href="@{/admin/dashboard}" class="nav-item"> <i class="fas fa-chart-line"></i> <span>Dashboard</span> </a>
+            <a th:href="@{/admin/fees}" class="nav-item active"> <i class="fas fa-file-invoice-dollar"></i> <span>Quản Lý Khoản Phí</span> </a>
             <a th:href="@{/admin/resident-list}" class="nav-item"> <i class="fas fa-users"></i> <span>Quản Lý Cư Dân</span> </a>
             <a th:href="@{/admin/apartment-list}" class="nav-item"> <i class="fas fa-home"></i> <span>Quản Lý Căn Hộ</span> </a>
             <a th:href="@{/admin/household-list}" class="nav-item"> <i class="fas fa-users-cog"></i> <span>Quản Lý Hộ Gia Đình</span> </a>
             <a th:href="@{/admin/entry-exit-logs}" class="nav-item"> <i class="fas fa-history"></i> <span>Lịch Sử Ra Vào</span> </a>
             <a th:href="@{/admin/general-asset-list}" class="nav-item"> <i class="fas fa-building"></i> <span>Quản Lý Tài Sản</span> </a>
-            <a th:href="@{/admin/fees}" class="nav-item active"> <i class="fas fa-file-invoice-dollar"></i> <span>Quản Lý Khoản Phí</span> </a>
             <a th:href="@{/admin/service-list}" class="nav-item"><i class="fas fa-concierge-bell"></i><span>Quản Lý Dịch Vụ</span></a>
-            <a th:href="@{/admin/service-registrations}" class="nav-item">
-                <i class="fas fa-clipboard-list"></i>
-                <span>Quản Lý Đăng Ký Dịch Vụ</span>
-            </a>
-            <a th:href="@{/admin/incidents}" class="nav-item">
-			    <i class="fas fa-exclamation-triangle"></i>
-			    <span>Xử Lý Sự Cố</span>
-			</a>
-            <a th:href="@{/admin/notifications}" class="nav-item">
-                <i class="fas fa-bell"></i><span>Gửi Thông Báo</span>
-            </a>
+            <a th:href="@{/admin/service-registrations}" class="nav-item"><i class="fas fa-clipboard-list"></i><span>Quản Lý Đăng Ký DV</span></a>
+            <a th:href="@{/admin/incidents}" class="nav-item"><i class="fas fa-exclamation-triangle"></i><span>Xử Lý Sự Cố</span></a>
+            <a th:href="@{/admin/notifications}" class="nav-item"><i class="fas fa-bell"></i><span>Gửi Thông Báo</span></a>
             <a th:href="@{/admin/reports}" class="nav-item"> <i class="fas fa-chart-bar"></i> <span>Báo Cáo Thống Kê</span> </a>
         </nav>
 
@@ -77,7 +69,8 @@
     <header class="header">
         <div class="header-left"><button class="menu-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button><h1>Quản Lý Hóa Đơn</h1></div>
         <div class="header-right">
-            </div>
+            <div class="user-menu"><span th:text="${user.hoVaTen}">Admin</span></div>
+        </div>
     </header>
 
     <main class="main-content">
@@ -88,14 +81,11 @@
             <div class="toolbar">
                 <h2 style="margin: 0;">Danh Sách Hóa Đơn</h2>
                 <a th:href="@{/admin/fee-form}" class="btn-add"> <i class="fas fa-plus"></i> Tạo Hóa Đơn Mới </a>
-                <a th:href="@{/admin/fees/import}" class="btn-export btn-import">
-                    <i class="fas fa-file-import"></i> Import Excel
-                </a>
+                <a th:href="@{/admin/fees/import}" class="btn-export btn-import"><i class="fas fa-file-import"></i> Import Excel</a>
                 <a th:href="@{/admin/export/invoices}" class="btn-export btn-export-excel"><i class="fas fa-file-excel"></i> Excel</a>
                 <a th:href="@{/admin/export/invoices/pdf}" class="btn-export btn-export-pdf"><i class="fas fa-file-pdf"></i> PDF</a>
             </div>
 
-            <!-- ✨ TOOLBAR HÀNH ĐỘNG HÀNG LOẠT -->
             <form id="batchActionForm" method="post">
                 <div class="bulk-actions-bar" style="background-color: #eff6ff; border: 1px solid #bfdbfe; padding: 12px 20px; border-radius: 8px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between;">
                     <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; color: #1e3a8a;">
@@ -104,17 +94,13 @@
                     </label>
                     
                     <div id="batchButtons" style="display: none; gap: 10px;">
-                        <button type="button" id="confirmBatchBtn" class="btn btn-sm" 
-                                style="background-color: #10B981; color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;">
-                            <i class="fas fa-check-circle"></i> Duyệt (<span id="countSelected">0</span>) hóa đơn
+                        <button type="button" id="confirmBatchBtn" class="btn btn-sm" style="background-color: #10B981; color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                            <i class="fas fa-check-circle"></i> Duyệt (<span id="countSelected">0</span>)
                         </button>
-                    
-                        <button type="button" id="rejectBatchBtn" class="btn btn-sm" 
-                                style="background-color: #F59E0B; color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;">
-                            <i class="fas fa-undo"></i> Từ chối (<span id="countSelectedReject">0</span>) hóa đơn
+                        <button type="button" id="rejectBatchBtn" class="btn btn-sm" style="background-color: #F59E0B; color: white; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;">
+                            <i class="fas fa-undo"></i> Từ chối (<span id="countSelectedReject">0</span>)
                         </button>
                     </div>
-                
                     <span id="noSelectionText" style="color: #64748b; font-size: 14px;">(Chưa chọn hóa đơn nào)</span>
                 </div>
 
@@ -125,12 +111,10 @@
                                 <tr>
                                     <th width="50" style="text-align: center;">#</th>
                                     <th>Mã HĐ</th>
-                                    <th>Hộ Gia Đình</th>
-                                    <th>Người Đứng Tên</th>
+                                    <th>Đối Tượng</th> <th>Người Tạo</th>
                                     <th>Người TT</th>
-                                    <th>Loại Phí</th>
-                                    <th>Số Tiền</th>
-                                    <th>Hạn Thanh Toán</th>
+                                    <th>Loại</th> <th>Số Tiền</th>
+                                    <th>Hạn TT</th>
                                     <th>Trạng Thái</th>
                                     <th>Hành Động</th>
                                 </tr>
@@ -146,24 +130,50 @@
                                     </td>
                                     
                                     <td><strong th:text="'#' + ${hoaDon.maHoaDon}">#HD001</strong></td>
-                                        <td th:text="${hoaDon.hoGiaDinh?.tenHo} ?: 'N/A'">Hộ Nguyễn Văn A</td>
-                                    <td style="font-weight: 600; color: #4B5563;">
-                                        <span th:if="${hoaDon.nguoiDangKyDichVu != null}">
-                                            <i class="fas fa-user"></i> <span th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen}">Nguyễn Văn B</span>
+                                    
+                                    <td>
+                                        <span th:if="${hoaDon.hoGiaDinh != null}" style="font-weight: 600; color: #374151;">
+                                            <i class="fas fa-home" style="color: #6B7280; margin-right: 5px;"></i>
+                                            <span th:text="${hoaDon.hoGiaDinh.tenHo}">Hộ Nguyễn Văn A</span>
                                         </span>
-                                        <span th:unless="${hoaDon.nguoiDangKyDichVu != null}" style="color: #999;">(Chưa gán)</span>
+                                        
+                                        <span th:if="${hoaDon.hoGiaDinh == null}" style="font-weight: 600; color: #EF4444;">
+                                            <i class="fas fa-building-shield" style="margin-right: 5px;"></i>
+                                            Ban Quản Trị (Nội bộ)
+                                        </span>
                                     </td>
-                                    <td th:text="${hoaDon.nguoiThanhToan?.hoVaTen} ?: '---'">Cư dân/Kế toán</td>
-                                    <td th:text="${hoaDon.loaiHoaDon?.dbValue} ?: 'N/A'">Phí Quản Lý</td>
-                                    <td th:text="${#numbers.formatInteger(hoaDon.soTien, 0, 'POINT')} + ' ₫'">2,500,000 ₫</td>
-                                    <td th:text="${hoaDon.hanThanhToan != null ? #temporals.format(hoaDon.hanThanhToan, 'dd/MM/yyyy') : 'N/A'}">31/10/2024</td>
+
+                                    <td th:text="${hoaDon.nguoiDangKyDichVu?.hoVaTen} ?: 'Hệ thống'">Người tạo</td>
+                                    <td th:text="${hoaDon.nguoiThanhToan?.hoVaTen} ?: '---'">Người thanh toán</td>
+                                    
+                                    <td>
+                                        <div style="display: flex; flex-direction: column;">
+                                            <div th:if="${hoaDon.hoGiaDinh != null}">
+                                                <span class="type-badge type-thu">THU</span>
+                                                <span style="font-size: 0.85rem;" th:text="${hoaDon.loaiHoaDon?.dbValue}">Phí DV</span>
+                                            </div>
+                                            <div th:if="${hoaDon.hoGiaDinh == null}">
+                                                <span class="type-badge type-chi">CHI</span>
+                                                <span style="font-size: 0.85rem;" th:text="${hoaDon.loaiHoaDon?.dbValue}">Sửa chữa</span>
+                                            </div>
+                                        </div>
+                                    </td>
+
+                                    <td style="font-weight: bold;">
+                                        <span th:if="${hoaDon.hoGiaDinh != null}" style="color: #059669;" th:text="'+ ' + ${#numbers.formatInteger(hoaDon.soTien, 0, 'POINT')} + ' ₫'">+ 500.000 ₫</span>
+                                        <span th:if="${hoaDon.hoGiaDinh == null}" style="color: #DC2626;" th:text="'- ' + ${#numbers.formatInteger(hoaDon.soTien, 0, 'POINT')} + ' ₫'">- 200.000 ₫</span>
+                                    </td>
+
+                                    <td th:text="${hoaDon.hanThanhToan != null ? #temporals.format(hoaDon.hanThanhToan, 'dd/MM/yyyy') : '---'}">31/10</td>
+                                    
                                     <td>
                                         <span class="status-badge" 
                                               th:classappend="${hoaDon.trangThai?.name() == 'da_thanh_toan' ? 'badge-success' : (hoaDon.trangThai?.name() == 'qua_han' ? 'badge-danger' : 'badge-warning')}"
-                                              th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Chưa thanh toán</span>
+                                              th:text="${hoaDon.trangThai?.dbValue} ?: 'N/A'">Status</span>
                                     </td>
+                                    
                                     <td>
-                                        <a th:href="@{/admin/fee-form(id=${hoaDon.maHoaDon})}" class="btn-action" title="Chỉnh Sửa"><i class="fas fa-edit"></i></a>
+                                        <a th:href="@{/admin/fee-form(id=${hoaDon.maHoaDon})}" class="btn-action" title="Chỉnh Sửa"><i class="fas fa-edit" style="color: #3B82F6;"></i></a>
                                         <a th:href="@{/admin/fee-remove-action(id=${hoaDon.maHoaDon})}" 
                                                class="btn-action text-danger" 
                                                 title="Xóa"
@@ -171,6 +181,9 @@
                                             <i class="fas fa-trash"></i>
                                         </a>
                                     </td>
+                                </tr>
+                                <tr th:if="${#lists.isEmpty(hoaDonList)}">
+                                    <td colspan="10" style="text-align: center; padding: 24px; color: #6B7280;">Không có dữ liệu hóa đơn.</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -180,7 +193,6 @@
         </div>
     </main>
 
-    <!-- ✨ JAVASCRIPT GIỐNG ACCOUNTANT (thay đổi action URL) -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script>
     $(document).ready(function() {
@@ -188,7 +200,6 @@
             $('.invoice-checkbox').prop('checked', $(this).prop('checked'));
             updateToolbar();
         });
-
         $('.invoice-checkbox').change(function() {
             updateToolbar();
             if (!$(this).prop('checked')) $('#selectAll').prop('checked', false);
@@ -196,26 +207,20 @@
                 $('#selectAll').prop('checked', true);
             }
         });
-
         function updateToolbar() {
             var count = $('.invoice-checkbox:checked').length;
-            $('#countSelected, #countSelectedReject').text(count);
+            $('#countSelected').text(count);
+            $('#countSelectedReject').text(count);
             count > 0 ? ($('#batchButtons').css('display', 'flex'), $('#noSelectionText').hide()) : 
                         ($('#batchButtons').hide(), $('#noSelectionText').show());
         }
-
         $('#confirmBatchBtn').click(function() {
             var count = $('.invoice-checkbox:checked').length;
-            if (confirm('Xác nhận duyệt ' + count + ' hóa đơn đã chọn?')) {
-                $('#batchActionForm').attr('action', '/admin/fee-confirm-batch').submit();
-            }
+            if (confirm('Xác nhận duyệt ' + count + ' hóa đơn?')) $('#batchActionForm').attr('action', '/admin/fee-confirm-batch').submit();
         });
-
         $('#rejectBatchBtn').click(function() {
             var count = $('.invoice-checkbox:checked').length;
-            if (confirm('Xác nhận từ chối ' + count + ' hóa đơn đã chọn?')) {
-                $('#batchActionForm').attr('action', '/admin/fee-reject-batch').submit();
-            }
+            if (confirm('Xác nhận từ chối ' + count + ' hóa đơn?')) $('#batchActionForm').attr('action', '/admin/fee-reject-batch').submit();
         });
     });
     </script>
