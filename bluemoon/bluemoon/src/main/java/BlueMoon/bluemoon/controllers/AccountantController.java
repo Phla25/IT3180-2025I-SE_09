@@ -2,6 +2,7 @@ package BlueMoon.bluemoon.controllers;
 
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -235,21 +236,92 @@ public class AccountantController {
             .toList();
         return ResponseEntity.ok(members);
     }
+    /**
+     * XỬ LÝ TẠO HÓA ĐƠN HÀNG LOẠT (POST)
+     * URL: /accountant/fees/batch-create
+     */
+    @PostMapping("/fees/batch-create")
+    @SuppressWarnings("CallToPrintStackTrace")
+    public String handleBatchCreateFee(
+            @RequestParam("noiDung") String noiDung,
+            @RequestParam("soTien") BigDecimal soTien,
+            @RequestParam("hanThanhToan") LocalDate hanThanhToan,
+            @RequestParam("loaiHoaDon") InvoiceType loaiHoaDon,
+            @RequestParam("phamVi") String phamVi, // <--- THAM SỐ MỚI (HOUSEHOLD hoặc INDIVIDUAL)
+            Authentication auth,
+            RedirectAttributes redirectAttributes) {
+        
+        try {
+            // Truyền phamVi vào Service
+            int count = hoaDonService.taoHoaDonHangLoat(noiDung, soTien, hanThanhToan, loaiHoaDon, phamVi);
+            
+            String doiTuongStr = "INDIVIDUAL".equals(phamVi) ? "cư dân" : "hộ gia đình";
+            
+            if (count > 0) {
+                redirectAttributes.addFlashAttribute("successMessage", 
+                    "Thành công! Đã tạo " + count + " phiếu thu \"" + noiDung + "\" cho các " + doiTuongStr + ".");
+            } else {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không tạo được hóa đơn nào.");
+            }
+            
+        } catch (Exception e) {
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
+        }
+        
+        return "redirect:/accountant/fees";
+    }
 
-    // [CẬP NHẬT] Xử lý lưu hóa đơn
     @PostMapping("/fee-save")
     public String handleFeeSave(@ModelAttribute("hoaDon") HoaDon hoaDon, 
-                                @RequestParam("maHo") String maHo, // Bắt buộc phải có vì là Phiếu Thu
+                                @RequestParam("maHo") String maHo, 
                                 @RequestParam(value = "nguoiDangKyCccd", required = false) String nguoiDangKyCccd,
+                                // 👇 THAM SỐ FORM ĐỘNG
+                                @RequestParam(value = "inputNoiDung", required = false) String inputNoiDung,
+                                @RequestParam(value = "inputKyThu", required = false) String inputKyThu,
+                                @RequestParam(value = "inputNgay", required = false) String inputNgay,
                                 Authentication auth,
                                 RedirectAttributes redirectAttributes) {
         
         DoiTuong currentUser = getCurrentUser(auth);
 
         try {
-            // [QUAN TRỌNG] Tham số cuối cùng là boolean isPhieuChi
-            // Ta truyền cứng là FALSE -> Kế toán chỉ được tạo Phiếu Thu (gắn với Hộ dân)
-            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser, false); 
+            InvoiceType type = hoaDon.getLoaiHoaDon();
+            String finalGhiChu = "";
+            
+            if (inputNoiDung == null) inputNoiDung = "";
+            String contentUpper = inputNoiDung.trim().toUpperCase();
+
+            if (null != type) // LOGIC GHÉP CHUỖI (Copy từ AdminController sang)
+            switch (type) {
+                case dich_vu -> {
+                    if (inputKyThu == null || inputKyThu.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn Kỳ thu.");
+                    String[] parts = inputKyThu.split("-"); // yyyy-MM
+                    if (parts.length == 2) finalGhiChu = String.format("%s %s/%s", contentUpper, parts[1], parts[0]);
+                    }
+                case khac -> {
+                    if (inputKyThu == null || inputKyThu.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn thời gian.");
+                    String[] parts = inputKyThu.split("-");
+                    if (parts.length == 2) finalGhiChu = String.format("DONG GOP %s %s/%s", contentUpper, parts[1], parts[0]);
+                    }
+                case sua_chua -> {
+                    if (inputNgay == null || inputNgay.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn ngày.");
+                    String dateStr = formatDateVN(inputNgay);
+                    finalGhiChu = String.format("SUA CHUA %s %s", contentUpper, dateStr);
+                    }
+                case phat -> {
+                    if (inputNgay == null || inputNgay.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn ngày.");
+                    String dateStr = formatDateVN(inputNgay);
+                    finalGhiChu = String.format("PHAT %s %s", contentUpper, dateStr);
+                    }
+                default -> {
+                }
+            }
+
+            hoaDon.setGhiChu(finalGhiChu);
+
+            // Kế toán chỉ tạo phiếu thu (isPhieuChi = false)
+            hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser, false);
             
             redirectAttributes.addFlashAttribute("successMessage", "Lưu hóa đơn thành công!");
             return "redirect:/accountant/fees";
@@ -261,6 +333,13 @@ public class AccountantController {
             redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
             return "redirect:/accountant/fees";
         }
+    }
+
+    private String formatDateVN(String yyyyMMdd) {
+        try {
+            LocalDate date = LocalDate.parse(yyyyMMdd);
+            return String.format("%02d/%02d/%d", date.getDayOfMonth(), date.getMonthValue(), date.getYear());
+        } catch (Exception e) { return yyyyMMdd; }
     }
     /**
      * Xử lý Xóa Hóa đơn (POST).
@@ -290,15 +369,11 @@ public class AccountantController {
     public String handleFeeConfirm(@RequestParam("maHoaDon") Integer maHoaDon, 
                                    Authentication auth,
                                    RedirectAttributes redirectAttributes) {
-        DoiTuong currentUser = getCurrentUser(auth);
-        
         try {
-            hoaDonService.confirmPayment(maHoaDon, currentUser); 
-            redirectAttributes.addFlashAttribute("successMessage", "Xác nhận thanh toán Hóa đơn #" + maHoaDon + " thành công!");
-        } catch (IllegalArgumentException e) {
-            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            hoaDonService.confirmPayment(maHoaDon, getCurrentUser(auth)); 
+            redirectAttributes.addFlashAttribute("successMessage", "Đã duyệt thanh toán Hóa đơn #" + maHoaDon);
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống khi xác nhận: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi: " + e.getMessage());
         }
         return "redirect:/accountant/fees"; 
     }

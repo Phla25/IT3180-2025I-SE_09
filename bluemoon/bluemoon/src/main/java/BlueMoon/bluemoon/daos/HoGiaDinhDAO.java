@@ -81,4 +81,11 @@ public class HoGiaDinhDAO {
             return false;
         }
     }
+
+    public List<HoGiaDinh> findByTrangThai(HouseholdStatus hoatDong) {
+        String jpql = "SELECT hgd FROM HoGiaDinh hgd WHERE hgd.trangThai = :trangThai ORDER BY hgd.maHo ASC";
+        return entityManager.createQuery(jpql, HoGiaDinh.class)
+                .setParameter("trangThai", hoatDong)
+                .getResultList();
+    }
 }

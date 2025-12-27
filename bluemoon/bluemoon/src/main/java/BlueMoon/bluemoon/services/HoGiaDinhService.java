@@ -634,4 +634,8 @@ public class HoGiaDinhService {
             }
         }
     }
+
+    public List<HoGiaDinh> getAllActiveHouseholds() {
+        return hoGiaDinhDAO.findByTrangThai(HouseholdStatus.hoat_dong);
+    }
 }

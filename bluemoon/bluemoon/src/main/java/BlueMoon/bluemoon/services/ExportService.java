@@ -70,6 +70,7 @@ public class ExportService {
     // =========================================================================
     // Thêm vào ExportService.java
 
+    @SuppressWarnings("ConvertToTryWithResources")
     private PdfFont getVietnameseFont() {
     try {
         // Option 1: Sử dụng font hệ thống (an toàn nhất)
@@ -231,7 +232,7 @@ public class ExportService {
             .setPadding(5));
         
         String description = String.format("Payment for '%s' fee - %d/%d", 
-            safeToString(inv.getLoaiHoaDon()), 
+            safeToString(inv.getGhiChu()), 
             inv.getNgayTao().getMonthValue(), 
             inv.getNgayTao().getYear());
         itemTable.addCell(new Cell()

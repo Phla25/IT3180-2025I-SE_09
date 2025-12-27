@@ -81,6 +81,9 @@
             <div class="toolbar">
                 <h2 style="margin: 0;">Danh Sách Hóa Đơn</h2>
                 <a th:href="@{/admin/fee-form}" class="btn-add"> <i class="fas fa-plus"></i> Tạo Hóa Đơn Mới </a>
+                <button onclick="openBatchModal()" class="btn-export" style="background-color: #7C3AED; color: white; border: none;">
+                    <i class="fas fa-hand-holding-heart"></i> Tạo Đợt Thu / Ủng Hộ
+                </button>
                 <a th:href="@{/admin/fees/import}" class="btn-export btn-import"><i class="fas fa-file-import"></i> Import Excel</a>
                 <a th:href="@{/admin/export/invoices}" class="btn-export btn-export-excel"><i class="fas fa-file-excel"></i> Excel</a>
                 <a th:href="@{/admin/export/invoices/pdf}" class="btn-export btn-export-pdf"><i class="fas fa-file-pdf"></i> PDF</a>
@@ -111,9 +114,11 @@
                                 <tr>
                                     <th width="50" style="text-align: center;">#</th>
                                     <th>Mã HĐ</th>
-                                    <th>Đối Tượng</th> <th>Người Tạo</th>
+                                    <th>Đối Tượng</th> <th>Người Đứng Tên</th>
                                     <th>Người TT</th>
-                                    <th>Loại</th> <th>Số Tiền</th>
+                                    <th>Loại</th>
+                                    <th>Mô tả</th>
+                                    <th>Số Tiền</th>
                                     <th>Hạn TT</th>
                                     <th>Trạng Thái</th>
                                     <th>Hành Động</th>
@@ -143,7 +148,7 @@
                                         </span>
                                     </td>
 
-                                    <td th:text="${hoaDon.nguoiDangKyDichVu?.hoVaTen} ?: 'Hệ thống'">Người tạo</td>
+                                    <td th:text="${hoaDon.nguoiDangKyDichVu?.hoVaTen} ?: 'Hệ thống'">Người đứng tên</td>
                                     <td th:text="${hoaDon.nguoiThanhToan?.hoVaTen} ?: '---'">Người thanh toán</td>
                                     
                                     <td>
@@ -157,6 +162,11 @@
                                                 <span style="font-size: 0.85rem;" th:text="${hoaDon.loaiHoaDon?.dbValue}">Sửa chữa</span>
                                             </div>
                                         </div>
+                                    </td>
+                                    <td style="max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" 
+                                        th:title="${hoaDon.ghiChu}" 
+                                        th:text="${hoaDon.ghiChu}">
+                                        Nội dung ghi chú
                                     </td>
 
                                     <td style="font-weight: bold;">
@@ -223,6 +233,101 @@
             if (confirm('Xác nhận từ chối ' + count + ' hóa đơn?')) $('#batchActionForm').attr('action', '/admin/fee-reject-batch').submit();
         });
     });
+    </script>
+    <div id="batchCreateModal" class="modal" style="display: none; position: fixed; z-index: 9999; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); backdrop-filter: blur(2px);">
+        <div class="modal-content" style="background-color: #fff; margin: 5% auto; padding: 0; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); overflow: hidden; animation: slideDown 0.3s ease-out;">
+            
+            <div style="background: linear-gradient(135deg, #7C3AED 0%, #6D28D9 100%); padding: 20px; color: white;">
+                <span onclick="closeBatchModal()" style="float: right; font-size: 24px; cursor: pointer; opacity: 0.8;">&times;</span>
+                <h3 style="margin: 0; font-size: 1.25rem;"><i class="fas fa-bullhorn"></i> Phát Động Đợt Thu</h3>
+                <p style="margin: 5px 0 0; opacity: 0.9; font-size: 0.9rem;">Tạo hóa đơn nhanh cho toàn bộ chung cư.</p>
+            </div>
+
+            <form th:action="@{/admin/fees/batch-create}" method="post" style="padding: 25px;">
+                
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">Đối tượng áp dụng:</label>
+                    <select name="phamVi" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; background-color: #F8FAFC; font-weight: 500;">
+                        <option value="HOUSEHOLD">🏠 Theo Hộ Gia Đình (Chủ Hộ đại diện)</option>
+                        <option value="INDIVIDUAL">👥 Theo Đầu Người (Tất cả cư dân)</option>
+                    </select>
+                    <small style="color: #6b7280; font-size: 0.85em; margin-top: 5px; display: block; font-style: italic;">
+                        <i class="fas fa-info-circle"></i> "Theo đầu người" sẽ tạo riêng mỗi thành viên 1 phiếu (VD: Quyên góp).
+                    </small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">Loại khoản thu:</label>
+                    <select name="loaiHoaDon" style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
+                        <option value="khac">💖 Đóng Góp / Từ Thiện / Quỹ</option>
+                        <option value="dich_vu">🏢 Phí Dịch Vụ / Quản Lý (Cố định)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">Nội dung (Tên đợt):</label>
+                    <input type="text" name="noiDung" placeholder="VD: UNG HO VACXIN, QUY AN NINH..." required 
+                           style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; text-transform: uppercase;">
+                    <small style="color: #6b7280; display: block; margin-top: 5px; font-size: 0.85rem;">
+                        * Hệ thống tự động thêm tháng/năm vào sau nội dung.
+                    </small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 15px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">Số tiền (VNĐ):</label>
+                    <input type="number" name="soTien" min="1000" step="1000" placeholder="VD: 50000" required 
+                           style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px; font-weight: bold; color: #059669;">
+                    <small style="color: #6b7280; display: block; margin-top: 5px; font-size: 0.85rem;">
+                        (Số tiền áp dụng cho mỗi người hoặc mỗi hộ)
+                    </small>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #374151;">Hạn thanh toán:</label>
+                    <input type="date" name="hanThanhToan" required 
+                           style="width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 6px;">
+                </div>
+
+                <div style="text-align: right; border-top: 1px solid #f3f4f6; padding-top: 20px;">
+                    <button type="button" onclick="closeBatchModal()" style="padding: 10px 20px; margin-right: 10px; border: 1px solid #d1d5db; background: white; border-radius: 6px; cursor: pointer; color: #666;">Hủy</button>
+                    <button type="submit" style="padding: 10px 25px; background-color: #7C3AED; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s;">
+                        <i class="fas fa-paper-plane"></i> Phát Động Ngay
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <style>
+        @keyframes slideDown {
+            from { transform: translateY(-50px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+    </style>
+
+    <script>
+        // Hàm mở modal
+        function openBatchModal() {
+            document.getElementById('batchCreateModal').style.display = 'block';
+            
+            // Tự động set hạn nộp là 15 ngày sau để tiện cho Admin
+            const date = new Date();
+            date.setDate(date.getDate() + 15);
+            document.querySelector('input[name="hanThanhToan"]').valueAsDate = date;
+        }
+
+        // Hàm đóng modal
+        function closeBatchModal() {
+            document.getElementById('batchCreateModal').style.display = 'none';
+        }
+
+        // Đóng khi click ra ngoài vùng trắng
+        window.addEventListener('click', function(event) {
+            const modal = document.getElementById('batchCreateModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        });
     </script>
 </body>
 </html>

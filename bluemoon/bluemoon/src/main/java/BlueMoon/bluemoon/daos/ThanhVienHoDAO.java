@@ -113,4 +113,10 @@ public class ThanhVienHoDAO {
                             .setParameter("cccd", cccd)
                             .getSingleResult();
     }
+
+    public List<ThanhVienHo> findAllActiveMembers() {
+        String jpql = "SELECT tvh FROM ThanhVienHo tvh WHERE tvh.ngayKetThuc IS NULL";
+        return entityManager.createQuery(jpql, ThanhVienHo.class)
+                            .getResultList();
+    }
 }

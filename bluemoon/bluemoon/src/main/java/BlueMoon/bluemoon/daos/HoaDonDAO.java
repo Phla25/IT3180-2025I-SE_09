@@ -206,4 +206,29 @@ public class HoaDonDAO {
             return BigDecimal.ZERO;
         }
     }
+    /**
+     * Lưu danh sách hóa đơn (Batch Save)
+     * Dùng cho chức năng tạo hóa đơn hàng loạt hoặc Import Excel
+     */
+    public void saveAll(List<HoaDon> hoaDonList) {
+        int batchSize = 50; // Kích thước mỗi đợt lưu để tối ưu bộ nhớ
+        for (int i = 0; i < hoaDonList.size(); i++) {
+            HoaDon hd = hoaDonList.get(i);
+            
+            if (hd.getMaHoaDon() == null) {
+                entityManager.persist(hd); // Thêm mới
+            } else {
+                entityManager.merge(hd);   // Cập nhật
+            }
+
+            // Flush và Clear bộ nhớ đệm sau mỗi 50 bản ghi để tránh tràn bộ nhớ
+            if (i > 0 && i % batchSize == 0) {
+                entityManager.flush();
+                entityManager.clear();
+            }
+        }
+        // Flush lần cuối
+        entityManager.flush();
+        entityManager.clear();
+    }
 }

@@ -73,11 +73,23 @@
                 <form th:action="@{/accountant/fee-save}" method="post" th:object="${hoaDon}">
                     <input type="hidden" th:field="*{maHoaDon}" />
                     
-                    <input type="hidden" name="isPhieuChi" value="false" /> 
-                    
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
                         
-                        <div class="form-group">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label class="form-label">Loại Giao Dịch (*)</label>
+                            <div style="display: flex; gap: 20px;">
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                    <input type="radio" name="isPhieuChi" value="false" checked onclick="toggleMode(false)">
+                                    <span style="font-weight: bold; color: #10B981;">PHIẾU THU</span> (Thu từ cư dân)
+                                </label>
+                                <label style="cursor: pointer; display: flex; align-items: center; gap: 8px;">
+                                    <input type="radio" name="isPhieuChi" value="true" onclick="toggleMode(true)">
+                                    <span style="font-weight: bold; color: #EF4444;">PHIẾU CHI</span> (Chi hoạt động)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="householdSelectSection" class="form-group">
                             <label for="maHo"><i class="fas fa-home"></i> Hộ Gia Đình <span style="color: red;">*</span></label>
                             <select id="maHo" name="maHo" required="required" onchange="loadMembers(this.value)">
                                 <option value="">-- Chọn Hộ Gia Đình --</option>
@@ -90,7 +102,7 @@
                             </select>
                         </div>
 
-                        <div class="form-group">
+                        <div id="memberSelectSection" class="form-group">
                             <label for="memberSelect">
                                 <i class="fas fa-user"></i> Người Đứng Tên Hóa Đơn
                                 <i class="fas fa-spinner fa-spin spinner" id="memberLoader"></i>
@@ -102,14 +114,22 @@
                                         th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen}"
                                         selected="selected"></option>
                             </select>
-                            <small style="color: gray; font-size: 0.85em; margin-top: 5px; display: block;">Để trống sẽ tự động gán cho Chủ Hộ.</small>
+                        </div>
+
+                        <div id="adminInfoSection" class="form-group" style="display: none;">
+                            <label><i class="fas fa-user-shield"></i> Người Thực Hiện</label>
+                            <div style="padding: 12px; background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px;">
+                                Bạn đang tạo phiếu chi với tư cách Kế toán.
+                            </div>
                         </div>
 
                         <div class="form-group">
                             <label for="loaiHoaDon"><i class="fas fa-tag"></i> Loại Hóa Đơn <span style="color: red;">*</span></label>
-                            <select id="loaiHoaDon" th:field="*{loaiHoaDon}" required="required">
-                                <option value="">-- Chọn Loại --</option>
-                                <option th:each="type : ${invoiceTypes}" th:value="${type}" th:text="${type.dbValue}"></option>
+                            <select id="loaiHoaDon" th:field="*{loaiHoaDon}" required="required" onchange="updateUIByType()">
+                                <option value="dich_vu">Dịch Vụ (Điện, Nước...)</option>
+                                <option value="sua_chua">Sửa Chữa</option>
+                                <option value="phat">Phạt Vi Phạm</option>
+                                <option value="khac">Khác / Đóng Góp</option>
                             </select>
                         </div>
 
@@ -133,9 +153,34 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="ghiChu"><i class="fas fa-sticky-note"></i> Ghi Chú</label>
-                        <textarea id="ghiChu" th:field="*{ghiChu}" placeholder="Nhập ghi chú..."></textarea>
+                    <div class="form-group" style="background: #F8FAFC; padding: 15px; border-radius: 8px; border: 1px solid #E2E8F0;">
+                        <label style="font-weight: bold; color: #1E293B; margin-bottom: 10px; display: block;">
+                            <i class="fas fa-edit"></i> Nội Dung & Thời Gian
+                        </label>
+
+                        <div class="mb-3">
+                            <label class="small text-muted" style="font-size: 0.85em; color: #6B7280;">Nội dung chi tiết (Tên DV / Lý do)</label>
+                            <input type="text" name="inputNoiDung" id="inputNoiDung" class="form-control" 
+                                   placeholder="VD: DIEN, NUOC..." oninput="generatePreview()" required>
+                        </div>
+
+                        <div class="row" style="display: flex; gap: 15px; margin-top: 10px;">
+                            <div id="monthYearFields" style="flex: 1;">
+                                <label class="small text-muted" style="font-size: 0.85em; color: #6B7280;">Kỳ thu (Tháng/Năm)</label>
+                                <input type="month" name="inputKyThu" id="inputKyThu" class="form-control" onchange="generatePreview()">
+                            </div>
+
+                            <div id="dateField" style="flex: 1; display: none;">
+                                <label class="small text-muted" style="font-size: 0.85em; color: #6B7280;">Ngày thực hiện</label>
+                                <input type="date" name="inputNgay" id="inputNgay" class="form-control" onchange="generatePreview()">
+                            </div>
+                        </div>
+
+                        <div class="mt-3" style="margin-top: 15px;">
+                            <label class="small text-primary fw-bold" style="font-size: 0.85em; color: #0284C7;">Xem trước Ghi chú:</label>
+                            <input type="text" id="previewNote" class="form-control" readonly 
+                                   style="background: #E0F2FE; color: #0284C7; font-weight: 600; border-color: #7DD3FC;">
+                        </div>
                     </div>
 
                     <div class="form-actions">
@@ -155,7 +200,7 @@
             document.querySelector('.header').classList.toggle('shifted');
         }
 
-        // Logic load thành viên giữ nguyên
+        // Logic load thành viên
         function loadMembers(maHo) {
             const memberSelect = document.getElementById('memberSelect');
             const loader = document.getElementById('memberLoader');
@@ -181,6 +226,89 @@
                     memberSelect.disabled = false;
                 });
         }
+
+        // Logic Toggle Thu/Chi
+        function toggleMode(isChi) {
+            const householdSection = document.getElementById('householdSelectSection');
+            const householdSelect = document.getElementById('maHo');
+            const memberSection = document.getElementById('memberSelectSection');
+            const adminSection = document.getElementById('adminInfoSection');
+
+            if (isChi) {
+                if(householdSection) householdSection.style.display = 'none';
+                if(memberSection) memberSection.style.display = 'none';
+                if(householdSelect) householdSelect.removeAttribute('required');
+                if(adminSection) adminSection.style.display = 'block';
+            } else {
+                if(householdSection) householdSection.style.display = 'block';
+                if(memberSection) memberSection.style.display = 'block';
+                if(householdSelect) householdSelect.setAttribute('required', 'required');
+                if(adminSection) adminSection.style.display = 'none';
+            }
+        }
+
+        // --- LOGIC GIAO DIỆN FORM ĐỘNG ---
+        function removeVietnameseTones(str) {
+            str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
+            str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
+            str = str.replace(/ì|í|ị|ỉ|ĩ/g,"i"); 
+            str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g,"o"); 
+            str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g,"u"); 
+            str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g,"y"); 
+            str = str.replace(/đ/g,"d");
+            return str;
+        }
+
+        function updateUIByType() {
+            const type = document.getElementById("loaiHoaDon").value;
+            const monthDiv = document.getElementById("monthYearFields");
+            const dateDiv = document.getElementById("dateField");
+            const contentInput = document.getElementById("inputNoiDung");
+
+            // Dịch vụ/Khác -> Dùng Month Picker
+            if (type === 'dich_vu' || type === 'khac') {
+                monthDiv.style.display = "block";
+                dateDiv.style.display = "none";
+                document.getElementById("inputNgay").value = ""; 
+                contentInput.placeholder = (type === 'dich_vu') ? "VD: DIEN, NUOC, GUI XE..." : "VD: QUY VACXIN...";
+            } else {
+                // Sửa chữa/Phạt -> Dùng Date Picker
+                monthDiv.style.display = "none";
+                dateDiv.style.display = "block";
+                document.getElementById("inputKyThu").value = "";
+                contentInput.placeholder = (type === 'sua_chua') ? "VD: BONG DEN, ONG NUOC..." : "VD: DO XE SAI, ỒN ÀO...";
+            }
+            generatePreview();
+        }
+
+        function generatePreview() {
+            const type = document.getElementById("loaiHoaDon").value;
+            let content = document.getElementById("inputNoiDung").value.trim();
+            content = removeVietnameseTones(content).toUpperCase();
+
+            const kyThuVal = document.getElementById("inputKyThu").value; // yyyy-MM
+            const ngayVal = document.getElementById("inputNgay").value;   // yyyy-MM-dd
+            
+            let result = "...";
+
+            if ((type === 'dich_vu' || type === 'khac') && kyThuVal) {
+                const [y, m] = kyThuVal.split('-');
+                if(type === 'dich_vu') result = `${content} ${m}/${y}`;
+                else result = `DONG GOP ${content} ${m}/${y}`;
+            } else if ((type === 'sua_chua' || type === 'phat') && ngayVal) {
+                const [y, m, d] = ngayVal.split('-');
+                if(type === 'sua_chua') result = `SUA CHUA ${content} ${d}/${m}/${y}`;
+                else result = `PHAT ${content} ${d}/${m}/${y}`;
+            }
+
+            document.getElementById("previewNote").value = result;
+        }
+
+        document.addEventListener("DOMContentLoaded", function() {
+            updateUIByType();
+            const isChi = document.querySelector('input[name="isPhieuChi"][value="true"]')?.checked;
+            toggleMode(isChi);
+        });
     </script>
 </body>
 </html>

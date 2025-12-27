@@ -156,32 +156,28 @@
                                         th:text="${hoaDon.nguoiDangKyDichVu.hoVaTen}"
                                         selected="selected"></option>
                             </select>
-                            <small style="color: gray; font-size: 0.85em; margin-top: 5px; display: block;">Để trống sẽ tự động gán cho Chủ Hộ.</small>
                         </div>
 
                         <div id="adminInfoSection" class="form-group" style="display: none;">
-                            <label><i class="fas fa-user-shield"></i> Người Thực Hiện (Chi Tiền)</label>
-                            <div style="padding: 12px; background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px; color: #1E40AF; display: flex; align-items: center; gap: 10px;">
-                                <i class="fas fa-user-check" style="font-size: 1.2em;"></i>
-                                <div>
-                                    <strong th:text="${user.hoVaTen}">Admin Name</strong>
-                                    <br>
-                                    <span style="font-size: 0.9em; opacity: 0.8;">(Hệ thống sẽ ghi nhận bạn là người tạo phiếu chi này)</span>
-                                </div>
+                            <label><i class="fas fa-user-shield"></i> Người Thực Hiện</label>
+                            <div style="padding: 12px; background-color: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 8px;">
+                                Bạn đang tạo phiếu chi với tư cách Admin.
                             </div>
                         </div>
 
                         <div class="form-group">
                             <label for="loaiHoaDon"><i class="fas fa-tag"></i> Loại Hóa Đơn <span style="color: red;">*</span></label>
-                            <select id="loaiHoaDon" th:field="*{loaiHoaDon}" required="required">
-                                <option value="">-- Chọn Loại --</option>
-                                <option th:each="type : ${invoiceTypes}" th:value="${type}" th:text="${type.dbValue}"></option>
+                            <select id="loaiHoaDon" th:field="*{loaiHoaDon}" required="required" onchange="updateUIByType()">
+                                <option value="dich_vu">Dịch Vụ (Điện, Nước...)</option>
+                                <option value="sua_chua">Sửa Chữa</option>
+                                <option value="phat">Phạt Vi Phạm</option>
+                                <option value="khac">Khác / Đóng Góp</option>
                             </select>
                         </div>
 
                         <div class="form-group">
                             <label for="soTien"><i class="fas fa-money-bill-wave"></i> Số Tiền (VNĐ) <span style="color: red;">*</span></label>
-                            <input type="number" id="soTien" th:field="*{soTien}" min="0" step="1000" required="required" placeholder="Nhập số tiền" />
+                            <input type="number" id="soTien" th:field="*{soTien}" min="0" step="1000" required="required" />
                         </div>
 
                         <div class="form-group">
@@ -199,9 +195,34 @@
                         </div>
                     </div>
 
-                    <div class="form-group">
-                        <label for="ghiChu"><i class="fas fa-sticky-note"></i> Ghi Chú</label>
-                        <textarea id="ghiChu" th:field="*{ghiChu}" placeholder="Nhập ghi chú..."></textarea>
+                    <div class="form-group" style="background: #F8FAFC; padding: 15px; border-radius: 8px; border: 1px solid #E2E8F0;">
+                        <label style="font-weight: bold; color: #1E293B; margin-bottom: 10px; display: block;">
+                            <i class="fas fa-edit"></i> Nội Dung & Thời Gian
+                        </label>
+
+                        <div class="mb-3">
+                            <label class="small text-muted">Nội dung chi tiết (Tên DV / Lý do)</label>
+                            <input type="text" name="inputNoiDung" id="inputNoiDung" class="form-control" 
+                                   placeholder="VD: DIEN, NUOC..." oninput="generatePreview()" required>
+                        </div>
+
+                        <div class="row">
+                            <div id="monthYearFields" class="col-md-12">
+                                <label class="small text-muted">Kỳ thu (Tháng/Năm)</label>
+                                <input type="month" name="inputKyThu" id="inputKyThu" class="form-control" onchange="generatePreview()">
+                            </div>
+
+                            <div id="dateField" class="col-md-12" style="display: none;">
+                                <label class="small text-muted">Ngày thực hiện</label>
+                                <input type="date" name="inputNgay" id="inputNgay" class="form-control" onchange="generatePreview()">
+                            </div>
+                        </div>
+
+                        <div class="mt-3">
+                            <label class="small text-primary fw-bold">Xem trước Ghi chú:</label>
+                            <input type="text" id="previewNote" class="form-control" readonly 
+                                   style="background: #E0F2FE; color: #0284C7; font-weight: 600; border-color: #7DD3FC;">
+                        </div>
                     </div>
 
                     <div class="form-actions">
@@ -220,8 +241,7 @@
             document.querySelector('.main-content').classList.toggle('shifted');
             document.querySelector('.header').classList.toggle('shifted');
         }
-
-        // --- HÀM ẨN HIỆN FORM THU/CHI ---
+        // Logic Thu/Chi
         function toggleMode(isChi) {
             const householdSection = document.getElementById('householdSelectSection');
             const householdSelect = document.getElementById('maHo');
@@ -229,53 +249,111 @@
             const adminSection = document.getElementById('adminInfoSection');
 
             if (isChi) {
-                // CHẾ ĐỘ CHI: Ẩn chọn Hộ, Bỏ Required, Hiện Admin
                 if(householdSection) householdSection.style.display = 'none';
                 if(memberSection) memberSection.style.display = 'none';
-                if(householdSelect) householdSelect.removeAttribute('required'); // QUAN TRỌNG
+                if(householdSelect) householdSelect.removeAttribute('required');
                 if(adminSection) adminSection.style.display = 'block';
             } else {
-                // CHẾ ĐỘ THU: Hiện chọn Hộ, Thêm Required, Ẩn Admin
                 if(householdSection) householdSection.style.display = 'block';
                 if(memberSection) memberSection.style.display = 'block';
                 if(householdSelect) householdSelect.setAttribute('required', 'required');
                 if(adminSection) adminSection.style.display = 'none';
             }
         }
-
         function loadMembers(maHo) {
             const memberSelect = document.getElementById('memberSelect');
             const loader = document.getElementById('memberLoader');
+            
+            // Reset dropdown
             memberSelect.innerHTML = '<option value="">-- Mặc định (Chủ Hộ) --</option>';
+            
             if (!maHo) return;
 
+            // Hiện loading
             loader.style.display = 'inline-block';
             memberSelect.disabled = true;
 
+            // Gọi API Admin Controller
             fetch(`/admin/api/households/${maHo}/members`)
-                .then(r => r.ok ? r.json() : Promise.reject('Lỗi'))
+                .then(response => {
+                    if (!response.ok) throw new Error('Lỗi tải dữ liệu');
+                    return response.json();
+                })
                 .then(data => {
-                    data.forEach(m => {
-                        const opt = document.createElement('option');
-                        opt.value = m.cccd;
-                        opt.text = m.hoVaTen;
-                        memberSelect.appendChild(opt);
+                    data.forEach(member => {
+                        const option = document.createElement('option');
+                        option.value = member.cccd; // Giá trị gửi đi là CCCD
+                        option.text = member.hoVaTen; // Hiển thị Tên
+                        memberSelect.appendChild(option);
                     });
                 })
-                .catch(e => console.error(e))
+                .catch(error => console.error('Error loading members:', error))
                 .finally(() => {
                     loader.style.display = 'none';
                     memberSelect.disabled = false;
                 });
         }
 
-        // Chạy khi load trang để set đúng trạng thái (cho trường hợp Edit)
+        // --- LOGIC GIAO DIỆN FORM ĐỘNG ---
+        function removeVietnameseTones(str) {
+            str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
+            str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
+            str = str.replace(/ì|í|ị|ỉ|ĩ/g,"i"); 
+            str = str.replace(/ò|ó|ọ|ỏ|õ|ô|ồ|ố|ộ|ổ|ỗ|ơ|ờ|ớ|ợ|ở|ỡ/g,"o"); 
+            str = str.replace(/ù|ú|ụ|ủ|ũ|ư|ừ|ứ|ự|ử|ữ/g,"u"); 
+            str = str.replace(/ỳ|ý|ỵ|ỷ|ỹ/g,"y"); 
+            str = str.replace(/đ/g,"d");
+            return str;
+        }
+
+        function updateUIByType() {
+            const type = document.getElementById("loaiHoaDon").value;
+            const monthDiv = document.getElementById("monthYearFields");
+            const dateDiv = document.getElementById("dateField");
+            const contentInput = document.getElementById("inputNoiDung");
+
+            // Dịch vụ/Khác -> Dùng Month Picker
+            if (type === 'dich_vu' || type === 'khac') {
+                monthDiv.style.display = "block";
+                dateDiv.style.display = "none";
+                document.getElementById("inputNgay").value = ""; 
+                contentInput.placeholder = (type === 'dich_vu') ? "VD: DIEN, NUOC, GUI XE..." : "VD: QUY VACXIN...";
+            } else {
+                // Sửa chữa/Phạt -> Dùng Date Picker
+                monthDiv.style.display = "none";
+                dateDiv.style.display = "block";
+                document.getElementById("inputKyThu").value = "";
+                contentInput.placeholder = (type === 'sua_chua') ? "VD: BONG DEN, ONG NUOC..." : "VD: DO XE SAI, ỒN ÀO...";
+            }
+            generatePreview();
+        }
+
+        function generatePreview() {
+            const type = document.getElementById("loaiHoaDon").value;
+            let content = document.getElementById("inputNoiDung").value.trim();
+            content = removeVietnameseTones(content).toUpperCase();
+
+            const kyThuVal = document.getElementById("inputKyThu").value; // yyyy-MM
+            const ngayVal = document.getElementById("inputNgay").value;   // yyyy-MM-dd
+            
+            let result = "...";
+
+            if ((type === 'dich_vu' || type === 'khac') && kyThuVal) {
+                const [y, m] = kyThuVal.split('-');
+                if(type === 'dich_vu') result = `${content} ${m}/${y}`;
+                else result = `DONG GOP ${content} ${m}/${y}`;
+            } else if ((type === 'sua_chua' || type === 'phat') && ngayVal) {
+                const [y, m, d] = ngayVal.split('-');
+                if(type === 'sua_chua') result = `SUA CHUA ${content} ${d}/${m}/${y}`;
+                else result = `PHAT ${content} ${d}/${m}/${y}`;
+            }
+
+            document.getElementById("previewNote").value = result;
+        }
+
         document.addEventListener("DOMContentLoaded", function() {
-            // Kiểm tra xem radio Chi có đang được check không
-            // (Lưu ý: Nếu tạo mới thì mặc định Thu checked, nếu Edit thì tuỳ dữ liệu)
-            // Nếu bạn muốn hỗ trợ edit loại giao dịch, cần thêm th:checked vào radio button.
-            // Ở đây ta check theo DOM
-            const isChi = document.querySelector('input[name="isPhieuChi"][value="true"]').checked;
+            updateUIByType();
+            const isChi = document.querySelector('input[name="isPhieuChi"][value="true"]')?.checked;
             toggleMode(isChi);
         });
     </script>

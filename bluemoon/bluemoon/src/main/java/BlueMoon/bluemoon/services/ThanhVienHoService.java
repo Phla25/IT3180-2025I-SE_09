@@ -75,4 +75,7 @@ public class ThanhVienHoService {
     public Integer countThanhVienByHoGiaDinh(HoGiaDinh hoGiaDinh) {
         return thanhVienHoDAO.countByHoGiaDinh(hoGiaDinh);
     }
+    public List<ThanhVienHo> getAllActiveMembers() {
+        return thanhVienHoDAO.findAllActiveMembers();
+    }
 }

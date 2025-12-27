@@ -73,7 +73,7 @@ public class DangKyDichVuService {
             hoaDon.setMaDichVu(dichVu.getMaDichVu());
             // Người đứng tên hóa đơn là người đăng ký dịch vụ (cccd_thanh_vien)
             hoaDon.setNguoiDangKyDichVu(nguoiDangKy); 
-            hoaDon.setGhiChu("Phí đăng ký dịch vụ: " + dichVu.getTenDichVu());
+            hoaDon.setGhiChu(dichVu.getTenDichVu().toUpperCase());
             // Mặc định trạng thái là CHƯA THANH TOÁN
             
             hoaDonDAO.save(hoaDon); // Cần tạo hàm save(HoaDon) trong HoaDonService
