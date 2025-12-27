@@ -9,7 +9,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -326,102 +325,100 @@ public class NormalUserController {
         return "fee-details-resident"; // Tên file Thymeleaf mới
     }
 
-// THÊM/THAY THẾ 2 METHOD THANH TOÁN TRONG NormalUserController.java
-
-/**
- * ✨ Xử lý yêu cầu thanh toán 1 hóa đơn - Chuyển sang trang chi tiết
- * URL: /resident/fee-pay (POST)
- */
-@PostMapping("/resident/fee-pay")
-public String handleFeePayment(@RequestParam("maHoaDon") Integer maHoaDon, 
-                               Authentication auth,
-                               RedirectAttributes redirectAttributes) {
-    DoiTuong currentUser = getCurrentUser(auth);
-    if (currentUser == null) {
-        redirectAttributes.addFlashAttribute("errorMessage", "Lỗi xác thực.");
-        return "redirect:/resident/fees";
-    }
-    
-    try {
-        // Cập nhật trạng thái hóa đơn sang "Chờ xác nhận"
-        hoaDonService.markAsPaidByResident(maHoaDon, currentUser); 
-        
-        redirectAttributes.addFlashAttribute("successMessage", 
-            "Yêu cầu thanh toán Hóa đơn #" + maHoaDon + " đã được ghi nhận. Vui lòng thực hiện chuyển khoản.");
-        
-        // ✨ Chuyển về trang chi tiết
-        return "redirect:/resident/fee-detail?id=" + maHoaDon; 
-        
-    } catch (IllegalArgumentException e) {
-        redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-        return "redirect:/resident/fee-detail?id=" + maHoaDon;
-    } catch (Exception e) {
-        redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống khi thanh toán: " + e.getMessage());
-        return "redirect:/resident/fee-detail?id=" + maHoaDon;
-    }
-}
-
-/**
- * ✨ Xử lý thanh toán nhiều hóa đơn cùng lúc
- * URL: /resident/payment/pay-all (POST)
- */
-@PostMapping("/resident/payment/pay-all")
-public String handleBatchPayment(@RequestParam(value = "selectedIds", required = false) List<Integer> selectedIds,
-                                 Authentication auth,
-                                 HttpSession session,
-                                 RedirectAttributes redirectAttributes) {
-    DoiTuong currentUser = getCurrentUser(auth);
-    if (currentUser == null) {
-        return "redirect:/login?error=auth";
-    }
-    
-    if (selectedIds == null || selectedIds.isEmpty()) {
-        redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn ít nhất một hóa đơn để thanh toán.");
-        return "redirect:/resident/fees";
-    }
-    
-    try {
-        int successCount = 0;
-        BigDecimal tongTien = BigDecimal.ZERO;
-        List<Integer> successIds = new ArrayList<>();
-        
-        // Cập nhật trạng thái từng hóa đơn
-        for (Integer maHoaDon : selectedIds) {
-            try {
-                HoaDon hd = hoaDonService.getHoaDonById(maHoaDon).orElse(null);
-                if (hd != null && hd.getTrangThai() != InvoiceStatus.da_thanh_toan) {
-                    hoaDonService.markAsPaidByResident(maHoaDon, currentUser);
-                    tongTien = tongTien.add(hd.getSoTien());
-                    successIds.add(maHoaDon);
-                    successCount++;
-                }
-            } catch (Exception e) {
-                System.err.println("Lỗi thanh toán hóa đơn #" + maHoaDon + ": " + e.getMessage());
-            }
-        }
-        
-        if (successCount > 0) {
-            // ✨ Lưu thông tin vào session để hiển thị trên trang batch-payment-info
-            session.setAttribute("batchPaymentIds", successIds);
-            session.setAttribute("batchPaymentTotal", tongTien);
-            session.setAttribute("batchPaymentCount", successCount);
-            
-            redirectAttributes.addFlashAttribute("successMessage", 
-                "Đã tạo yêu cầu thanh toán cho " + successCount + " hóa đơn. Tổng tiền: " + 
-                tongTien.toString() + " ₫. Vui lòng chuyển khoản theo thông tin bên dưới.");
-            
-            // ✨ Chuyển sang trang hiển thị thông tin thanh toán gộp
-            return "redirect:/resident/batch-payment-info";
-        } else {
-            redirectAttributes.addFlashAttribute("errorMessage", "Không có hóa đơn nào được xử lý.");
+    /**
+     * ✨ Xử lý yêu cầu thanh toán 1 hóa đơn - Chuyển sang trang chi tiết
+     * URL: /resident/fee-pay (POST)
+     */
+    @PostMapping("/resident/fee-pay")
+    public String handleFeePayment(@RequestParam("maHoaDon") Integer maHoaDon, 
+                                   Authentication auth,
+                                   RedirectAttributes redirectAttributes) {
+        DoiTuong currentUser = getCurrentUser(auth);
+        if (currentUser == null) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi xác thực.");
             return "redirect:/resident/fees";
         }
         
-    } catch (Exception e) {
-        redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
-        return "redirect:/resident/fees";
+        try {
+            // Cập nhật trạng thái hóa đơn sang "Chờ xác nhận"
+            hoaDonService.markAsPaidByResident(maHoaDon, currentUser); 
+            
+            redirectAttributes.addFlashAttribute("successMessage", 
+                "Yêu cầu thanh toán Hóa đơn #" + maHoaDon + " đã được ghi nhận. Vui lòng thực hiện chuyển khoản.");
+            
+            // ✨ Chuyển về trang chi tiết
+            return "redirect:/resident/fee-detail?id=" + maHoaDon; 
+            
+        } catch (IllegalArgumentException e) {
+            redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
+            return "redirect:/resident/fee-detail?id=" + maHoaDon;
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống khi thanh toán: " + e.getMessage());
+            return "redirect:/resident/fee-detail?id=" + maHoaDon;
+        }
     }
-}
+
+    /**
+     * ✨ Xử lý thanh toán nhiều hóa đơn cùng lúc
+     * URL: /resident/payment/pay-all (POST)
+     */
+    @PostMapping("/resident/payment/pay-all")
+    public String handleBatchPayment(@RequestParam(value = "selectedIds", required = false) List<Integer> selectedIds,
+                                     Authentication auth,
+                                     HttpSession session,
+                                     RedirectAttributes redirectAttributes) {
+        DoiTuong currentUser = getCurrentUser(auth);
+        if (currentUser == null) {
+            return "redirect:/login?error=auth";
+        }
+        
+        if (selectedIds == null || selectedIds.isEmpty()) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Vui lòng chọn ít nhất một hóa đơn để thanh toán.");
+            return "redirect:/resident/fees";
+        }
+        
+        try {
+            int successCount = 0;
+            BigDecimal tongTien = BigDecimal.ZERO;
+            List<Integer> successIds = new ArrayList<>();
+            
+            // Cập nhật trạng thái từng hóa đơn
+            for (Integer maHoaDon : selectedIds) {
+                try {
+                    HoaDon hd = hoaDonService.getHoaDonById(maHoaDon).orElse(null);
+                    if (hd != null && hd.getTrangThai() != InvoiceStatus.da_thanh_toan) {
+                        hoaDonService.markAsPaidByResident(maHoaDon, currentUser);
+                        tongTien = tongTien.add(hd.getSoTien());
+                        successIds.add(maHoaDon);
+                        successCount++;
+                    }
+                } catch (Exception e) {
+                    System.err.println("Lỗi thanh toán hóa đơn #" + maHoaDon + ": " + e.getMessage());
+                }
+            }
+            
+            if (successCount > 0) {
+                // ✨ Lưu thông tin vào session để hiển thị trên trang batch-payment-info
+                session.setAttribute("batchPaymentIds", successIds);
+                session.setAttribute("batchPaymentTotal", tongTien);
+                session.setAttribute("batchPaymentCount", successCount);
+                
+                redirectAttributes.addFlashAttribute("successMessage", 
+                    "Đã tạo yêu cầu thanh toán cho " + successCount + " hóa đơn. Tổng tiền: " + 
+                    tongTien.toString() + " ₫. Vui lòng chuyển khoản theo thông tin bên dưới.");
+                
+                // ✨ Chuyển sang trang hiển thị thông tin thanh toán gộp
+                return "redirect:/resident/batch-payment-info";
+            } else {
+                redirectAttributes.addFlashAttribute("errorMessage", "Không có hóa đơn nào được xử lý.");
+                return "redirect:/resident/fees";
+            }
+            
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("errorMessage", "Lỗi hệ thống: " + e.getMessage());
+            return "redirect:/resident/fees";
+        }
+    }
 
     /**
      * ✨ Hiển thị trang thông tin thanh toán gộp
@@ -726,32 +723,61 @@ public String handleBatchPayment(@RequestParam(value = "selectedIds", required =
      * API: Xem trước hóa đơn PDF (Inline Preview)
      * URL: /resident/invoice/preview/{maHoaDon}
      */
+    // [MỚI] Hàm Preview PDF (Xem trực tiếp)
     @GetMapping("/resident/invoice/preview/{maHoaDon}")
-    public ResponseEntity<byte[]> previewInvoicePdf(@PathVariable Integer maHoaDon) {
-        try {
-            // Lấy dữ liệu chi tiết hóa đơn
-            List<InvoiceReportDTO> invoice = reportService.getInvoiceDetailReport(maHoaDon);
-            
-            if (invoice.isEmpty()) {
-                return ResponseEntity.notFound().build();
-            }
-            
-            // Tạo file PDF từ Service (Sử dụng hàm exportInvoicesToPdf hiện có)
-            byte[] pdfData = exportService.exportInvoicesToPdf(invoice);
-            
-            // Trả về với header INLINE để trình duyệt hiển thị luôn
-            HttpHeaders headers = new HttpHeaders();
-            headers.setContentType(MediaType.APPLICATION_PDF);
-            // Quan trọng: "inline" giúp hiển thị trên trình duyệt, "attachment" là tải về
-            headers.setContentDisposition(ContentDisposition.inline().filename("HoaDon_" + maHoaDon + ".pdf").build());
-            
-            return ResponseEntity.ok()
-                    .headers(headers)
-                    .body(pdfData);
-        } catch (IOException e) {
-            return ResponseEntity.internalServerError().build();
+    @SuppressWarnings("CallToPrintStackTrace")
+public ResponseEntity<byte[]> previewInvoicePdf(@PathVariable Integer maHoaDon) {
+    try {
+        System.out.println("📄 Generating PDF preview for invoice: " + maHoaDon);
+        
+        // Lấy dữ liệu hóa đơn
+        List<InvoiceReportDTO> invoice = reportService.getInvoiceDetailReport(maHoaDon);
+        
+        if (invoice.isEmpty()) {
+            System.err.println("❌ Invoice not found: " + maHoaDon);
+            return ResponseEntity.notFound().build();
         }
+        
+        System.out.println("✅ Invoice data retrieved: " + invoice.get(0).getMaHoaDon());
+        
+        // Tạo file PDF dạng byte[]
+        byte[] pdfData = exportService.exportInvoicesToPdf(invoice);
+        
+        System.out.println("✅ PDF generated successfully. Size: " + pdfData.length + " bytes");
+        
+        // Kiểm tra nếu PDF quá nhỏ (có thể bị lỗi)
+        if (pdfData.length < 100) {
+            System.err.println("⚠️ Warning: PDF size too small, may be corrupted");
+        }
+        
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setCacheControl("no-cache, no-store, must-revalidate");
+        headers.setPragma("no-cache");
+        headers.setExpires(0);
+        
+        // QUAN TRỌNG: "inline" giúp trình duyệt hiển thị file thay vì tải về
+        headers.setContentDisposition(
+            org.springframework.http.ContentDisposition.inline()
+                .filename("HoaDon_" + maHoaDon + ".pdf")
+                .build()
+        );
+        
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(pdfData);
+                
+    } catch (IOException e) {
+        System.err.println("❌ IOException when generating PDF: " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.internalServerError().build();
+        
+    } catch (Exception e) {
+        System.err.println("❌ Unexpected error: " + e.getMessage());
+        e.printStackTrace();
+        return ResponseEntity.internalServerError().build();
     }
+}
     
     /**
      * Xuất báo cáo hộ gia đình của cư dân ra file PDF

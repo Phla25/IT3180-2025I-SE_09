@@ -84,6 +84,7 @@ public class WebSecurityConfig {
                 // Cho phép truy cập tự do các tài nguyên tĩnh và trang đăng nhập
                 .requestMatchers("/reset-password","/forgot-password","/login", "/register", "/css/**", "/js/**", "/images/**").permitAll()
                 .requestMatchers("/mock-vnpay-portal", "/mock-vnpay-submit").permitAll()
+                .requestMatchers("/resident/invoice/preview/**").authenticated()
                 // Các trang yêu cầu vai trò cụ thể
                 .requestMatchers("/admin/**").hasRole(UserRole.ban_quan_tri.name())
                 .requestMatchers("/accountant/**").hasRole(UserRole.ke_toan.name())

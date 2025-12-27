@@ -45,6 +45,8 @@
         .badge-success { background-color: #D1FAE5; color: #065F46; }
         .badge-warning { background-color: #FEF3C7; color: #B45309; }
         .badge-danger { background-color: #FEE2E2; color: #991B1B; }
+        .badge-info { background-color: #DBEAFE; color: #1E40AF; }
+
         .btn-export {
             padding: 10px 20px;
             border-radius: 8px;
@@ -56,34 +58,14 @@
             transition: background-color 0.3s;
             margin: 5px;
         }
+        .btn-export-excel { background-color: #10B981; color: white; }
+        .btn-export-excel:hover { background-color: #059669; }
+        .btn-export-pdf { background-color: #EF4444; color: white; }
+        .btn-export-pdf:hover { background-color: #DC2626; }
         
-        .btn-export-excel {
-            background-color: #10B981;
-            color: white;
-        }
-        
-        .btn-export-excel:hover {
-            background-color: #059669;
-        }
-        
-        .btn-export-pdf {
-            background-color: #EF4444;
-            color: white;
-        }
-        
-        .btn-export-pdf:hover {
-            background-color: #DC2626;
-        }
-        
-        .export-buttons {
-            text-align: center;
-            padding: 20px 0;
-            border-top: 1px solid #E5E7EB;
-            margin-top: 20px;
-        }
         .pdf-container {
             width: 100%;
-            height: 800px; /* Chiều cao đủ lớn để xem */
+            height: 800px;
             border: 1px solid #ddd;
             border-radius: 8px;
             margin-bottom: 20px;
@@ -91,12 +73,17 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            position: relative; /* Để hiển thị loading */
         }
         .pdf-viewer {
             width: 100%;
             height: 100%;
             border: none;
-            border-radius: 8px;
+            display: none; /* Ẩn mặc định, hiện khi load xong */
+        }
+        .loading-spinner {
+            text-align: center;
+            color: #6B7280;
         }
     </style>
 </head>
@@ -117,33 +104,25 @@
 
         <nav class="sidebar-nav">
             <a th:href="@{/resident/dashboard}" class="nav-item">
-                <i class="fas fa-chart-line"></i>
-                <span>Dashboard</span>
+                <i class="fas fa-chart-line"></i> <span>Dashboard</span>
             </a>
             <a th:href="@{/resident/fees}" class="nav-item active">
-                <i class="fas fa-file-invoice-dollar"></i>
-                <span>Hóa Đơn Của Tôi</span>
+                <i class="fas fa-file-invoice-dollar"></i> <span>Hóa Đơn Của Tôi</span>
             </a>
-            
             <a th:href="@{/resident/my-services}" class="nav-item">
-                <i class="fas fa-handshake"></i>
-                <span>Dịch Vụ Của Tôi</span>
+                <i class="fas fa-handshake"></i> <span>Dịch Vụ Của Tôi</span>
             </a>
-            
             <a th:href="@{/resident/services}" class="nav-item">
-                <i class="fas fa-concierge-bell"></i>
-                <span>Đăng Ký Dịch Vụ</span>
+                <i class="fas fa-concierge-bell"></i> <span>Đăng Ký Dịch Vụ</span>
             </a>
             <a th:href="@{/resident/my-household}" class="nav-item">
                 <i class="fas fa-home"></i> <span>Căn Hộ Của Tôi</span>
             </a>  
             <a th:href="@{/resident/incidents}" class="nav-item">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>Báo Cáo Sự Cố</span>
+                <i class="fas fa-exclamation-triangle"></i> <span>Báo Cáo Sự Cố</span>
             </a>
             <a th:href="@{/resident/notifications}" class="nav-item">
-                <i class="fas fa-bell"></i>
-                <span>Thông Báo</span>
+                <i class="fas fa-bell"></i> <span>Thông Báo</span>
             </a>
         </nav>
         
@@ -191,7 +170,7 @@
     <main class="main-content">
         <div class="container">
             <div style="margin-bottom: 20px;">
-                <a th:href="@{/resident/fees}" class="btn-secondary" style="text-decoration: none; color: #4b5563;">
+                <a th:href="@{/resident/fees}" class="btn-secondary" style="text-decoration: none; color: #4b5563; padding: 8px 16px; border: 1px solid #d1d5db; border-radius: 6px; background: white;">
                     <i class="fas fa-arrow-left"></i> Quay lại danh sách
                 </a>
             </div>
@@ -202,19 +181,24 @@
                     <h2 style="margin-bottom: 15px; color: #1F2937;">Chi Tiết Hóa Đơn #<span th:text="${hoaDon.maHoaDon}"></span></h2>
                     
                     <div class="pdf-container">
-                        <embed th:src="@{/resident/invoice/preview/{id}(id=${hoaDon.maHoaDon})}" 
-                               type="application/pdf" 
-                               class="pdf-viewer" />
+                        <div id="pdfLoading" class="loading-spinner">
+                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                            <p>Đang tải bản xem trước...</p>
+                        </div>
+
+                        <iframe id="pdfViewer" class="pdf-viewer" frameborder="0"></iframe>
                         
-                        <noembed>
-                            Trình duyệt của bạn không hỗ trợ xem PDF. 
-                            <a th:href="@{/resident/export/invoice/{id}/pdf(id=${hoaDon.maHoaDon})}">Tải xuống tại đây</a>.
-                        </noembed>
+                        <div id="pdfError" style="display: none; text-align: center; color: #EF4444;">
+                            <i class="fas fa-exclamation-circle fa-2x"></i>
+                            <p>Không thể tải bản xem trước.</p>
+                            <a th:href="@{/resident/export/invoice/{id}/pdf(id=${hoaDon.maHoaDon})}" class="btn-export btn-export-pdf">
+                                <i class="fas fa-download"></i> Tải xuống để xem
+                            </a>
+                        </div>
                     </div>
                 </div>
 
                 <div style="flex: 1; min-width: 300px;">
-                    
                     <div class="content-card" style="background-color: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); position: sticky; top: 20px;">
                         <h3 style="color: #4F46E5; margin-top: 0;"><i class="fas fa-receipt"></i> Thông Tin Thanh Toán</h3>
                         <hr style="margin: 15px 0; border-top: 1px dashed #e5e7eb;">
@@ -281,15 +265,127 @@
     </footer>
 
     <script src="/js/main.js"></script>
-    <script>
+    <script th:inline="javascript">
         function toggleSidebar() {
             document.querySelector('.sidebar').classList.toggle('collapsed');
             document.querySelector('.main-content').classList.toggle('shifted');
             document.querySelector('.header').classList.toggle('shifted');
         }
-        document.querySelector('.user-menu').addEventListener('click', function() {
-            this.querySelector('.dropdown-menu').classList.toggle('show');
-        });
+        
+        const userMenu = document.querySelector('.user-menu');
+        if (userMenu) {
+            userMenu.addEventListener('click', function() {
+                const dropdown = this.querySelector('.dropdown-menu');
+                if (dropdown) dropdown.classList.toggle('show');
+            });
+        }
+
+        // ==========================================
+        // SCRIPT TẢI PDF BLOB (FIX LỖI REFUSED TO CONNECT)
+        // ==========================================
+document.addEventListener("DOMContentLoaded", function() {
+    const invoiceId = /*[[${hoaDon.maHoaDon}]]*/ 0;
+    const url = `/resident/invoice/preview/${invoiceId}`;
+    
+    const pdfViewer = document.getElementById('pdfViewer');
+    const pdfLoading = document.getElementById('pdfLoading');
+    const pdfError = document.getElementById('pdfError');
+    
+    console.log('🔄 Loading PDF preview for invoice:', invoiceId);
+
+    fetch(url, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/pdf'
+        }
+    })
+    .then(response => {
+        console.log('📡 Response status:', response.status);
+        console.log('📡 Content-Type:', response.headers.get('Content-Type'));
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        // Kiểm tra Content-Type
+        const contentType = response.headers.get('Content-Type');
+        if (!contentType || !contentType.includes('application/pdf')) {
+            throw new Error('Invalid content type: ' + contentType);
+        }
+        
+        return response.blob();
+    })
+    .then(blob => {
+        console.log('✅ PDF Blob received. Size:', blob.size, 'bytes');
+        console.log('✅ Blob type:', blob.type);
+        
+        // Kiểm tra blob size
+        if (blob.size < 100) {
+            throw new Error('PDF file too small, may be corrupted');
+        }
+        
+        // Tạo URL nội bộ từ Blob
+        const blobUrl = URL.createObjectURL(blob);
+        console.log('✅ Blob URL created:', blobUrl);
+        
+        // Gán vào iframe
+        pdfViewer.src = blobUrl;
+        
+        // Xử lý khi iframe load xong
+        pdfViewer.onload = function() {
+            console.log('✅ PDF loaded successfully in iframe');
+            pdfViewer.style.display = 'block';
+            if (pdfLoading) pdfLoading.style.display = 'none';
+        };
+        
+        // Xử lý lỗi iframe
+        pdfViewer.onerror = function(e) {
+            console.error('❌ Iframe load error:', e);
+            if (pdfLoading) pdfLoading.style.display = 'none';
+            if (pdfError) {
+                pdfError.style.display = 'block';
+                pdfError.innerHTML = `
+                    <i class="fas fa-exclamation-circle fa-2x"></i>
+                    <p>Trình duyệt không thể hiển thị PDF.</p>
+                    <p style="font-size: 14px; color: #6B7280;">Vui lòng tải xuống để xem.</p>
+                    <a href="/resident/export/invoice/${invoiceId}/pdf" 
+                       class="btn-export btn-export-pdf">
+                        <i class="fas fa-download"></i> Tải xuống PDF
+                    </a>
+                `;
+            }
+        };
+        
+        // Timeout fallback (nếu iframe không trigger onload sau 5s)
+        setTimeout(() => {
+            if (pdfViewer.style.display !== 'block') {
+                console.warn('⚠️ Iframe load timeout');
+                pdfViewer.style.display = 'block';
+                if (pdfLoading) pdfLoading.style.display = 'none';
+            }
+        }, 5000);
+    })
+    .catch(error => {
+        console.error('❌ Error loading PDF:', error);
+        
+        if (pdfLoading) pdfLoading.style.display = 'none';
+        if (pdfError) {
+            pdfError.style.display = 'block';
+            pdfError.innerHTML = `
+                <i class="fas fa-exclamation-circle fa-2x"></i>
+                <p><strong>Lỗi:</strong> ${error.message}</p>
+                <p style="font-size: 14px; color: #6B7280;">
+                    Vui lòng thử tải xuống trực tiếp.
+                </p>
+                <a href="/resident/export/invoice/${invoiceId}/pdf" 
+                   class="btn-export btn-export-pdf">
+                    <i class="fas fa-download"></i> Tải xuống PDF
+                </a>
+            `;
+        }
+    });
+});
     </script>
 </body>
 </html>
