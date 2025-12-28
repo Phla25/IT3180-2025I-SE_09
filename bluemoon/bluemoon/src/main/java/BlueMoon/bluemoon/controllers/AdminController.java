@@ -147,7 +147,7 @@ public class AdminController {
         // ========================================================
         Map<String, Object> chartData = taiSanChungCuService.getChartData();
         
-        // A. Dữ liệu Tầng
+        // A. Dữ liệu Tầng (Sẽ có đủ 30 phần tử)
         Map<Integer, Long> floorMap = (Map<Integer, Long>) chartData.get("floorStats");
         List<String> floorLabels = new ArrayList<>();
         List<Long> floorData = new ArrayList<>();
@@ -157,13 +157,14 @@ public class AdminController {
             floorData.add(entry.getValue());
         }
 
-        // B. Dữ liệu Tòa
-        Map<String, Long> buildingMap = (Map<String, Long>) chartData.get("buildingStats");
+        // B. Dữ liệu Phân Khu (Kiot, Đế, Căn hộ...)
+        // LƯU Ý: Không thêm tiền tố "Tòa " nữa
+        Map<String, Long> sectionMap = (Map<String, Long>) chartData.get("buildingStats");
         List<String> buildingLabels = new ArrayList<>();
         List<Long> buildingData = new ArrayList<>();
 
-        for (Map.Entry<String, Long> entry : buildingMap.entrySet()) {
-            buildingLabels.add("Tòa " + entry.getKey());
+        for (Map.Entry<String, Long> entry : sectionMap.entrySet()) {
+            buildingLabels.add(entry.getKey()); // Lấy trực tiếp tên phân khu
             buildingData.add(entry.getValue());
         }
 
@@ -171,7 +172,6 @@ public class AdminController {
         model.addAttribute("floorData", floorData);
         model.addAttribute("buildingLabels", buildingLabels);
         model.addAttribute("buildingData", buildingData);
-        // ========================================================
         Map<String, BigDecimal> phanLoaiStats = hoaDonService.getThongKePhanLoaiThu();
         model.addAttribute("thucThuBatBuoc", phanLoaiStats.getOrDefault("thucThuBatBuoc", BigDecimal.ZERO));
         model.addAttribute("thucThuTuNguyen", phanLoaiStats.getOrDefault("thucThuTuNguyen", BigDecimal.ZERO));

@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -184,6 +185,7 @@ public class TaiSanChungCuService {
     @Transactional
     public TaiSanChungCu themCanHo(TaiSanChungCu canHoMoi, String maHo) {
         // KIỂM TRA NGHIỆP VỤ: Tên căn hộ phải là duy nhất (NEW)
+        validateTenCanHo(canHoMoi.getTenTaiSan());
         if (taiSanChungCuDAO.existsByTenCanHo(canHoMoi.getTenTaiSan())) {
             throw new IllegalArgumentException("Lỗi: Tên Căn hộ '" + canHoMoi.getTenTaiSan() + "' đã tồn tại. Vui lòng chọn tên khác.");
         }
@@ -217,7 +219,64 @@ public class TaiSanChungCuService {
      * @return TaiSanChungCu đã được cập nhật.
      */
     @Autowired private ThongBaoService thongBaoService; // Inject thêm
+    // =======================================================
+    // [MỚI] HÀM KIỂM TRA LOGIC TÊN CĂN HỘ & SỐ TẦNG
+    // =======================================================
+    private void validateTenCanHo(String tenCanHo) {
+        // 1. Kiểm tra định dạng cơ bản (VD: A-101, P-3001)
+        if (tenCanHo == null || !tenCanHo.contains("-")) {
+            throw new IllegalArgumentException("Tên căn hộ không hợp lệ. Định dạng chuẩn: [Ký tự]-[Số Phòng] (VD: A-1005)");
+        }
 
+        String[] parts = tenCanHo.split("-");
+        String prefix = parts[0].toUpperCase(); // Chữ cái đầu (A, K, P...)
+        String numberPart = parts[1];
+
+        // 2. Tính toán số tầng từ số phòng
+        int floor;
+        try {
+            int roomNum = Integer.parseInt(numberPart);
+            floor = roomNum / 100; // VD: 1005 / 100 = 10
+            if (floor == 0) floor = 1; // VD: 001 -> Tầng 1
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Số phòng phải là ký tự số.");
+        }
+
+        // 3. Kiểm tra giới hạn 30 tầng
+        if (floor > 30) {
+            throw new IllegalArgumentException("Lỗi: Chung cư BlueMoon chỉ có tối đa 30 tầng. Bạn đang nhập tầng " + floor);
+        }
+
+        // 4. Kiểm tra quy tắc đặt tên (Prefix) theo tầng
+        switch (prefix) {
+            case "K" -> {
+                // Kiot
+                if (floor != 1)
+                    throw new IllegalArgumentException("Tiền tố 'K' (Kiot) chỉ dành cho Tầng 1.");
+            }
+            
+            case "D" -> {
+                // Tầng Đế (Thương mại/Văn phòng) - Tầng 2 đến 5
+                if (floor < 2 || floor > 5)
+                    throw new IllegalArgumentException("Tiền tố 'D' (Tầng Đế) chỉ dành cho Tầng 2 đến Tầng 5.");
+            }
+
+            case "A" -> {
+                // Căn hộ nhà ở - Tầng 2 đến 29 (Gộp cả đế nếu muốn, hoặc chỉ 6-29)
+                // Đề bài: 4 tầng đế + 24 tầng nhà ở = Tầng 2 -> 29
+                if (floor < 2 || floor > 29) 
+                    throw new IllegalArgumentException("Tiền tố 'A' (Căn hộ) dành cho các tầng từ 2 đến 29.");
+            }
+
+            case "P" -> {
+                // Penthouse
+                if (floor != 30)
+                    throw new IllegalArgumentException("Tiền tố 'P' (Penthouse) chỉ dành cho Tầng 30.");
+            }
+
+            default -> throw new IllegalArgumentException("Tiền tố không hợp lệ. Vui lòng dùng: K (Kiot), D (Đế), A (Căn hộ), P (Penthouse).");
+        }
+    }
     @Transactional
     public TaiSanChungCu capNhatTaiSanChung(Integer maTaiSan, TaiSanChungCu taiSanCapNhat, String maHo) {
         TaiSanChungCu taiSanHienTai = taiSanChungCuDAO.findByID(maTaiSan)
@@ -283,6 +342,7 @@ public class TaiSanChungCuService {
         if (taiSanChungCuDAO.existsByTenCanHoExceptId(canHoCapNhat.getTenTaiSan(), maTaiSan)) {
              throw new IllegalArgumentException("Lỗi: Tên Căn hộ '" + canHoCapNhat.getTenTaiSan() + "' đã được sử dụng cho căn hộ khác.");
         }
+        validateTenCanHo(canHoCapNhat.getTenTaiSan());
         // Đảm bảo không thay đổi loại tài sản
         if (canHoHienTai.getLoaiTaiSan() != AssetType.can_ho) {
              throw new IllegalStateException("Loại tài sản không phải là Căn hộ. Không thể cập nhật qua chức năng này.");
@@ -338,62 +398,63 @@ public class TaiSanChungCuService {
         taiSanChungCuDAO.delete(canHo);
     }
     public Map<String, Object> getChartData() {
-        // 1. Lấy dữ liệu thô từ DB
-        List<Object[]> rawData = taiSanChungCuDAO.getRawResidentCounts();
+        Map<String, Object> result = new HashMap<>();
+        
+        // 1. Lấy dữ liệu thô từ Database
+        List<Object[]> rawData = taiSanChungCuDAO.getRawResidentCounts(); 
+        
+        // Dùng TreeMap để tự động sắp xếp key (Tầng 1 -> 30)
+        Map<Integer, Long> floorStats = new TreeMap<>();
+        Map<String, Long> sectionStats = new TreeMap<>(); // Thống kê theo phân khu
 
-        // Map lưu trữ kết quả cộng dồn
-        // Dùng TreeMap để tự động sắp xếp (Tầng 1, 2... Tòa A, B...)
-        Map<Integer, Long> floorStats = new java.util.TreeMap<>();
-        Map<String, Long> buildingStats = new java.util.TreeMap<>();
-
-        for (Object[] row : rawData) {
-            String tenCanHo = (String) row[0]; // VD: "A-1001"
-            Long soLuong = (Long) row[1];      // VD: 3 người
-
-            if (tenCanHo == null || soLuong == 0) continue;
-
-            // --- LOGIC XỬ LÝ CHUỖI ---
-            try {
-                // Giả định định dạng: [Tòa]-[Số] (VD: A-1001) hoặc [Tòa][Số] (VD: A1001)
-                
-                // 1. Tách Tòa: Lấy ký tự đầu tiên hoặc phần trước dấu "-"
-                String toa = "";
-                String phanSo = "";
-
-                if (tenCanHo.contains("-")) {
-                    String[] parts = tenCanHo.split("-");
-                    toa = parts[0].trim(); // "A"
-                    if (parts.length > 1) phanSo = parts[1].trim(); // "1001"
-                } else {
-                    // Trường hợp viết liền A1001 -> Tách chữ cái đầu
-                    toa = tenCanHo.substring(0, 1);
-                    phanSo = tenCanHo.substring(1);
-                }
-
-                // 2. Tính Tầng: Lấy phần số chia cho 100
-                // VD: 1001 / 100 = 10 (Tầng 10)
-                // VD: 502 / 100 = 5 (Tầng 5)
-                if (!phanSo.isEmpty() && phanSo.matches("\\d+")) {
-                    int soPhong = Integer.parseInt(phanSo);
-                    int tang = soPhong / 100; 
-                    
-                    // Cộng dồn vào Map Tầng
-                    floorStats.put(tang, floorStats.getOrDefault(tang, 0L) + soLuong);
-                }
-
-                // 3. Cộng dồn vào Map Tòa
-                buildingStats.put(toa, buildingStats.getOrDefault(toa, 0L) + soLuong);
-
-            } catch (NumberFormatException e) {
-                System.err.println("Lỗi parse tên căn hộ: " + tenCanHo);
-                // Có thể log lại hoặc bỏ qua căn hộ đặt tên sai quy tắc
-            }
+        // KHỞI TẠO DỮ LIỆU MẶC ĐỊNH
+        // 1. Khởi tạo đủ 30 tầng (để biểu đồ luôn hiện đủ trục X)
+        for (int i = 1; i <= 30; i++) {
+            floorStats.put(i, 0L);
         }
 
-        // Đóng gói kết quả trả về
-        Map<String, Object> result = new java.util.HashMap<>();
+        // 2. Khởi tạo 4 phân khu chức năng
+        sectionStats.put("Kiot (T1)", 0L);
+        sectionStats.put("Tầng Đế (T2-T5)", 0L);
+        sectionStats.put("Căn Hộ (T6-T29)", 0L);
+        sectionStats.put("Penthouse (T30)", 0L);
+
+        // XỬ LÝ DỮ LIỆU
+        for (Object[] row : rawData) {
+            try {
+                String aptName = (String) row[0]; // VD: "A-0601"
+                Long count = (Long) row[1];
+
+                if (aptName == null || !aptName.contains("-")) continue;
+
+                // Tách lấy số phòng (VD: 0601 -> Tầng 6)
+                String numberPart = aptName.split("-")[1]; 
+                int roomNum = Integer.parseInt(numberPart);
+                int floor = roomNum / 100;    
+                if (floor == 0) floor = 1; 
+
+                // Nếu tầng nằm ngoài phạm vi 30 tầng -> Bỏ qua
+                if (floor > 30) continue;
+
+                // Cộng dồn vào Tầng
+                floorStats.put(floor, floorStats.get(floor) + count);
+
+                // Cộng dồn vào Phân Khu
+                if (floor == 1) {
+                    sectionStats.put("Kiot (T1)", sectionStats.get("Kiot (T1)") + count);
+                } else if (floor >= 2 && floor <= 5) {
+                    sectionStats.put("Tầng Đế (T2-T5)", sectionStats.get("Tầng Đế (T2-T5)") + count);
+                } else if (floor >= 6 && floor <= 29) {
+                    sectionStats.put("Căn Hộ (T6-T29)", sectionStats.get("Căn Hộ (T6-T29)") + count);
+                } else if (floor == 30) {
+                    sectionStats.put("Penthouse (T30)", sectionStats.get("Penthouse (T30)") + count);
+                }
+
+            } catch (NumberFormatException e) {}
+        }
+        
         result.put("floorStats", floorStats);
-        result.put("buildingStats", buildingStats);
+        result.put("buildingStats", sectionStats); // Giữ key là "buildingStats" để không phải sửa nhiều ở Controller
         return result;
     }
     // =======================================================
