@@ -69,7 +69,7 @@ public class HoaDonDAO {
                     .setParameter("maHo", maHo)
                     .getResultList();
     }
-// [SỬA 1] Hàm findById: Dùng LEFT JOIN để tìm được cả Phiếu Chi (không có hộ)
+    // [SỬA 1] Hàm findById: Dùng LEFT JOIN để tìm được cả Phiếu Chi (không có hộ)
     public Optional<HoaDon> findById(Integer maHoaDon) {
         String jpql = "SELECT hd FROM HoaDon hd "
                 + "LEFT JOIN FETCH hd.hoGiaDinh h " // <--- SỬA THÀNH LEFT JOIN
@@ -142,6 +142,25 @@ public class HoaDonDAO {
                 .getSingleResult();
         return sum != null ? sum : BigDecimal.ZERO;
     }
+    /**
+     * [MỚI] Tính tổng tiền theo danh sách các loại hóa đơn (Dùng để gom nhóm)
+     */
+    public BigDecimal sumSoTienByNhieuLoaiVaTrangThai(List<InvoiceType> types, InvoiceStatus trangThai) {
+        if (types == null || types.isEmpty()) return BigDecimal.ZERO;
+
+        String jpql = "SELECT SUM(hd.soTien) FROM HoaDon hd " +
+                      "WHERE hd.loaiHoaDon IN (:types) AND hd.trangThai = :trangThai";
+        
+        try {
+            BigDecimal sum = entityManager.createQuery(jpql, BigDecimal.class)
+                    .setParameter("types", types)
+                    .setParameter("trangThai", trangThai)
+                    .getSingleResult();
+            return sum != null ? sum : BigDecimal.ZERO;
+        } catch (NoResultException e) {
+            return BigDecimal.ZERO;
+        }
+    }
 
     public HoaDon save(HoaDon hoaDon) {
         return entityManager.merge(hoaDon);
@@ -149,6 +168,38 @@ public class HoaDonDAO {
 
     public void delete(HoaDon hd) {
         entityManager.remove(hd);
+    }
+    /**
+     * [MỚI] Đếm số lượng hóa đơn ĐÃ THANH TOÁN theo loại (Dùng đếm số người đóng góp)
+     */
+    public Long countPaidInvoicesByType(InvoiceType type) {
+        String jpql = "SELECT COUNT(hd) FROM HoaDon hd WHERE hd.loaiHoaDon = :type AND hd.trangThai = :status";
+        try {
+            return entityManager.createQuery(jpql, Long.class)
+                    .setParameter("type", type)
+                    .setParameter("status", InvoiceStatus.da_thanh_toan)
+                    .getSingleResult();
+        } catch (NoResultException e) {
+            return 0L;
+        }
+    }
+
+    /**
+     * [MỚI] Thống kê chi tiết từng Quỹ (Group by Ghi chú)
+     * Trả về: [Tên Quỹ (Ghi chú), Tổng Tiền Đã Thu, Số Người Đóng]
+     */
+    @SuppressWarnings("unchecked")
+    public List<Object[]> getContributionFundsStats() {
+        String jpql = "SELECT hd.ghiChu, SUM(hd.soTien), COUNT(hd) " +
+                      "FROM HoaDon hd " +
+                      "WHERE hd.loaiHoaDon = :type AND hd.trangThai = :status " +
+                      "GROUP BY hd.ghiChu " +
+                      "ORDER BY SUM(hd.soTien) DESC";
+        
+        return entityManager.createQuery(jpql)
+                .setParameter("type", InvoiceType.khac) // Loại KHÁC là đóng góp
+                .setParameter("status", InvoiceStatus.da_thanh_toan)
+                .getResultList();
     }
 
     /**

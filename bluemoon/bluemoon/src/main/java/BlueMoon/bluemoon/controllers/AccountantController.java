@@ -72,22 +72,29 @@ public class AccountantController {
             return "redirect:/login?error=notfound";
         }
         
-        // 1. Thông tin người dùng (cho header và sidebar)
+        // 1. Thông tin người dùng
         model.addAttribute("user", user);
 
-        // 2. Lấy số liệu thống kê tài chính
+        // 2. Lấy số liệu thống kê tổng quan (Cũ)
         HoaDonStatsDTO stats = hoaDonService.getAccountantStats();
-        
-        // 3. Truyền các thông số riêng lẻ vào Model 
         model.addAttribute("tongThuThangNay", stats.tongThuThangNay);
         model.addAttribute("tongChuaThu", stats.tongChuaThanhToan);
         model.addAttribute("soHoaDonChuaThu", (long) stats.tongHoaDonChuaThanhToan);
         model.addAttribute("tongQuaHan", stats.tongQuaHan);
         model.addAttribute("soHoaDonQuaHan", (long) stats.soHoaDonQuaHan);
         
+        // 3. [MỚI] Lấy thống kê phân loại (Bắt buộc vs Tự nguyện)
+        Map<String, BigDecimal> phanLoaiStats = hoaDonService.getThongKePhanLoaiThu();
+        // Kiểm tra null để tránh lỗi nếu chưa có dữ liệu
+        BigDecimal thucThuBatBuoc = phanLoaiStats.getOrDefault("thucThuBatBuoc", BigDecimal.ZERO);
+        BigDecimal thucThuTuNguyen = phanLoaiStats.getOrDefault("thucThuTuNguyen", BigDecimal.ZERO);
+        
+        model.addAttribute("thucThuBatBuoc", thucThuBatBuoc);
+        model.addAttribute("thucThuTuNguyen", thucThuTuNguyen);
+        
         // 4. Lấy danh sách hóa đơn cần xử lý
         List<HoaDon> hoaDonChoXacNhan = hoaDonService.getHoaDonChoXacNhan(5); 
-        model.addAttribute("hoaDonCanXacNhan", hoaDonChoXacNhan); // Giữ tên biến để không sửa Thymeleaf quá nhiều
+        model.addAttribute("hoaDonCanXacNhan", hoaDonChoXacNhan);
 
         return "dashboard-accountant"; 
     }
@@ -594,12 +601,16 @@ public class AccountantController {
         HoaDonStatsDTO stats = hoaDonService.getAccountantStats();
         model.addAttribute("stats", stats);
         
-        // 2. Dữ liệu biểu đồ doanh thu 6 tháng (MỚI)
+        // 2. Dữ liệu biểu đồ doanh thu
         Map<String, BigDecimal> chartDataMap = hoaDonService.getMonthlyRevenueStats();
         model.addAttribute("chartLabels", chartDataMap.keySet());
         model.addAttribute("chartData", chartDataMap.values());
         
-        return "financial-report-accountant"; // Trỏ đến file HTML mới
+        // 3. [MỚI] Dữ liệu báo cáo Đóng Góp / Từ Thiện
+        Map<String, Object> dongGopStats = hoaDonService.getChiTietDongGop();
+        model.addAttribute("dongGopStats", dongGopStats);
+        
+        return "financial-report-accountant"; 
     }
 
     // =======================================================

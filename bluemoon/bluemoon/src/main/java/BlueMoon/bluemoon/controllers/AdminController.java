@@ -11,8 +11,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -28,7 +31,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
 import BlueMoon.bluemoon.daos.BaoCaoSuCoDAO;
 import BlueMoon.bluemoon.daos.DoiTuongDAO;
 import BlueMoon.bluemoon.daos.HoGiaDinhDAO;
@@ -73,7 +75,6 @@ import BlueMoon.bluemoon.utils.ResidentStatus;
 import BlueMoon.bluemoon.utils.TerminationReason;
 import BlueMoon.bluemoon.utils.UserRole;
 import jakarta.transaction.Transactional;
-
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
@@ -171,6 +172,11 @@ public class AdminController {
         model.addAttribute("buildingLabels", buildingLabels);
         model.addAttribute("buildingData", buildingData);
         // ========================================================
+        Map<String, BigDecimal> phanLoaiStats = hoaDonService.getThongKePhanLoaiThu();
+        model.addAttribute("thucThuBatBuoc", phanLoaiStats.getOrDefault("thucThuBatBuoc", BigDecimal.ZERO));
+        model.addAttribute("thucThuTuNguyen", phanLoaiStats.getOrDefault("thucThuTuNguyen", BigDecimal.ZERO));
+        Map<String, Object> dongGopStats = hoaDonService.getChiTietDongGop();
+        model.addAttribute("dongGopStats", dongGopStats);
 
         return "dashboard-admin";
     }
@@ -195,38 +201,42 @@ public class AdminController {
 
     // @Autowired private CuDanService cuDanService; // Đã có
 
-    @GetMapping("/resident-list")
-    public String showResidentList(Model model, 
-                               @RequestParam(required = false) String keyword,
-                               @RequestParam(required = false) ResidentStatus trangThaiDanCu,
-                               @RequestParam(required = false) AccountStatus accountStatus,
-                               Authentication auth) {
-    
-        // 1. Lấy thông tin người dùng đang đăng nhập (header)
-        DoiTuong user = getCurrentUser(auth); 
-        if (user == null) {
-            return "redirect:/login?error=auth";
-        }
-        model.addAttribute("user", user);
+@GetMapping("/resident-list")
+public String showResidentList(Model model, 
+                           @RequestParam(required = false) String keyword,
+                           @RequestParam(required = false) ResidentStatus trangThaiDanCu,
+                           @RequestParam(required = false) AccountStatus accountStatus,
+                           @RequestParam(value = "page", defaultValue = "0") int page, // ← THÊM MỚI
+                           @RequestParam(value = "size", defaultValue = "10") int size, // ← THÊM MỚI
+                           Authentication auth) {
 
-        // 2. Lấy danh sách đối tượng (có áp dụng tìm kiếm/lọc)
-        // Nếu có tham số tìm kiếm, gọi hàm lọc; nếu không, lấy tất cả.
-        List<DoiTuong> danhSachDoiTuong;
-        if (keyword != null || trangThaiDanCu != null || accountStatus != null) {
-            danhSachDoiTuong = cuDanService.timKiemvaLoc(keyword, trangThaiDanCu, accountStatus);
-        } else {
-            danhSachDoiTuong = cuDanService.layDanhSachCuDan();
-        }
-
-        // 3. Thêm danh sách vào Model
-        model.addAttribute("residents", danhSachDoiTuong);
-    
-        // 4. (Tùy chọn) Thêm thông tin phân trang
-        model.addAttribute("totalResidents", danhSachDoiTuong.size()); // Giả định không phân trang
-        
-        model.addAttribute("accountStatuses", AccountStatus.values());
-        return "residents"; // Giả định tên file Thymeleaf là residents-list.html
+    DoiTuong user = getCurrentUser(auth); 
+    if (user == null) {
+        return "redirect:/login?error=auth";
     }
+    model.addAttribute("user", user);
+
+    // ← THÊM MỚI: Tạo Pageable
+    Pageable pageable = PageRequest.of(page, size, Sort.by("hoVaTen").ascending());
+    
+    // ← SỬA: Lấy dữ liệu phân trang
+    Page<DoiTuong> residentPage;
+    
+    if (keyword != null || trangThaiDanCu != null || accountStatus != null) {
+        residentPage = cuDanService.timKiemvaLocPhanTrang(keyword, trangThaiDanCu, accountStatus, pageable);
+    } else {
+        residentPage = cuDanService.layDanhSachCuDanPhanTrang(pageable);
+    }
+
+    // ← THÊM MỚI: Truyền dữ liệu phân trang vào Model
+    model.addAttribute("residents", residentPage.getContent());
+    model.addAttribute("currentPage", page);
+    model.addAttribute("totalPages", residentPage.getTotalPages());
+    model.addAttribute("totalResidents", residentPage.getTotalElements());
+    
+    model.addAttribute("accountStatuses", AccountStatus.values());
+    return "residents";
+}
     /**
      * HIỂN THỊ FORM (GET)
      * Đường dẫn: /admin/resident-add
@@ -2270,6 +2280,8 @@ public class AdminController {
         model.addAttribute("householdFloorData", householdStats.get("householdFloorData"));
         model.addAttribute("householdSizeLabels", householdStats.get("householdSizeLabels"));
         model.addAttribute("householdSizeData", householdStats.get("householdSizeData"));
+        Map<String, Object> dongGopStats = hoaDonService.getChiTietDongGop();
+        model.addAttribute("dongGopStats", dongGopStats);
 
         return "reports-dashboard-admin";
     }

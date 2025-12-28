@@ -8,7 +8,7 @@
 
     <link rel="stylesheet" href="/css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         /* ==================== FEATURE TOGGLE STYLES ==================== */
         .feature-badge {
@@ -40,7 +40,7 @@
             transform: scale(1.1);
         }
 
-        /* ==================== ENHANCED CARDS ==================== */
+        /* ==================== EXISTING CARDS ==================== */
         .stat-card {
             position: relative;
             overflow: hidden;
@@ -60,12 +60,159 @@
         .stat-card:hover::before {
             left: 100%;
         }
+
+        /* ==================== PREMIUM FINANCE SECTION STYLES (FULL WIDTH) ==================== */
+        .finance-section {
+            margin: 40px 0;
+            font-family: 'Inter', sans-serif;
+        }
+        .section-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* [SỬA] CARD CONTAINER FULL WIDTH */
+        .finance-stats-row {
+            width: 100%;
+            margin-bottom: 24px;
+        }
+
+        /* [SỬA] CARD STYLES ĐỂ SPAN HẾT CHIỀU RỘNG */
+        .fi-card {
+            background: white;
+            border-radius: 16px;
+            padding: 24px 30px; /* Tăng padding ngang cho đẹp */
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            border: 1px solid #f1f5f9;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            
+            /* Quan trọng: Full width */
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .fi-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+
+        /* Icon Backgrounds */
+        .fi-card-icon-bg {
+            width: 70px; /* Tăng kích thước icon chút cho cân đối với card to */
+            height: 70px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+            flex-shrink: 0;
+        }
+        .bg-purple { background: #f5f3ff; color: #8b5cf6; }
+
+        /* Text Styles */
+        .fi-card-info { z-index: 2; flex: 1; }
+        .fi-label { display: block; font-size: 0.95rem; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }
+        .fi-amount { font-size: 2.2rem; font-weight: 800; line-height: 1.1; margin-bottom: 6px; letter-spacing: -0.5px; }
+        .text-purple { color: #5b21b6; }
+        .fi-subtext { font-size: 1rem; color: #64748b; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+
+        /* Decorative Circles (Họa tiết nền) */
+        .fi-decorative-circle {
+            position: absolute;
+            right: -30px;
+            top: -30px;
+            width: 200px; /* To hơn để phủ nền đẹp hơn */
+            height: 200px;
+            border-radius: 50%;
+            opacity: 0.08;
+            z-index: 1;
+        }
+        .circle-purple { background: #8b5cf6; }
+
+        /* TABLE STYLES */
+        .fi-table-card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+            border: 1px solid #f1f5f9;
+            overflow: hidden;
+        }
+        .fi-table-header {
+            padding: 20px 30px;
+            border-bottom: 1px solid #f1f5f9;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #ffffff;
+        }
+        .fi-table-title { font-size: 1.1rem; font-weight: 700; color: #334155; }
+        .fi-badge-status {
+            background: #f0fdf4; color: #16a34a; 
+            padding: 6px 12px; border-radius: 20px; 
+            font-size: 0.75rem; font-weight: 700;
+            border: 1px solid #bbf7d0;
+        }
+
+        .fi-table-responsive { overflow-x: auto; }
+        .fi-table { width: 100%; border-collapse: collapse; }
+        
+        .fi-table th {
+            background: #f8fafc;
+            color: #64748b;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            padding: 16px 30px;
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .fi-table td {
+            padding: 16px 30px;
+            border-bottom: 1px solid #f1f5f9;
+            color: #334155;
+            font-size: 0.95rem;
+            vertical-align: middle;
+        }
+        .fi-table tr:last-child td { border-bottom: none; }
+        .fi-table tr:hover { background-color: #fcfcfc; }
+
+        /* Custom Column Styles */
+        .fund-name { display: flex; align-items: center; gap: 12px; font-weight: 600; }
+        .fund-icon { 
+            width: 32px; height: 32px; 
+            background: #fff7ed; color: #f97316; 
+            border-radius: 8px; display: flex; align-items: center; justify-content: center; 
+            font-size: 0.8rem;
+        }
+        .fund-count-badge {
+            background: #f1f5f9; color: #475569;
+            padding: 4px 12px; border-radius: 6px;
+            font-weight: 600; font-size: 0.85rem;
+        }
+        .fund-amount {
+            font-family: 'Inter', monospace;
+            font-weight: 700;
+            color: #059669;
+            font-size: 1rem;
+        }
+        .fi-empty-state { text-align: center; padding: 40px; color: #94a3b8; }
     </style>
 </head>
 
 <body>
     <aside class="sidebar">
-<div class="sidebar-header">
+        <div class="sidebar-header">
             <div class="logo">
                 <i class="fas fa-building"></i>
                 <span>BlueMoon Portal</span>
@@ -118,7 +265,6 @@
         </div>
 
         <div class="header-right">
-
             <div class="user-menu">
                 <div class="user-info">
                     <span class="user-name" th:text="${user.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
@@ -146,8 +292,7 @@
     </header>
 
     <main class="main-content">
-        <div
-            style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 32px; border-radius: 12px; margin-bottom: 30px;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 32px; border-radius: 12px; margin-bottom: 30px;">
             <h1 style="font-size: 28px; font-weight: 700; margin-bottom: 8px;">
                 👋 Chào mừng trở lại, <span th:text="${user.hoVaTen} ?: 'Ban Quản Trị'">Ban Quản Trị</span>!
             </h1>
@@ -194,29 +339,217 @@
                 <div class="stat-value" th:text="${#numbers.formatDecimal(doanhThuThang, 0, 'DEFAULT', 0, 'POINT')} ?: '0 ₫'">425M</div>
             </div>
         </div>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-    <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 30px;">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 30px;">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h2 class="content-card-title">📊 Phân Bố Cư Dân Theo Tầng</h2>
+                </div>
+                <div style="height: 350px; position: relative;">
+                    <canvas id="floorChart"></canvas>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h2 class="content-card-title">🏢 Tỷ Lệ Theo Tòa Nhà</h2>
+                </div>
+                <div style="height: 350px; position: relative; display: flex; justify-content: center;">
+                    <canvas id="buildingChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="finance-section">
+            <h3 class="section-title">
+                <i class="fas fa-chart-pie" style="color: #6366f1;"></i> 
+                Hoạt Động Quyên Góp & Từ Thiện
+            </h3>
+
+            <div class="finance-stats-row">
+                
+                <div class="fi-card">
+                    <div class="fi-card-icon-bg bg-purple">
+                        <i class="fas fa-hand-holding-heart"></i>
+                    </div>
+                    <div class="fi-card-info">
+                        <span class="fi-label">Tổng Quỹ Đã Quyên Góp</span>
+                        <div class="fi-amount text-purple" 
+                             th:text="${#numbers.formatDecimal(thucThuTuNguyen, 0, 'COMMA', 0, 'POINT')} + ' ₫'">
+                            0 ₫
+                        </div>
+                        <span class="fi-subtext">
+                            <i class="fas fa-user-check"></i> 
+                            <span style="font-weight: 700; color: #1e293b;" th:text="${dongGopStats.tongSoLuotDong}">0</span> lượt đóng góp từ cư dân
+                        </span>
+                    </div>
+                    <div class="fi-decorative-circle circle-purple"></div>
+                </div>
+
+            </div>
+
+            <div class="fi-table-card">
+                <div class="fi-table-header">
+                    <div class="fi-table-title">
+                        <i class="fas fa-list-ul"></i> Chi Tiết Các Quỹ Vận Động
+                    </div>
+                    <span class="fi-badge-status">Dữ liệu thực thu</span>
+                </div>
+
+                <div class="fi-table-responsive">
+                    <table class="fi-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 50%;">Tên Quỹ / Đợt Phát Động</th>
+                                <th style="width: 20%; text-align: center;">Số Lượt Đóng</th>
+                                <th style="width: 30%; text-align: right;">Tổng Tiền Thu Được</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="quy : ${dongGopStats.danhSachQuy}">
+                                <td>
+                                    <div class="fund-name">
+                                        <div class="fund-icon"><i class="fas fa-star"></i></div>
+                                        <span th:text="${quy.tenQuy}">UNG HO VACXIN</span>
+                                    </div>
+                                </td>
+                                <td style="text-align: center;">
+                                    <span class="fund-count-badge" th:text="${quy.soNguoiDong}">150</span>
+                                </td>
+                                <td style="text-align: right;">
+                                    <span class="fund-amount" 
+                                          th:text="${#numbers.formatDecimal(quy.tongTien, 0, 'COMMA', 0, 'POINT')} + ' ₫'">
+                                        15.000.000 ₫
+                                    </span>
+                                </td>
+                            </tr>
+                            <tr th:if="${#lists.isEmpty(dongGopStats.danhSachQuy)}">
+                                <td colspan="3" class="fi-empty-state">
+                                    <img src="https://cdn-icons-png.flaticon.com/512/4076/4076432.png" width="60" style="opacity: 0.5; margin-bottom: 10px;">
+                                    <p>Chưa có dữ liệu đóng góp nào.</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="content-card" style="margin-bottom: 24px;">
+            <div class="content-card-header">
+                <h2 class="content-card-title">⚡ Thao Tác Nhanh</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
+                <a th:href="@{/admin/resident-add}" class="btn btn-primary" style="padding: 16px;">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Thêm Cư Dân</span>
+                </a>
+                <a th:href="@{/admin/general-asset-add}" class="btn btn-success" style="padding: 16px;">
+                    <i class="fas fa-building"></i>
+                    <span>Thêm Tài Sản</span>
+                </a>
+                <a th:href="@{/admin/fees}" class="btn btn-warning" style="padding: 16px; color: white;">
+                    <i class="fas fa-file-invoice"></i>
+                    <span>Quản Lý Khoản Phí</span>
+                </a>
+                <a th:href="@{/admin/reports}" class="btn btn-outline" style="padding: 16px;">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Xem Báo Cáo</span>
+                </a>
+            </div>
+        </div>
+        
+        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h2 class="content-card-title">⚠️ Sự Cố Cần Xử Lý Gấp</h2>
+                    <a th:href="@{/admin/incidents}" class="btn btn-sm btn-outline">Xem tất cả</a>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div th:if="${#lists.isEmpty(suCoCanXuLy)}" style="text-align: center; color: #6B7280; padding: 20px;">
+                        Không có sự cố nào cần xử lý gấp.
+                    </div>
+
+                    <div th:each="suCo : ${suCoCanXuLy}"
+                        th:with="isCao=${suCo.mucDoUuTien?.name() == 'cao'}"
+                        th:style="${isCao} ? 'padding: 16px; background: #FEF2F2; border-radius: 8px; border-left: 4px solid var(--danger-color);' : 'padding: 16px; background: #FEF3C7; border-radius: 8px; border-left: 4px solid var(--warning-color);'">
+                        
+                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
+                            <div style="flex: 1;">
+                                <h4 style="font-weight: 600; margin-bottom: 4px;" th:text="${suCo.tieuDe} ?: 'Sự cố không rõ tiêu đề'">🔥 Chập điện tầng 5</h4>
+                                <p style="font-size: 14px; color: #6B7280; margin-bottom: 8px;" 
+                                    th:text="|Báo cáo từ: ${suCo.nguoiBaoCao?.hoVaTen ?: 'Cư dân ẩn danh'} - Vị trí: ${suCo.taiSan?.viTri ?: 'N/A'}|">
+                                    Báo cáo từ: Hộ Nguyễn Văn A - Căn A-0501
+                                </p>
+                                <span th:class="${isCao} ? 'badge badge-danger' : 'badge badge-warning'" th:text="|Ưu tiên ${suCo.mucDoUuTien?.dbValue}|">Ưu tiên cao</span>
+                            </div>
+                            <button th:class="${isCao} ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-warning'" th:style="${!isCao} ? 'color: white;'">Xử lý ngay</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="content-card">
+                <div class="content-card-header">
+                    <h2 class="content-card-title">📊 Thống Kê Nhanh</h2>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 16px;">
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 14px; color: #6B7280;">Tỷ lệ thu phí</span>
+                            <span style="font-weight: 600;" th:text="${tyLeThuPhi} ?: '0' + '%'">78%</span>
+                        </div>
+                        <div style="background: #F3F4F6; border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div style="background: #10B981; height: 100%;" th:style="|background: #10B981; height: 100%; width: ${tyLeThuPhi} ?: 0%;|"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 14px; color: #6B7280;">Căn hộ đã bán</span>
+                            <span style="font-weight: 600;" th:text="${tyLeCanHoDaBan} ?: '0' + '%'">92%</span>
+                        </div>
+                        <div style="background: #F3F4F6; border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div style="background: #3B82F6; height: 100%;" th:style="|background: #3B82F6; height: 100%; width: ${tyLeCanHoDaBan} ?: 0%;|"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                            <span style="font-size: 14px; color: #6B7280;">Sự cố đã xử lý</span>
+                            <span style="font-weight: 600;" th:text="${tyLeSuCoDaXuLy} ?: '0' + '%'">65%</span>
+                        </div>
+                        <div style="background: #F3F4F6; border-radius: 10px; height: 8px; overflow: hidden;">
+                            <div style="background: #F59E0B; height: 100%;" th:style="|background: #F59E0B; height: 100%; width: ${tyLeSuCoDaXuLy} ?: 0%;|"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
     
-        <div class="content-card">
-            <div class="content-card-header">
-                <h2 class="content-card-title">📊 Phân Bố Cư Dân Theo Tầng</h2>
-            </div>
-            <div style="height: 350px; position: relative;">
-                <canvas id="floorChart"></canvas>
-            </div>
-        </div>
-
-        <div class="content-card">
-            <div class="content-card-header">
-                <h2 class="content-card-title">🏢 Tỷ Lệ Theo Tòa Nhà</h2>
-            </div>
-            <div style="height: 350px; position: relative; display: flex; justify-content: center;">
-                <canvas id="buildingChart"></canvas>
-            </div>
-        </div>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner"></div>
     </div>
 
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2025 BlueMoon Apartment Management System. All rights reserved.</p>
+            <div class="footer-links">
+                <a href="#">Privacy Policy</a>
+                <a href="#">Terms of Service</a>
+                <a href="#">Contact Support</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="/js/main.js"></script>
+    
     <script th:inline="javascript">
         // Lấy dữ liệu từ Controller
         const fLabels = /*[[${floorLabels}]]*/ [];
@@ -303,127 +636,8 @@
                 }
             });
         }
-    </script>
 
-        <div class="content-card" style="margin-bottom: 24px;">
-            <div class="content-card-header">
-                <h2 class="content-card-title">⚡ Thao Tác Nhanh</h2>
-            </div>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px;">
-                <a th:href="@{/admin/resident-add}" class="btn btn-primary" style="padding: 16px;">
-                    <i class="fas fa-user-plus"></i>
-                    <span>Thêm Cư Dân</span>
-                </a>
-                <a th:href="@{/admin/general-asset-add}" class="btn btn-success" style="padding: 16px;">
-                    <i class="fas fa-building"></i>
-                    <span>Thêm Tài Sản</span>
-                </a>
-                <a th:href="@{/admin/fees}" class="btn btn-warning" style="padding: 16px; color: white;">
-                    <i class="fas fa-file-invoice"></i>
-                    <span>Quản Lý Khoản Phí</span>
-                </a>
-                <a th:href="@{/admin/reports}" class="btn btn-outline" style="padding: 16px;">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Xem Báo Cáo</span>
-                </a>
-            </div>
-        </div>
-        
-        <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 24px;">
-            <div class="content-card">
-                <div class="content-card-header">
-                    <h2 class="content-card-title">⚠️ Sự Cố Cần Xử Lý Gấp</h2>
-                    <a th:href="@{/admin/incidents}" class="btn btn-sm btn-outline">Xem tất cả</a>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <div th:if="${#lists.isEmpty(suCoCanXuLy)}" style="text-align: center; color: var(--gray); padding: 20px;">
-                        Không có sự cố nào cần xử lý gấp.
-                    </div>
-
-                    <div th:each="suCo : ${suCoCanXuLy}"
-                        th:with="isCao=${suCo.mucDoUuTien?.name() == 'cao'}"
-                        th:style="${isCao} ? 'padding: 16px; background: #FEF2F2; border-radius: 8px; border-left: 4px solid var(--danger-color);' : 'padding: 16px; background: #FEF3C7; border-radius: 8px; border-left: 4px solid var(--warning-color);'">
-                        
-                        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 8px;">
-                            <div style="flex: 1;">
-                                <h4 style="font-weight: 600; margin-bottom: 4px;" th:text="${suCo.tieuDe} ?: 'Sự cố không rõ tiêu đề'">🔥 Chập điện tầng 5</h4>
-                                <p style="font-size: 14px; color: var(--gray); margin-bottom: 8px;" 
-                                    th:text="|Báo cáo từ: ${suCo.nguoiBaoCao?.hoVaTen ?: 'Cư dân ẩn danh'} - Vị trí: ${suCo.taiSan?.viTri ?: 'N/A'}|">
-                                    Báo cáo từ: Hộ Nguyễn Văn A - Căn A-0501
-                                </p>
-                                <span th:class="${isCao} ? 'badge badge-danger' : 'badge badge-warning'" th:text="|Ưu tiên ${suCo.mucDoUuTien?.dbValue}|">Ưu tiên cao</span>
-                            </div>
-                            <button th:class="${isCao} ? 'btn btn-sm btn-danger' : 'btn btn-sm btn-warning'" th:style="${!isCao} ? 'color: white;'">Xử lý ngay</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="content-card">
-                <div class="content-card-header">
-                    <h2 class="content-card-title">📊 Thống Kê Nhanh</h2>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 16px;">
-                    <div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="font-size: 14px; color: var(--gray);">Tỷ lệ thu phí</span>
-                            <span style="font-weight: 600;" th:text="${tyLeThuPhi} ?: '0' + '%'">78%</span>
-                        </div>
-                        <div
-                            style="background: var(--gray-lighter); border-radius: 10px; height: 8px; overflow: hidden;">
-                            <div style="background: var(--secondary-color); height: 100%;" th:style="|background: var(--secondary-color); height: 100%; width: ${tyLeThuPhi} ?: 0%;|"></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="font-size: 14px; color: var(--gray);">Căn hộ đã bán</span>
-                            <span style="font-weight: 600;" th:text="${tyLeCanHoDaBan} ?: '0' + '%'">92%</span>
-                        </div>
-                        <div
-                            style="background: var(--gray-lighter); border-radius: 10px; height: 8px; overflow: hidden;">
-                            <div style="background: var(--info-color); height: 100%;" th:style="|background: var(--info-color); height: 100%; width: ${tyLeCanHoDaBan} ?: 0%;|"></div>
-                        </div>
-                    </div>
-
-                    <div>
-                        <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                            <span style="font-size: 14px; color: var(--gray);">Sự cố đã xử lý</span>
-                            <span style="font-weight: 600;" th:text="${tyLeSuCoDaXuLy} ?: '0' + '%'">65%</span>
-                        </div>
-                        <div
-                            style="background: var(--gray-lighter); border-radius: 10px; height: 8px; overflow: hidden;">
-                            <div style="background: var(--warning-color); height: 100%;" th:style="|background: var(--warning-color); height: 100%; width: ${tyLeSuCoDaXuLy} ?: 0%;|"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </main>
-    
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner"></div>
-    </div>
-
-    <footer class="footer">
-        <div class="footer-content">
-            <p>&copy; 2025 BlueMoon Apartment Management System. All rights reserved.</p>
-            <div class="footer-links">
-                <a href="#">Privacy Policy</a>
-                <a href="#">Terms of Service</a>
-                <a href="#">Contact Support</a>
-            </div>
-        </div>
-    </footer>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="/js/main.js"></script>
-    
-    <script>
-        // Hàm featureToggle (Giữ nguyên)
+        // Hàm featureToggle
         function showFeatureToggle(featureName, message) {
             Swal.fire({
                 icon: 'info',
@@ -456,9 +670,7 @@
                 }
             });
         }
-        
-        // Cần thêm các hàm JS phụ trợ khác từ file gốc (loading, toggleSidebar, etc.)
     </script>
+    
 </body>
-
 </html>

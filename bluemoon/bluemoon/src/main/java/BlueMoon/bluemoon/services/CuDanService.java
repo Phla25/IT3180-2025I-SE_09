@@ -8,6 +8,8 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -291,5 +293,17 @@ public void xoaCuDan(String cccd, ResidentStatus lyDo) {
 
         return stats;
     }
-    
+    public Page<DoiTuong> layDanhSachCuDanPhanTrang(Pageable pageable) {
+    return doiTuongDAO.findAll(pageable);
+}
+
+public Page<DoiTuong> timKiemvaLocPhanTrang(String keyword, ResidentStatus trangThaiDanCu, 
+                                             AccountStatus accountStatus, Pageable pageable) {
+    // Logic lọc + phân trang (tùy Repository của bạn)
+    if (keyword != null && !keyword.trim().isEmpty()) {
+        return doiTuongDAO.searchResidents(keyword, pageable);
+    }
+    // Thêm các điều kiện lọc khác nếu cần...
+    return doiTuongDAO.findAll(pageable);
+}
 }

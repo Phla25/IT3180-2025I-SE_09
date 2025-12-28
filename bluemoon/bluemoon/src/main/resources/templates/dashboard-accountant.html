@@ -162,7 +162,69 @@
                 </div>
             </div>
             
+        </div>
+        <div class="stats-grid">
+             </div>
+        
+        <h3 style="margin: 30px 0 15px; color: #374151; font-size: 1.1rem; font-weight: 700; border-left: 4px solid #10B981; padding-left: 12px;">
+            PHÂN TÍCH NGUỒN THU
+        </h3>
+        
+        <div class="stats-grid" style="margin-bottom: 30px;">
+            
+            <div class="stat-card" style="border-left: 4px solid #3B82F6;"> <div class="stat-card-header">
+                    <span class="stat-card-title">Thu Phí Bắt Buộc</span>
+                    <div class="stat-icon" style="background: #DBEAFE; color: #1E40AF;">
+                        <i class="fas fa-file-invoice"></i>
+                    </div>
+                </div>
+                <div class="stat-value" style="color: #1E40AF;" 
+                     th:text="${#numbers.formatDecimal(thucThuBatBuoc, 0, 'COMMA', 0, 'POINT')} + ' ₫'">
+                    0 ₫
+                </div>
+                <div class="stat-change">
+                    <span style="color: #6B7280; font-size: 0.85rem;">
+                        <i class="fas fa-info-circle"></i> Điện, Nước, Dịch vụ, Gửi xe...
+                    </span>
+                </div>
             </div>
+            
+            <div class="stat-card" style="border-left: 4px solid #8B5CF6;"> <div class="stat-card-header">
+                    <span class="stat-card-title">Thu Đóng Góp / Tự Nguyện</span>
+                    <div class="stat-icon" style="background: #F3E8FF; color: #7C3AED;">
+                        <i class="fas fa-hand-holding-heart"></i>
+                    </div>
+                </div>
+                <div class="stat-value" style="color: #6D28D9;" 
+                     th:text="${#numbers.formatDecimal(thucThuTuNguyen, 0, 'COMMA', 0, 'POINT')} + ' ₫'">
+                    0 ₫
+                </div>
+                <div class="stat-change">
+                    <span style="color: #6B7280; font-size: 0.85rem;">
+                        <i class="fas fa-heart"></i> Quyên góp, Ủng hộ, Quỹ từ thiện...
+                    </span>
+                </div>
+            </div>
+
+            <div class="stat-card" style="border-left: 4px solid #F59E0B;">
+                <div class="stat-card-header">
+                    <span class="stat-card-title">Tỷ Lệ Đóng Góp</span>
+                    <div class="stat-icon" style="background: #FEF3C7; color: #B45309;">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                </div>
+                <div class="stat-value" style="color: #B45309;"
+                     th:with="tong=${thucThuBatBuoc.add(thucThuTuNguyen)}, 
+                              tyLe=${tong.compareTo(T(java.math.BigDecimal).ZERO) > 0 ? thucThuTuNguyen.multiply(T(java.math.BigDecimal).valueOf(100.0)).divide(tong, 1, T(java.math.RoundingMode).HALF_UP) : 0}">
+                    <span th:text="${tyLe} + '%'">0%</span>
+                </div>
+                <div class="stat-change">
+                    <span style="color: #6B7280; font-size: 0.85rem;">
+                        <i class="fas fa-percentage"></i> So với tổng doanh thu
+                    </span>
+                </div>
+            </div>
+        </div>
 
         <div class="content-card" style="margin-bottom: 24px;">
             <div class="content-card-header">

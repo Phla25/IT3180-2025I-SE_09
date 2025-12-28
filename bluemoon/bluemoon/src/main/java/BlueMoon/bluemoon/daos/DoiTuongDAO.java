@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Repository;
 
 import BlueMoon.bluemoon.entities.DoiTuong;
@@ -288,4 +290,58 @@ public class DoiTuongDAO {
         String jpql = "SELECT d.trangThaiDanCu, COUNT(d) FROM DoiTuong d WHERE d.laCuDan = true GROUP BY d.trangThaiDanCu";
         return entityManager.createQuery(jpql, Object[].class).getResultList();
     }
+
+/**
+ * Lấy tất cả cư dân có phân trang
+ */
+public Page<DoiTuong> findAll(Pageable pageable) {
+    // 1. Đếm tổng số bản ghi
+    String countJpql = "SELECT COUNT(d) FROM DoiTuong d WHERE d.laCuDan = true";
+    Long total = entityManager.createQuery(countJpql, Long.class).getSingleResult();
+    
+    // 2. Lấy dữ liệu phân trang
+    String jpql = "SELECT d FROM DoiTuong d WHERE d.laCuDan = true ORDER BY d.hoVaTen ASC";
+    List<DoiTuong> content = entityManager.createQuery(jpql, DoiTuong.class)
+        .setFirstResult((int) pageable.getOffset())
+        .setMaxResults(pageable.getPageSize())
+        .getResultList();
+    
+    // 3. Tạo và trả về Page
+    return new org.springframework.data.domain.PageImpl<>(content, pageable, total);
+}
+
+/**
+ * Tìm kiếm cư dân theo keyword có phân trang
+ */
+public Page<DoiTuong> searchResidents(String keyword, Pageable pageable) {
+    String kwParam = "%" + keyword.toLowerCase() + "%";
+    
+    // 1. Đếm tổng số bản ghi khớp với keyword
+    String countJpql = "SELECT COUNT(d) FROM DoiTuong d WHERE d.laCuDan = true AND (" +
+                       "LOWER(d.cccd) LIKE :kw OR " +
+                       "LOWER(d.hoVaTen) LIKE :kw OR " +
+                       "LOWER(d.soDienThoai) LIKE :kw OR " +
+                       "LOWER(d.email) LIKE :kw)";
+    
+    Long total = entityManager.createQuery(countJpql, Long.class)
+        .setParameter("kw", kwParam)
+        .getSingleResult();
+    
+    // 2. Lấy dữ liệu phân trang
+    String jpql = "SELECT d FROM DoiTuong d WHERE d.laCuDan = true AND (" +
+                  "LOWER(d.cccd) LIKE :kw OR " +
+                  "LOWER(d.hoVaTen) LIKE :kw OR " +
+                  "LOWER(d.soDienThoai) LIKE :kw OR " +
+                  "LOWER(d.email) LIKE :kw) " +
+                  "ORDER BY d.hoVaTen ASC";
+    
+    List<DoiTuong> content = entityManager.createQuery(jpql, DoiTuong.class)
+        .setParameter("kw", kwParam)
+        .setFirstResult((int) pageable.getOffset())
+        .setMaxResults(pageable.getPageSize())
+        .getResultList();
+    
+    // 3. Tạo và trả về Page
+    return new org.springframework.data.domain.PageImpl<>(content, pageable, total);
+}
 }

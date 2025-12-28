@@ -43,6 +43,23 @@
         .btn-outline { background-color: white; border: 1px solid var(--gray-300); color: var(--gray-700); }
         .btn-outline:hover { background-color: var(--gray-50); }
         #residentsTable tbody tr td { font-size: 0.875rem; vertical-align: middle; }
+        
+        /* CSS cho phân trang */
+        .btn.disabled {
+            pointer-events: none;
+            opacity: 0.5;
+            cursor: not-allowed;
+            background-color: #f3f4f6;
+        }
+        
+        .pagination-link {
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            height: 32px;
+        }
     </style>
 </head>
 
@@ -101,7 +118,6 @@
         </div>
 
         <div class="header-right">
-
             <div class="user-menu">
                 <div class="user-info">
                     <span class="user-name" th:text="${user?.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
@@ -180,6 +196,13 @@
 			                    th:selected="${param.accountStatus != null and param.accountStatus[0].equals(aStatus.name())}">Hoạt động</option>
 			            </select>
 			            
+			            <!-- Dropdown chọn số lượng/trang -->
+			            <select name="size" class="form-control" style="width: 100px;">
+			                <option value="10" th:selected="${param.size == null || param.size[0] == '10'}">10</option>
+			                <option value="25" th:selected="${param.size != null && param.size[0] == '25'}">25</option>
+			                <option value="50" th:selected="${param.size != null && param.size[0] == '50'}">50</option>
+			            </select>
+			            
 			            <button type="submit" class="btn btn-sm btn-info" title="Lọc"><i class="fas fa-filter"></i> Lọc</button>
 			        </div>
 			    </div>
@@ -214,9 +237,7 @@
                                         th:with="initials=${resident.hoVaTen != null and #strings.length(resident.hoVaTen) > 0 ? #strings.substring(resident.hoVaTen, 0, 1) : 'NA'},
                                                  cccdString=${resident.cccd ?: 'default'}"
                                         style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 600;"
-                                        
                                         th:style="'background: #'+${@residentUtils.calculateColorHash(cccdString)} +';'"
-                                        
                                         th:text="${initials}">NT
                                     </div>
                                     <span style="font-weight: 500;" th:text="${resident.hoVaTen} ?: 'N/A'">Nguyễn Văn Thanh</span>
@@ -240,14 +261,11 @@
                             
                             <td>
                                 <div class="flex gap-1">
-                                    <button th:data-cccd="${resident.cccd}" 
-                                            onclick="viewResident(this.dataset.cccd)" 
-                                            class="btn btn-sm btn-outline" 
-                                            title="Xem chi tiết">
-                                        <a th:href="@{/admin/resident-details(cccd=${resident.cccd})}">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                    </button>
+                                    <a th:href="@{/admin/resident-details(cccd=${resident.cccd})}" 
+                                       class="btn btn-sm btn-outline" 
+                                       title="Xem chi tiết">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
                                     
                                     <a th:href="@{/admin/resident-edit(cccd=${resident.cccd})}" 
                                        class="btn btn-sm btn-warning" 
@@ -300,18 +318,46 @@
                 </table>
             </div>
             
+            <!-- ✅ PHẦN PHÂN TRANG MỚI -->
             <div class="flex-between mt-3" style="padding-top: 20px; border-top: 1px solid var(--gray-light);">
+                <!-- Hiển thị số lượng -->
                 <div style="color: var(--gray); font-size: 14px;">
-                    Hiển thị 1-<span th:text="${#lists.size(residents) ?: '0'}">5</span> trong tổng số <span th:text="${totalResidents} ?: '0'">48</span> cư dân
+                    Hiển thị 
+                    <span th:text="${currentPage * (param.size != null ? #numbers.parseInteger(param.size[0]) : 10) + 1}">1</span>-<span th:text="${currentPage * (param.size != null ? #numbers.parseInteger(param.size[0]) : 10) + #lists.size(residents)}">10</span> 
+                    trong tổng số <span th:text="${totalResidents}">48</span> cư dân
                 </div>
-                <div class="flex gap-1">
-                    <button class="btn btn-sm btn-outline"><i class="fas fa-chevron-left"></i></button>
-                    <button class="btn btn-sm btn-primary">1</button>
-                    <button class="btn btn-sm btn-outline">2</button>
-                    <button class="btn btn-sm btn-outline">3</button>
-                    <button class="btn btn-sm btn-outline">...</button>
-                    <button class="btn btn-sm btn-outline">10</button>
-                    <button class="btn btn-sm btn-outline"><i class="fas fa-chevron-right"></i></button>
+                
+                <!-- Nút phân trang -->
+                <div class="flex gap-1" th:if="${totalPages > 1}">
+                    <!-- Nút Previous -->
+                    <a th:href="@{/admin/resident-list(page=${currentPage - 1}, size=${param.size != null ? param.size[0] : 10}, keyword=${param.keyword}, trangThaiDanCu=${param.trangThaiDanCu}, accountStatus=${param.accountStatus})}"
+                       th:classappend="${currentPage == 0} ? 'disabled' : ''"
+                       class="btn btn-sm btn-outline pagination-link">
+                        <i class="fas fa-chevron-left"></i>
+                    </a>
+                    
+                    <!-- Các số trang -->
+                    <th:block th:each="i : ${#numbers.sequence(0, totalPages - 1)}">
+                        <!-- Hiển thị: trang đầu, trang cuối, và 2 trang gần current -->
+                        <a th:if="${i == 0 || i == totalPages - 1 || (i >= currentPage - 2 && i <= currentPage + 2)}"
+                           th:href="@{/admin/resident-list(page=${i}, size=${param.size != null ? param.size[0] : 10}, keyword=${param.keyword}, trangThaiDanCu=${param.trangThaiDanCu}, accountStatus=${param.accountStatus})}"
+                           th:classappend="${i == currentPage} ? 'btn-primary' : 'btn-outline'"
+                           th:text="${i + 1}"
+                           class="btn btn-sm pagination-link">1</a>
+                        
+                        <!-- Dấu ... -->
+                        <span th:if="${i == 1 && currentPage > 3}" 
+                              class="btn btn-sm btn-outline disabled">...</span>
+                        <span th:if="${i == totalPages - 2 && currentPage < totalPages - 4}" 
+                              class="btn btn-sm btn-outline disabled">...</span>
+                    </th:block>
+                    
+                    <!-- Nút Next -->
+                    <a th:href="@{/admin/resident-list(page=${currentPage + 1}, size=${param.size != null ? param.size[0] : 10}, keyword=${param.keyword}, trangThaiDanCu=${param.trangThaiDanCu}, accountStatus=${param.accountStatus})}"
+                       th:classappend="${currentPage >= totalPages - 1} ? 'disabled' : ''"
+                       class="btn btn-sm btn-outline pagination-link">
+                        <i class="fas fa-chevron-right"></i>
+                    </a>
                 </div>
             </div>
         </div>
@@ -335,25 +381,9 @@
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     
     <script th:inline="javascript">
-        // Lấy URL cơ sở cho JS
-        const DETAIL_BASE_URL = /*[[@{/admin/resident-detail}]]*/ '/admin/resident-detail';
-
         $(document).ready(function() {
-            // Khởi tạo DataTables
-            $('#residentsTable').DataTable({
-                responsive: true,
-                "language": {
-                    "url": "//cdn.datatables.net/plug-ins/1.11.5/i18n/Vietnamese.json"
-                }, 
-                "columnDefs": [
-                    { "orderable": false, "targets": [7] }
-                ]
-            });
-
-            // Hàm xem chi tiết (Được định nghĩa trong JS)
-            window.viewResident = function(cccd) {
-                 window.location.href = `${DETAIL_BASE_URL}?cccd=${cccd}`;
-            }
+            // ✅ TẮT DataTables vì đã dùng phân trang server-side
+            // Không cần $('#residentsTable').DataTable() nữa
             
             // Hàm toggleSidebar (Đảm bảo hoạt động)
             if (typeof window.toggleSidebar === 'undefined') {

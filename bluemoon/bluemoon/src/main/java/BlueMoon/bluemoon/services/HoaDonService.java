@@ -6,8 +6,10 @@ import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -543,7 +545,7 @@ public class HoaDonService {
                     // 2. Cùng số tiền
                     // 3. Người đứng tên chính là người này
                     
-                    String ghiChuCaNhan = ghiChuChuan + " (" + tv.getDoiTuong().getHoVaTen() + ")";
+                    String ghiChuCaNhan = ghiChuChuan;
                     
                     List<HoaDon> hoaDonCuaHo = hoaDonDAO.findByHoGiaDinh(tv.getHoGiaDinh());
                     boolean daTonTai = hoaDonCuaHo.stream().anyMatch(hd -> 
@@ -621,5 +623,62 @@ public class HoaDonService {
         }
         
         return danhSachHoaDonMoi.size();
+    }
+    /**
+     * [MỚI] Lấy báo cáo chi tiết về các khoản đóng góp tự nguyện
+     */
+    public Map<String, Object> getChiTietDongGop() {
+        Map<String, Object> details = new HashMap<>();
+        
+        // 1. Tổng quan
+        Long tongSoLuotDong = hoaDonDAO.countPaidInvoicesByType(InvoiceType.khac);
+        BigDecimal tongTienDongGop = hoaDonDAO.sumSoTienByLoaiAndTrangThai(InvoiceType.khac, InvoiceStatus.da_thanh_toan);
+        
+        details.put("tongSoLuotDong", tongSoLuotDong);
+        details.put("tongTienDongGop", tongTienDongGop);
+        
+        // 2. Chi tiết từng quỹ
+        List<Object[]> fundsRaw = hoaDonDAO.getContributionFundsStats();
+        List<Map<String, Object>> funds = new ArrayList<>();
+        
+        for (Object[] row : fundsRaw) {
+            Map<String, Object> f = new HashMap<>();
+            f.put("tenQuy", row[0]);      // Ghi chú (Tên đợt)
+            f.put("tongTien", row[1]);    // Tổng tiền thu được
+            f.put("soNguoiDong", row[2]); // Số người đã đóng
+            funds.add(f);
+        }
+        details.put("danhSachQuy", funds);
+        
+        return details;
+    }
+    /**
+     * [MỚI] Lấy thống kê tách biệt: Bắt buộc vs Tự nguyện
+     */
+    public Map<String, BigDecimal> getThongKePhanLoaiThu() {
+        Map<String, BigDecimal> stats = new HashMap<>();
+
+        // 1. Định nghĩa nhóm
+        List<InvoiceType> batBuocTypes = Arrays.asList(
+            InvoiceType.dich_vu, 
+            InvoiceType.sua_chua, 
+            InvoiceType.phat
+        );
+        List<InvoiceType> tuNguyenTypes = Arrays.asList(
+            InvoiceType.khac
+        );
+
+        // 2. Tính toán (Chỉ tính những hóa đơn ĐÃ THANH TOÁN - Doanh thu thực tế)
+        BigDecimal tongBatBuoc = hoaDonDAO.sumSoTienByNhieuLoaiVaTrangThai(batBuocTypes, InvoiceStatus.da_thanh_toan);
+        BigDecimal tongTuNguyen = hoaDonDAO.sumSoTienByNhieuLoaiVaTrangThai(tuNguyenTypes, InvoiceStatus.da_thanh_toan);
+
+        // 3. Tính toán khoản CHỜ thu (Chưa thanh toán) để tham khảo
+        BigDecimal choThuBatBuoc = hoaDonDAO.sumSoTienByNhieuLoaiVaTrangThai(batBuocTypes, InvoiceStatus.chua_thanh_toan);
+        
+        stats.put("thucThuBatBuoc", tongBatBuoc);
+        stats.put("thucThuTuNguyen", tongTuNguyen);
+        stats.put("choThuBatBuoc", choThuBatBuoc);
+
+        return stats;
     }
 }
