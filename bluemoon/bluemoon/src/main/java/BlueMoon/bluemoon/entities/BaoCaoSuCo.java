@@ -166,4 +166,10 @@ public class BaoCaoSuCo {
     public void setLoaiSuCo(IncidentType loaiSuCo) {
         this.loaiSuCo = loaiSuCo;
     }
+    public void setMoTaSuCo(String noiDung) {
+        this.noiDung = noiDung;
+    }
+    public String getMoTaSuCo() {
+        return this.noiDung;
+    }
 }

@@ -323,8 +323,7 @@
                 <!-- Hiển thị số lượng -->
                 <div style="color: var(--gray); font-size: 14px;">
                     Hiển thị 
-                    <span th:text="${currentPage * (param.size != null ? #numbers.parseInteger(param.size[0]) : 10) + 1}">1</span>-<span th:text="${currentPage * (param.size != null ? #numbers.parseInteger(param.size[0]) : 10) + #lists.size(residents)}">10</span> 
-                    trong tổng số <span th:text="${totalResidents}">48</span> cư dân
+                    <span th:text="${currentPage * (param.size != null ? T(java.lang.Integer).parseInt(param.size[0]) : 10) + 1}">1</span>-<span th:text="${currentPage * (param.size != null ? T(java.lang.Integer).parseInt(param.size[0]) : 10) + #lists.size(residents)}">10</span>
                 </div>
                 
                 <!-- Nút phân trang -->

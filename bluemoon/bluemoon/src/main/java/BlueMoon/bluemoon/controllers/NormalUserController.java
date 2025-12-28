@@ -1027,7 +1027,7 @@ public ResponseEntity<byte[]> previewInvoicePdf(@PathVariable Integer maHoaDon) 
                 model.addAttribute("message", "Bạn chưa được đăng ký vào hộ gia đình nào.");
                 model.addAttribute("maHo", "N/A");
                 model.addAttribute("members", Collections.emptyList());
-                return "my-assets-resident";
+                return "my-household-resident";
             }
             HoGiaDinh hoGiaDinh = hoGiaDinhOpt.get();
             String maHo = hoGiaDinh.getMaHo();

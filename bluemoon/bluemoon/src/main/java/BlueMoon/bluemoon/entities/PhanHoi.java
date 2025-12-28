@@ -26,6 +26,10 @@ public class PhanHoi {
     private Integer maPhanHoi;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "cccd_nguoi_dung", nullable = false)
+    private DoiTuong nguoiDung; // Người phản hồi (BQT, Kế toán,...)
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "ma_bao_cao", nullable = false)
     private BaoCaoSuCo baoCaoSuCo; // Liên kết với sự cố
 
@@ -113,5 +117,13 @@ public class PhanHoi {
         if (this.thoiGianPhanHoi == null) {
             this.thoiGianPhanHoi = LocalDateTime.now();
         }
+    }
+
+    public DoiTuong getNguoiDung() {
+        return nguoiDung;
+    }
+
+    public void setNguoiDung(DoiTuong nguoiDung) {
+        this.nguoiDung = nguoiDung;
     }
 }
