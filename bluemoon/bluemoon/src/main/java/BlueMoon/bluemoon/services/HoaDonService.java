@@ -681,4 +681,82 @@ public class HoaDonService {
 
         return stats;
     }
+    // Helper format ngày (Đưa từ Controller vào đây để tái sử dụng)
+    private String formatDateVN(String yyyyMMdd) {
+        try {
+            LocalDate date = LocalDate.parse(yyyyMMdd);
+            return String.format("%02d/%02d/%d", date.getDayOfMonth(), date.getMonthValue(), date.getYear());
+        } catch (Exception e) { return ""; }
+    }
+
+    /**
+     * [NÂNG CẤP] HÀM TẠO GHI CHÚ CHUẨN - LỌC SẠCH TỪ KHÓA THỪA
+     */
+    public String taoGhiChuChuan(String rawInput, InvoiceType type, String kyThuStr, String ngayStr) {
+        if (rawInput == null) rawInput = "";
+        
+        // 1. Chuẩn hóa cơ bản (Bỏ dấu, UpperCase)
+        String content = normalizeString(rawInput); 
+
+        // 2. XÓA CÁC TỪ KHÓA "RÁC" (TIỀN, PHÍ, DỊCH VỤ...)
+        // Dùng replaceAll với regex để xóa từ đứng riêng lẻ
+        content = content.replace("TIEN", "")
+                         .replace("PHI", "")
+                         .replace("THANH TOAN", "")
+                         .replace("DICH VU", "");
+
+        // 3. XÓA CÁC MÔ TẢ THỜI GIAN TRONG NỘI DUNG (Để tránh lặp với ngày hệ thống)
+        // VD: "THANG 12", "NAM 2025", "T12", "12/2025"
+        content = content.replaceAll("THANG\\s*\\d{1,2}", "")  // Xóa "THANG 12"
+                         .replaceAll("NAM\\s*\\d{4}", "")      // Xóa "NAM 2025"
+                         .replaceAll("T\\d{1,2}", "")          // Xóa "T12"
+                         .replaceAll("\\d{1,2}[/-]\\d{1,2}[/-]\\d{4}", "") // Xóa dd/mm/yyyy
+                         .replaceAll("\\d{1,2}[/-]\\d{4}", "");            // Xóa mm/yyyy
+
+        // 4. XÓA TIỀN TỐ THEO LOẠI (Tránh lặp)
+        if (type != null) {
+            switch (type) {
+                case sua_chua -> content = content.replace("SUA CHUA", "").replace("SUA", "");
+                case phat -> content = content.replace("PHAT", "").replace("VI PHAM", "");
+                case khac -> content = content.replace("DONG GOP", "").replace("UNG HO", "").replace("QUY", "");
+                default -> {} 
+            }
+        }
+        
+        // 5. Dọn dẹp ký tự thừa còn sót lại (dấu gạch ngang, khoảng trắng kép)
+        content = content.replace("-", "").trim().replaceAll("\\s+", " ");
+
+        // 6. GHÉP CHUỖI CHUẨN
+        String finalNote = "";
+        try {
+            if (null != type) switch (type) {
+                case dich_vu -> {
+                    if (kyThuStr == null || kyThuStr.isEmpty()) throw new IllegalArgumentException("Thiếu kỳ thu");
+                    String[] parts = kyThuStr.split("-"); // yyyy-MM
+                    // VD: DIEN 12/2025
+                    finalNote = content + " " + parts[1] + "/" + parts[0];
+                    }
+                case khac -> {
+                    if (kyThuStr == null || kyThuStr.isEmpty()) throw new IllegalArgumentException("Thiếu thời gian");
+                    String[] parts = kyThuStr.split("-");
+                    finalNote = "DONG GOP " + content + " " + parts[1] + "/" + parts[0];
+                    }
+                case sua_chua -> {
+                    if (ngayStr == null || ngayStr.isEmpty()) throw new IllegalArgumentException("Thiếu ngày thực hiện");
+                    finalNote = "SUA CHUA " + content + " " + formatDateVN(ngayStr);
+                }
+                case phat -> {
+                    if (ngayStr == null || ngayStr.isEmpty()) throw new IllegalArgumentException("Thiếu ngày vi phạm");
+                    finalNote = "PHAT " + content + " " + formatDateVN(ngayStr);
+                }
+                default -> {
+                }
+            }
+        } catch (IllegalArgumentException e) {
+            return content; // Fallback
+        }
+        
+        // Trả về kết quả sạch sẽ nhất
+        return finalNote.trim().replaceAll("\\s+", " ");
+    }
 }

@@ -1330,7 +1330,8 @@ public String showResidentList(Model model,
      * URL: /admin/fee-save
      */
     // =======================================================
-    // XỬ LÝ LƯU HÓA ĐƠN (LOGIC MỚI)
+    // [ADMIN] XỬ LÝ LƯU HÓA ĐƠN (ĐÃ CẬP NHẬT CHUẨN HÓA)
+    // URL: /admin/fee-save
     // =======================================================
     @PostMapping("/fee-save")
     @SuppressWarnings("CallToPrintStackTrace")
@@ -1340,60 +1341,35 @@ public String showResidentList(Model model,
                                 @RequestParam(value = "isPhieuChi", defaultValue = "false") boolean isPhieuChi,
                                 // 👇 CÁC THAM SỐ FORM ĐỘNG
                                 @RequestParam(value = "inputNoiDung", required = false) String inputNoiDung,
-                                @RequestParam(value = "inputKyThu", required = false) String inputKyThu, // Dạng "yyyy-MM" (từ input type="month")
-                                @RequestParam(value = "inputNgay", required = false) String inputNgay,   // Dạng "yyyy-MM-dd"
+                                @RequestParam(value = "inputKyThu", required = false) String inputKyThu, // yyyy-MM
+                                @RequestParam(value = "inputNgay", required = false) String inputNgay,   // yyyy-MM-dd
                                 Authentication auth,
                                 RedirectAttributes redirectAttributes) {
         try {
             DoiTuong currentUser = getCurrentUser(auth);
-            InvoiceType type = hoaDon.getLoaiHoaDon();
-            String finalGhiChu = "";
+            
+            // 1. GỌI SERVICE ĐỂ TẠO GHI CHÚ CHUẨN (Tự động làm sạch & Format)
+            // Hàm này sẽ xử lý logic: Bỏ dấu, UpperCase, Xóa ngày thừa, Ghép chuỗi chuẩn
+            String finalGhiChu = hoaDonService.taoGhiChuChuan(
+                inputNoiDung, 
+                hoaDon.getLoaiHoaDon(), 
+                inputKyThu, 
+                inputNgay
+            );
 
-            if (inputNoiDung == null) inputNoiDung = "";
-            String contentUpper = inputNoiDung.trim().toUpperCase();
-
-            if (null != type) // --- GHÉP CHUỖI GHI CHÚ CHUẨN ---
-            // 1. DỊCH VỤ (Bắt buộc có Kỳ thu: mm/yyyy)
-            switch (type) {
-                case dich_vu -> {
-                    if (inputKyThu == null || inputKyThu.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn Kỳ thu (Tháng/Năm).");
-                    // Input: "2025-10" -> Output: "10/2025"
-                    String[] parts = inputKyThu.split("-");
-                    if (parts.length == 2) {
-                        finalGhiChu = String.format("%s %s/%s", contentUpper, parts[1], parts[0]);
-                    }                          }
-                case khac -> {
-                    if (inputKyThu == null || inputKyThu.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn thời gian đóng góp.");
-                    String[] parts = inputKyThu.split("-");
-                    if (parts.length == 2) {
-                        finalGhiChu = String.format("DONG GOP %s %s/%s", contentUpper, parts[1], parts[0]);
-                    }                          }
-                case sua_chua -> {
-                    if (inputNgay == null || inputNgay.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn ngày sửa chữa.");
-                    String dateStr = formatDateVN(inputNgay); // yyyy-MM-dd -> dd/MM/yyyy
-                    finalGhiChu = String.format("SUA CHUA %s %s", contentUpper, dateStr);
-                    }
-                case phat -> {
-                    if (inputNgay == null || inputNgay.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn ngày vi phạm.");
-                    String dateStr = formatDateVN(inputNgay);
-                    finalGhiChu = String.format("PHAT %s %s", contentUpper, dateStr);
-                    }
-                default -> {
-                }
-            }
-
-            // Gán chuỗi chuẩn vào Hóa đơn
+            // 2. Gán ghi chú đã chuẩn hóa vào đối tượng
             hoaDon.setGhiChu(finalGhiChu);
 
-            // Gọi Service (Service sẽ check trùng chuỗi này trong DB)
+            // 3. Gọi Service lưu (Service sẽ check trùng lặp dựa trên ghi chú chuẩn này)
             hoaDonService.saveOrUpdateHoaDon(hoaDon, maHo, nguoiDangKyCccd, currentUser, isPhieuChi);
 
             redirectAttributes.addFlashAttribute("successMessage", "Lưu thành công: " + finalGhiChu);
             return "redirect:/admin/fees";
 
         } catch (IllegalArgumentException e) {
+            // Lỗi validate (trùng lặp, thiếu dữ liệu...)
             redirectAttributes.addFlashAttribute("errorMessage", e.getMessage());
-            // Trả về form kèm ID nếu đang sửa
+            // Trả về form kèm ID để người dùng sửa lại
             return "redirect:/admin/fee-form" + (hoaDon.getMaHoaDon() != null ? "?id=" + hoaDon.getMaHoaDon() : "");
         } catch (Exception e) {
             e.printStackTrace();
@@ -1402,13 +1378,6 @@ public String showResidentList(Model model,
         }
     }
 
-    // Helper format ngày
-    private String formatDateVN(String yyyyMMdd) {
-        try {
-            LocalDate date = LocalDate.parse(yyyyMMdd);
-            return String.format("%02d/%02d/%d", date.getDayOfMonth(), date.getMonthValue(), date.getYear());
-        } catch (Exception e) { return yyyyMMdd; }
-    }
     // THÊM VÀO AdminController.java (tương tự AccountantController)
 
     /**

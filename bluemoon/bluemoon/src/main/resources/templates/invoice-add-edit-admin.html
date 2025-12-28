@@ -241,7 +241,40 @@
             document.querySelector('.main-content').classList.toggle('shifted');
             document.querySelector('.header').classList.toggle('shifted');
         }
-        // Logic Thu/Chi
+
+        // --- 1. LOGIC LOAD THÀNH VIÊN (Giữ nguyên) ---
+        function loadMembers(maHo) {
+            const memberSelect = document.getElementById('memberSelect');
+            const loader = document.getElementById('memberLoader');
+            memberSelect.innerHTML = '<option value="">-- Mặc định (Chủ Hộ) --</option>';
+            if (!maHo) return;
+
+            loader.style.display = 'inline-block';
+            memberSelect.disabled = true;
+
+            // Chú ý: Admin dùng /admin/..., Kế toán dùng /accountant/...
+            // Đoạn này tự động lấy prefix từ URL hiện tại để dùng chung code
+            const currentPath = window.location.pathname;
+            const prefix = currentPath.includes("/admin/") ? "/admin" : "/accountant";
+
+            fetch(`${prefix}/api/households/${maHo}/members`)
+                .then(r => r.ok ? r.json() : Promise.reject('Lỗi'))
+                .then(data => {
+                    data.forEach(m => {
+                        const opt = document.createElement('option');
+                        opt.value = m.cccd;
+                        opt.text = m.hoVaTen;
+                        memberSelect.appendChild(opt);
+                    });
+                })
+                .catch(e => console.error(e))
+                .finally(() => {
+                    loader.style.display = 'none';
+                    memberSelect.disabled = false;
+                });
+        }
+
+        // --- 2. LOGIC TOGGLE THU/CHI (Giữ nguyên) ---
         function toggleMode(isChi) {
             const householdSection = document.getElementById('householdSelectSection');
             const householdSelect = document.getElementById('maHo');
@@ -260,41 +293,9 @@
                 if(adminSection) adminSection.style.display = 'none';
             }
         }
-        function loadMembers(maHo) {
-            const memberSelect = document.getElementById('memberSelect');
-            const loader = document.getElementById('memberLoader');
-            
-            // Reset dropdown
-            memberSelect.innerHTML = '<option value="">-- Mặc định (Chủ Hộ) --</option>';
-            
-            if (!maHo) return;
 
-            // Hiện loading
-            loader.style.display = 'inline-block';
-            memberSelect.disabled = true;
-
-            // Gọi API Admin Controller
-            fetch(`/admin/api/households/${maHo}/members`)
-                .then(response => {
-                    if (!response.ok) throw new Error('Lỗi tải dữ liệu');
-                    return response.json();
-                })
-                .then(data => {
-                    data.forEach(member => {
-                        const option = document.createElement('option');
-                        option.value = member.cccd; // Giá trị gửi đi là CCCD
-                        option.text = member.hoVaTen; // Hiển thị Tên
-                        memberSelect.appendChild(option);
-                    });
-                })
-                .catch(error => console.error('Error loading members:', error))
-                .finally(() => {
-                    loader.style.display = 'none';
-                    memberSelect.disabled = false;
-                });
-        }
-
-        // --- LOGIC GIAO DIỆN FORM ĐỘNG ---
+        // --- 3. LOGIC CHUẨN HÓA NỘI DUNG (NÂNG CẤP) ---
+        
         function removeVietnameseTones(str) {
             str = str.replace(/à|á|ạ|ả|ã|â|ầ|ấ|ậ|ẩ|ẫ|ă|ằ|ắ|ặ|ẳ|ẵ/g,"a"); 
             str = str.replace(/è|é|ẹ|ẻ|ẽ|ê|ề|ế|ệ|ể|ễ/g,"e"); 
@@ -306,32 +307,77 @@
             return str;
         }
 
+        // --- LOGIC CHUẨN HÓA NỘI DUNG (PHIÊN BẢN PRO) ---
+        
+        function sanitizeContent(rawContent, type) {
+            if (!rawContent) return "";
+            
+            // B1: Bỏ dấu, UpperCase
+            let content = removeVietnameseTones(rawContent).toUpperCase();
+
+            // B2: Xóa các từ khóa "Rác" (Tiền, Phí, Dịch vụ...)
+            // Thay thế bằng chuỗi rỗng
+            content = content.replace(/TIEN/g, "")
+                             .replace(/PHI/g, "")
+                             .replace(/THANH TOAN/g, "")
+                             .replace(/DICH VU/g, "");
+
+            // B3: Xóa ngày tháng/mô tả thời gian trong nội dung
+            // Xóa: "THANG 12", "NAM 2025", "T12", "12/2025", "15/10/2025"
+            content = content.replace(/THANG\s*\d{1,2}/g, "")
+                             .replace(/NAM\s*\d{4}/g, "")
+                             .replace(/\sT\d{1,2}\s/g, " ") // Xóa T12 (khoảng trắng bao quanh để tránh xóa chữ T trong từ khác)
+                             .replace(/\d{1,2}[/-]\d{1,2}[/-]\d{4}/g, "") 
+                             .replace(/\d{1,2}[/-]\d{4}/g, "");
+
+            // B4: Xóa từ khóa tiền tố theo loại
+            if (type === 'sua_chua') {
+                content = content.replace(/SUA CHUA/g, "").replace(/SUA/g, "");
+            } else if (type === 'phat') {
+                content = content.replace(/PHAT/g, "").replace(/VI PHAM/g, "");
+            } else if (type === 'khac') {
+                content = content.replace(/DONG GOP/g, "").replace(/UNG HO/g, "").replace(/QUY/g, "");
+            }
+
+            // B5: Xóa ký tự đặc biệt thừa và khoảng trắng
+            content = content.replace(/-/g, " "); // Xóa dấu gạch ngang dư
+            return content.replace(/\s+/g, " ").trim();
+        }
+
+        // Hàm format ngày từ yyyy-mm-dd sang dd/mm/yyyy
+        function formatDateVN(isoDate) {
+            if (!isoDate) return "";
+            const [y, m, d] = isoDate.split('-');
+            return `${d}/${m}/${y}`;
+        }
+
         function updateUIByType() {
             const type = document.getElementById("loaiHoaDon").value;
             const monthDiv = document.getElementById("monthYearFields");
             const dateDiv = document.getElementById("dateField");
             const contentInput = document.getElementById("inputNoiDung");
 
-            // Dịch vụ/Khác -> Dùng Month Picker
+            // Hiển thị Input phù hợp
             if (type === 'dich_vu' || type === 'khac') {
                 monthDiv.style.display = "block";
                 dateDiv.style.display = "none";
                 document.getElementById("inputNgay").value = ""; 
-                contentInput.placeholder = (type === 'dich_vu') ? "VD: DIEN, NUOC, GUI XE..." : "VD: QUY VACXIN...";
+                if(!contentInput.value) contentInput.placeholder = (type === 'dich_vu') ? "VD: DIEN, NUOC, GUI XE..." : "VD: VACXIN, BAO LUT...";
             } else {
-                // Sửa chữa/Phạt -> Dùng Date Picker
                 monthDiv.style.display = "none";
                 dateDiv.style.display = "block";
                 document.getElementById("inputKyThu").value = "";
-                contentInput.placeholder = (type === 'sua_chua') ? "VD: BONG DEN, ONG NUOC..." : "VD: DO XE SAI, ỒN ÀO...";
+                if(!contentInput.value) contentInput.placeholder = (type === 'sua_chua') ? "VD: BONG DEN, ONG NUOC..." : "VD: DO XE SAI, ỒN ÀO...";
             }
             generatePreview();
         }
 
         function generatePreview() {
             const type = document.getElementById("loaiHoaDon").value;
-            let content = document.getElementById("inputNoiDung").value.trim();
-            content = removeVietnameseTones(content).toUpperCase();
+            const rawContent = document.getElementById("inputNoiDung").value;
+            
+            // [QUAN TRỌNG] Làm sạch nội dung ngay lập tức
+            const cleanContent = sanitizeContent(rawContent, type);
 
             const kyThuVal = document.getElementById("inputKyThu").value; // yyyy-MM
             const ngayVal = document.getElementById("inputNgay").value;   // yyyy-MM-dd
@@ -340,14 +386,21 @@
 
             if ((type === 'dich_vu' || type === 'khac') && kyThuVal) {
                 const [y, m] = kyThuVal.split('-');
-                if(type === 'dich_vu') result = `${content} ${m}/${y}`;
-                else result = `DONG GOP ${content} ${m}/${y}`;
+                if(type === 'dich_vu') result = `${cleanContent} ${m}/${y}`;
+                else result = `DONG GOP ${cleanContent} ${m}/${y}`;
             } else if ((type === 'sua_chua' || type === 'phat') && ngayVal) {
-                const [y, m, d] = ngayVal.split('-');
-                if(type === 'sua_chua') result = `SUA CHUA ${content} ${d}/${m}/${y}`;
-                else result = `PHAT ${content} ${d}/${m}/${y}`;
+                const vnDate = formatDateVN(ngayVal);
+                if(type === 'sua_chua') result = `SUA CHUA ${cleanContent} ${vnDate}`;
+                else result = `PHAT ${cleanContent} ${vnDate}`;
+            } else {
+                // Nếu chưa chọn ngày, chỉ hiện nội dung đã làm sạch + tiền tố
+                if(type === 'sua_chua') result = `SUA CHUA ${cleanContent} ...`;
+                else if(type === 'phat') result = `PHAT ${cleanContent} ...`;
+                else if(type === 'khac') result = `DONG GOP ${cleanContent} ...`;
+                else result = cleanContent;
             }
 
+            // Hiển thị kết quả ra ô Preview
             document.getElementById("previewNote").value = result;
         }
 
