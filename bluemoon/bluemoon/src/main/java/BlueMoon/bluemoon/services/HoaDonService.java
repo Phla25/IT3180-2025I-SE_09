@@ -68,15 +68,27 @@ public class HoaDonService {
     // 2. HELPER METHODS (XỬ LÝ CHUỖI & CHECK TRÙNG)
     // =========================================================================
 
+// =========================================================================
+    // HELPER: CHUẨN HÓA TIẾNG VIỆT (GIỐNG LOGIC JAVASCRIPT)
+    // =========================================================================
+    
     private String normalizeString(String input) {
         if (input == null) return "";
-        // Chuyển về chữ hoa, bỏ dấu tiếng Việt, bỏ khoảng trắng thừa
-        String nfdNormalizedString = Normalizer.normalize(input, Normalizer.Form.NFD); 
+        
+        // 1. Xử lý thủ công chữ Đ/đ (Java Normalizer không tự làm việc này)
+        // Đây chính là logic tương đương: str.replace(/đ|Đ/g, "d") trong JS
+        String str = input.replace('đ', 'd').replace('Đ', 'D');
+        
+        // 2. Dùng Normalizer để tách dấu ra khỏi ký tự (VD: á -> a + sắc)
+        String nfdNormalizedString = Normalizer.normalize(str, Normalizer.Form.NFD); 
+        
+        // 3. Dùng Regex để xóa các dấu vừa tách
         Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
         String noAccent = pattern.matcher(nfdNormalizedString).replaceAll("");
+        
+        // 4. Chuyển về chữ hoa và xóa khoảng trắng thừa
         return noAccent.toUpperCase().trim().replaceAll("\\s+", " "); 
     }
-
     /**
      * Kiểm tra cú pháp ghi chú (Strict Validation)
      */
