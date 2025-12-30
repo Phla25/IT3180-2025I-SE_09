@@ -40,8 +40,10 @@ public class OperationalDataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        System.out.println(">>> [OperationalSeeder] Đang dọn dẹp và reset toàn bộ Sequence về 1...");
-        resetOperationalTables();
+        if (hoaDonDAO.countAll() > 0) {
+            System.out.println(">>> Dữ liệu vận hành đã tồn tại. Bỏ qua bước seeding.");
+            return;
+        }
 
         // Chuẩn bị dữ liệu nền tảng
         List<DoiTuong> allUsers = doiTuongDAO.findAll();

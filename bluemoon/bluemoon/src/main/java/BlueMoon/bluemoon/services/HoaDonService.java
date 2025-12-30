@@ -1,8 +1,6 @@
 package BlueMoon.bluemoon.services;
 
-import java.io.IOException;
 import java.math.BigDecimal;
-import java.text.Normalizer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -10,7 +8,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,16 +15,8 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
-import org.apache.poi.ss.usermodel.DateUtil;
-import org.apache.poi.ss.usermodel.Row;
-import org.apache.poi.ss.usermodel.Sheet;
-import org.apache.poi.ss.usermodel.Workbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 
 import BlueMoon.bluemoon.daos.DoiTuongDAO;
 import BlueMoon.bluemoon.daos.HoaDonDAO;
@@ -49,105 +38,128 @@ public class HoaDonService {
     private ThanhVienHoService thanhVienHoService;
 
     // =========================================================================
-    // 1. CẤU HÌNH REGEX (LUẬT CÚ PHÁP CHẶT CHẼ)
-    // =========================================================================
-    
-    // 1. Dịch vụ: [TÊN] [mm/yyyy] -> VD: DIEN 10/2025
-    private static final String REGEX_DICH_VU = "^[A-Z0-9_ ]+ (0[1-9]|1[0-2])/\\d{4}$";
-
-    // 2. Sửa chữa: SUA CHUA [Nội dung] [dd/mm/yyyy] -> VD: SUA CHUA BONG DEN 25/10/2025
-    private static final String REGEX_SUA_CHUA = "^SUA CHUA .+ (0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$";
-
-    // 3. Phạt: PHAT [Nội dung] [dd/mm/yyyy] -> VD: PHAT DO XE SAI 25/10/2025
-    private static final String REGEX_PHAT = "^PHAT .+ (0[1-9]|[12][0-9]|3[01])/(0[1-9]|1[0-2])/\\d{4}$";
-
-    // 4. Khác/Đóng góp: DONG GOP [Tên quỹ] [mm/yyyy] -> VD: DONG GOP VACXIN 10/2025
-    private static final String REGEX_KHAC = "^DONG GOP .+ (0[1-9]|1[0-2])/\\d{4}$";
-
-    // =========================================================================
-    // 2. HELPER METHODS (XỬ LÝ CHUỖI & CHECK TRÙNG)
-    // =========================================================================
-
-// =========================================================================
-    // HELPER: CHUẨN HÓA TIẾNG VIỆT (GIỐNG LOGIC JAVASCRIPT)
+    // CHUẨN HÓA CHUỖI (ĐỒNG BỘ VỚI FRONTEND)
     // =========================================================================
     
     private String normalizeString(String input) {
         if (input == null) return "";
         
-        // 1. Xử lý thủ công chữ Đ/đ (Java Normalizer không tự làm việc này)
-        // Đây chính là logic tương đương: str.replace(/đ|Đ/g, "d") trong JS
         String str = input.replace('đ', 'd').replace('Đ', 'D');
-        
-        // 2. Dùng Normalizer để tách dấu ra khỏi ký tự (VD: á -> a + sắc)
-        String nfdNormalizedString = Normalizer.normalize(str, Normalizer.Form.NFD); 
-        
-        // 3. Dùng Regex để xóa các dấu vừa tách
+        String nfdNormalizedString = java.text.Normalizer.normalize(str, java.text.Normalizer.Form.NFD);
         Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
         String noAccent = pattern.matcher(nfdNormalizedString).replaceAll("");
         
-        // 4. Chuyển về chữ hoa và xóa khoảng trắng thừa
-        return noAccent.toUpperCase().trim().replaceAll("\\s+", " "); 
+        return noAccent.toUpperCase().trim().replaceAll("\\s+", " ");
     }
+
     /**
-     * Kiểm tra cú pháp ghi chú (Strict Validation)
+     * ⭐ HÀM CHUẨN HÓA NỘI DUNG (DÙNG CHO IMPORT EXCEL)
+     * Logic tương tự 100% với sanitizeContent() ở Frontend
      */
-    @SuppressWarnings("Unused")
-    private void validateGhiChuSyntax(InvoiceType type, String ghiChu) {
-        if (ghiChu == null || ghiChu.trim().isEmpty()) {
-            throw new IllegalArgumentException("Ghi chú không được để trống.");
+    private String sanitizeContent(String rawContent, InvoiceType type) {
+        if (rawContent == null || rawContent.isEmpty()) return "";
+        
+        // Bước 1: Chuẩn hóa cơ bản
+        String content = normalizeString(rawContent);
+        
+        // Bước 2: Xóa từ khóa rác
+        content = content.replace("TIEN", "")
+                         .replace("PHI", "")
+                         .replace("THANH TOAN", "")
+                         .replace("DICH VU", "");
+        
+        // Bước 3: Xóa mô tả thời gian trong nội dung
+        content = content.replaceAll("THANG\\s*\\d{1,2}", "")
+                         .replaceAll("NAM\\s*\\d{4}", "")
+                         .replaceAll("\\sT\\d{1,2}\\s", " ")
+                         .replaceAll("\\d{1,2}[/-]\\d{1,2}[/-]\\d{4}", "")
+                         .replaceAll("\\d{1,2}[/-]\\d{4}", "");
+        
+        // Bước 4: Xóa tiền tố theo loại
+        if (type != null) {
+            switch (type) {
+                case sua_chua -> content = content.replace("SUA CHUA", "").replace("SUA", "");
+                case phat -> content = content.replace("PHAT", "").replace("VI PHAM", "");
+                case khac -> content = content.replace("DONG GOP", "")
+                                              .replace("UNG HO", "")
+                                              .replace("QUY", "");
+                default -> {}
+            }
         }
+        
+        // Bước 5: Dọn dẹp cuối cùng
+        content = content.replace("-", "").trim().replaceAll("\\s+", " ");
+        
+        return content;
+    }
 
-        String noteNorm = normalizeString(ghiChu); 
-        boolean isValid = false;
-        String mauChuan = "";
+    /**
+     * ⭐ TẠO GHI CHÚ CHUẨN (DÙNG CHO IMPORT EXCEL)
+     * Ghép chuỗi cuối cùng giống Frontend
+     */
+private String taoGhiChuChuanTuExcel(String rawContent, InvoiceType type, String kyThu, String ngay) {
+    if (rawContent == null) return "";
 
-        if (null == type) { // InvoiceType.khac -> Coi là Đóng góp
-            isValid = noteNorm.matches(REGEX_KHAC);
-            mauChuan = "DONG GOP [TÊN QUỸ] mm/yyyy";
-        } 
-        else switch (type) {
-            case dich_vu -> {
-                isValid = noteNorm.matches(REGEX_DICH_VU);
-                mauChuan = "TÊN_DV mm/yyyy (VD: DIEN 10/2025)";
-            }
-            case sua_chua -> {
-                isValid = noteNorm.matches(REGEX_SUA_CHUA);
-                mauChuan = "SUA CHUA [NỘI DUNG] dd/mm/yyyy";
-            }
-            case phat -> {
-                isValid = noteNorm.matches(REGEX_PHAT);
-                mauChuan = "PHAT [LÝ DO] dd/mm/yyyy";
-            }
+    // 1. TỰ CHIẾT XUẤT NGÀY THÁNG (Nếu tham số 'ngay' hoặc 'kyThu' bị trống - do Excel thiếu cột)
+    String extractedDate = "";
+    if ((ngay == null || ngay.isEmpty()) && (kyThu == null || kyThu.isEmpty())) {
+        // Tìm dd/mm/yyyy hoặc mm/yyyy trong xâu thô
+        java.util.regex.Matcher m = Pattern.compile("(\\d{1,2}/\\d{1,2}/\\d{4}|\\d{1,2}/\\d{4})").matcher(rawContent);
+        if (m.find()) {
+            extractedDate = m.group(1);
+        }
+    } else {
+        // Nếu có tham số truyền vào (từ cột riêng), ưu tiên dùng nó
+        extractedDate = (type == InvoiceType.sua_chua || type == InvoiceType.phat) ? formatDateVN(ngay) : convertKyThuToISO(kyThu);
+    }
+
+    // 2. LÀM SẠCH NỘI DUNG (Lúc này sanitizeContent sẽ xóa ngày trong xâu, nhưng ta đã lưu vào extractedDate ở trên)
+    String cleanContent = sanitizeContent(rawContent, type);
+    
+    // 3. GHÉP LẠI THEO CHUẨN
+    String prefix = "";
+    if (null != type) switch (type) {
+            case sua_chua -> prefix = "SUA CHUA ";
+            case phat -> prefix = "PHAT ";
+            case khac -> prefix = "DONG GOP ";
             default -> {
-                // InvoiceType.khac -> Coi là Đóng góp
-                isValid = noteNorm.matches(REGEX_KHAC);
-                mauChuan = "DONG GOP [TÊN QUỸ] mm/yyyy";
-            }
+        }
         }
 
-        if (!isValid) {
-            throw new IllegalArgumentException(
-                "Sai cú pháp ghi chú! Loại '" + type + "' yêu cầu chuẩn: " + mauChuan + 
-                ". (Giá trị nhập: " + ghiChu + ")"
+    // Trả về: Tiền tố + Nội dung lõi + Ngày tháng đã cứu lại được
+    return (prefix + cleanContent + " " + extractedDate).trim().replaceAll("\\s+", " ");
+}
+
+    private String formatDateVN(String isoDate) {
+        if (isoDate == null || isoDate.isEmpty()) return "";
+        try {
+            LocalDate date = LocalDate.parse(isoDate);
+            return String.format("%02d/%02d/%d", 
+                date.getDayOfMonth(), 
+                date.getMonthValue(), 
+                date.getYear()
             );
+        } catch (Exception e) {
+            return "";
         }
     }
 
     /**
-     * Check trùng lặp dựa trên chuỗi chính xác 100%
+     * ⭐ CHECK TRÙNG LẶP (SO SÁNH CHUỖI ĐÃ CHUẨN HÓA)
      */
-    private void checkDuplicateStrict(HoGiaDinh hgd, InvoiceType type, String ghiChuMoi) {
-        String noteMoiNorm = normalizeString(ghiChuMoi);
-        List<HoaDon> existingInvoices = hoaDonDAO.findByHoGiaDinh(hgd);
-
+    private void checkDuplicateInvoice(HoGiaDinh hoGiaDinh, InvoiceType type, String ghiChuMoi) {
+        if (hoGiaDinh == null) return;
+        
+        String ghiChuMoiNorm = normalizeString(ghiChuMoi);
+        List<HoaDon> existingInvoices = hoaDonDAO.findByHoGiaDinh(hoGiaDinh);
+        
         for (HoaDon hd : existingInvoices) {
-            if (hd.getLoaiHoaDon() == type) { // Chỉ so sánh cùng loại
-                String noteCuNorm = normalizeString(hd.getGhiChu());
-                // So sánh chuỗi tuyệt đối
-                if (noteMoiNorm.equals(noteCuNorm)) {
+            if (hd.getLoaiHoaDon() == type) {
+                String ghiChuCuNorm = normalizeString(hd.getGhiChu());
+                
+                if (ghiChuMoiNorm.equals(ghiChuCuNorm)) {
                     throw new IllegalArgumentException(
-                        "TRÙNG LẶP: Đã tồn tại hóa đơn trong hệ thống: \"" + hd.getGhiChu() + "\""
+                        "TRÙNG LẶP: Đã tồn tại hóa đơn \"" + hd.getGhiChu() + "\""
                     );
                 }
             }
@@ -158,54 +170,296 @@ public class HoaDonService {
     // 3. CRUD OPERATIONS (SAVE - UPDATE - DELETE)
     // =========================================================================
 
+    // =========================================================================
+    // SAVE/UPDATE HÓA ĐƠN (NHẬN TỪ FRONTEND - ĐÃ CHUẨN HÓA SẴN)
+    // =========================================================================
+    
     @Transactional
-    public HoaDon saveOrUpdateHoaDon(HoaDon hoaDon, String maHo, String nguoiDangKyCccd, DoiTuong nguoiThucHien, boolean isPhieuChi) {
-    
+    public HoaDon saveOrUpdateHoaDon(
+        HoaDon hoaDon, 
+        String maHo, 
+        String nguoiDangKyCccd, 
+        DoiTuong nguoiThucHien, 
+        boolean isPhieuChi
+    ) {
         final boolean isNewInvoice = hoaDon.getMaHoaDon() == null;
-    
+        
         if (isPhieuChi) {
+            // Phiếu Chi
             hoaDon.setNguoiDangKyDichVu(nguoiThucHien);
-            hoaDon.setHoGiaDinh(null); 
+            hoaDon.setHoGiaDinh(null);
+            
             if (isNewInvoice) {
-                hoaDon.setTrangThai(InvoiceStatus.da_thanh_toan); 
+                hoaDon.setTrangThai(InvoiceStatus.da_thanh_toan);
                 hoaDon.setNgayThanhToan(LocalDateTime.now());
             }
+            
         } else {
-            // PHIẾU THU
-            if (maHo == null || maHo.isEmpty()) throw new IllegalArgumentException("Vui lòng chọn Hộ gia đình.");
+            // Phiếu Thu
+            if (maHo == null || maHo.isEmpty()) {
+                throw new IllegalArgumentException("Vui lòng chọn Hộ gia đình.");
+            }
             
             HoGiaDinh hoGiaDinh = hoGiaDinhService.getHouseholdById(maHo)
                 .orElseThrow(() -> new IllegalArgumentException("Mã hộ không tồn tại"));
+            
             hoaDon.setHoGiaDinh(hoGiaDinh);
-
-            // [VALIDATE & CHECK TRÙNG] -> Chỉ khi tạo mới
+            
+            // ⭐ CHECK TRÙNG CHỈ KHI TẠO MỚI
+            // Frontend đã gửi chuỗi chuẩn rồi -> Chỉ cần check trùng
             if (isNewInvoice) {
-                validateGhiChuSyntax(hoaDon.getLoaiHoaDon(), hoaDon.getGhiChu());
-                checkDuplicateStrict(hoGiaDinh, hoaDon.getLoaiHoaDon(), hoaDon.getGhiChu());
+                checkDuplicateInvoice(hoGiaDinh, hoaDon.getLoaiHoaDon(), hoaDon.getGhiChu());
             }
-
+            
+            // Xử lý người đăng ký
             if (nguoiDangKyCccd != null && !nguoiDangKyCccd.isEmpty()) {
                 DoiTuong nguoiDangKy = doiTuongDAO.findByCccd(nguoiDangKyCccd)
                     .orElseThrow(() -> new IllegalArgumentException("Không tìm thấy cư dân"));
+                
                 boolean isMember = hoGiaDinh.getThanhVienHoList().stream()
                     .anyMatch(tvh -> tvh.getDoiTuong().getCccd().equals(nguoiDangKyCccd));
-                if (!isMember) throw new IllegalArgumentException("Người được chọn không thuộc hộ gia đình này!");
+                
+                if (!isMember) {
+                    throw new IllegalArgumentException(
+                        "Người được chọn không thuộc hộ gia đình này!"
+                    );
+                }
+                
                 hoaDon.setNguoiDangKyDichVu(nguoiDangKy);
             }
             
+            // Giữ lại thông tin cũ khi update
             if (!isNewInvoice) {
-                HoaDon hdOriginal = hoaDonDAO.findById(hoaDon.getMaHoaDon()).orElseThrow();
-                if (hoaDon.getNguoiThanhToan() == null) hoaDon.setNguoiThanhToan(hdOriginal.getNguoiThanhToan());
-                if (nguoiDangKyCccd == null || nguoiDangKyCccd.isEmpty()) hoaDon.setNguoiDangKyDichVu(hdOriginal.getNguoiDangKyDichVu());
+                HoaDon hdOriginal = hoaDonDAO.findById(hoaDon.getMaHoaDon())
+                    .orElseThrow();
+                
+                if (hoaDon.getNguoiThanhToan() == null) {
+                    hoaDon.setNguoiThanhToan(hdOriginal.getNguoiThanhToan());
+                }
+                
+                if (nguoiDangKyCccd == null || nguoiDangKyCccd.isEmpty()) {
+                    hoaDon.setNguoiDangKyDichVu(hdOriginal.getNguoiDangKyDichVu());
+                }
             }
         }
-
+        
+        // Set thông tin mặc định cho hóa đơn mới
         if (isNewInvoice) {
-            if (hoaDon.getNgayTao() == null) hoaDon.setNgayTao(LocalDateTime.now());
-            if (hoaDon.getTrangThai() == null) hoaDon.setTrangThai(InvoiceStatus.chua_thanh_toan);
+            if (hoaDon.getNgayTao() == null) {
+                hoaDon.setNgayTao(LocalDateTime.now());
+            }
+            if (hoaDon.getTrangThai() == null) {
+                hoaDon.setTrangThai(InvoiceStatus.chua_thanh_toan);
+            }
         }
-    
+        
         return hoaDonDAO.save(hoaDon);
+    }
+
+    // =========================================================================
+    // IMPORT EXCEL (CHUẨN HÓA TẠI BACKEND)
+    // =========================================================================
+    
+    @Transactional
+    public String importHoaDonFromExcel(
+        org.springframework.web.multipart.MultipartFile file, 
+        DoiTuong nguoiThucHien
+    ) throws java.io.IOException {
+        int successCount = 0;
+        int errorCount = 0;
+        StringBuilder errorLog = new StringBuilder();
+        
+        try (org.apache.poi.ss.usermodel.Workbook workbook = 
+                new org.apache.poi.xssf.usermodel.XSSFWorkbook(file.getInputStream())) {
+            
+            org.apache.poi.ss.usermodel.Sheet sheet = workbook.getSheetAt(0);
+            java.util.Iterator<org.apache.poi.ss.usermodel.Row> rows = sheet.iterator();
+            int rowNumber = 0;
+            
+            while (rows.hasNext()) {
+                org.apache.poi.ss.usermodel.Row currentRow = rows.next();
+                
+                // Bỏ qua header
+                if (rowNumber == 0) { 
+                    rowNumber++; 
+                    continue; 
+                }
+                
+                // Bỏ qua dòng trống
+                if (currentRow.getCell(0) == null || 
+                    getCellValueAsString(currentRow.getCell(0)).isEmpty()) {
+                    continue;
+                }
+                
+                try {
+                    // Đọc dữ liệu từ Excel
+                    String maHo = getCellValueAsString(currentRow.getCell(0));
+                    String cccdThanhVien = getCellValueAsString(currentRow.getCell(1));
+                    String loaiPhiStr = getCellValueAsString(currentRow.getCell(2));
+                    String noiDungExcel = getCellValueAsString(currentRow.getCell(5)); // Nội dung thô
+                    
+                    // ⭐ QUAN TRỌNG: Giả sử Excel có thêm 2 cột:
+                    // - Cột 6: Kỳ thu (mm/yyyy) hoặc để trống
+                    // - Cột 7: Ngày (dd/mm/yyyy) hoặc để trống
+                    String kyThuExcel = getCellValueAsString(currentRow.getCell(6)); // VD: "12/2025"
+                    String ngayExcel = getCellValueAsString(currentRow.getCell(7));   // VD: "25/12/2025"
+                    
+                    // Chuyển đổi định dạng về ISO
+                    String kyThuISO = convertKyThuToISO(kyThuExcel);   // "12/2025" -> "2025-12"
+                    String ngayISO = convertNgayToISO(ngayExcel);      // "25/12/2025" -> "2025-12-25"
+                    
+                    BigDecimal soTien = BigDecimal.ZERO;
+                    org.apache.poi.ss.usermodel.Cell amountCell = currentRow.getCell(3);
+                    if (amountCell != null && 
+                        amountCell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC) {
+                        soTien = BigDecimal.valueOf(amountCell.getNumericCellValue());
+                    }
+                    
+                    LocalDate hanThanhToan = LocalDate.now().plusDays(15);
+                    org.apache.poi.ss.usermodel.Cell dateCell = currentRow.getCell(4);
+                    if (dateCell != null && 
+                        dateCell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC && 
+                        org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(dateCell)) {
+                        hanThanhToan = dateCell.getLocalDateTimeCellValue().toLocalDate();
+                    }
+                    
+                    // Validate cơ bản
+                    if (maHo.isEmpty()) {
+                        throw new IllegalArgumentException("Mã hộ trống");
+                    }
+                    if (soTien.compareTo(BigDecimal.ZERO) <= 0) {
+                        throw new IllegalArgumentException("Số tiền phải > 0");
+                    }
+                    
+                    InvoiceType loaiHoaDon = mapToInvoiceType(loaiPhiStr);
+                    
+                    // ⭐ TẠO GHI CHÚ CHUẨN TỪ BACKEND (GIỐNG FRONTEND)
+                    String ghiChuChuan = taoGhiChuChuanTuExcel(
+                        noiDungExcel, 
+                        loaiHoaDon, 
+                        kyThuISO, 
+                        ngayISO
+                    );
+                    
+                    // Tạo hóa đơn
+                    HoaDon hoaDon = new HoaDon();
+                    hoaDon.setLoaiHoaDon(loaiHoaDon);
+                    hoaDon.setSoTien(soTien);
+                    hoaDon.setHanThanhToan(hanThanhToan);
+                    hoaDon.setGhiChu(ghiChuChuan); // ⭐ Dùng ghi chú đã chuẩn hóa
+                    
+                    // Gọi hàm save (Tự động check trùng)
+                    saveOrUpdateHoaDon(hoaDon, maHo, cccdThanhVien, nguoiThucHien, false);
+                    
+                    successCount++;
+                    
+                } catch (IllegalArgumentException e) {
+                    errorCount++;
+                    errorLog.append("Dòng ").append(rowNumber + 1)
+                           .append(": ").append(e.getMessage()).append("\n");
+                } catch (Exception e) {
+                    errorCount++;
+                    errorLog.append("Dòng ").append(rowNumber + 1)
+                           .append(": Lỗi - ").append(e.getMessage()).append("\n");
+                }
+                
+                rowNumber++;
+            }
+        }
+        
+        StringBuilder result = new StringBuilder();
+        result.append("Kết quả Import: Thành công ").append(successCount);
+        if (errorCount > 0) {
+            result.append(", Thất bại ").append(errorCount).append(" dòng.\n");
+            result.append("Chi tiết lỗi:\n").append(errorLog.toString());
+        }
+        
+        return result.toString();
+    }
+
+    // =========================================================================
+    // HELPER METHODS
+    // =========================================================================
+    
+    private String convertKyThuToISO(String kyThuVN) {
+        // "12/2025" -> "2025-12"
+        if (kyThuVN == null || kyThuVN.isEmpty()) return "";
+        try {
+            String[] parts = kyThuVN.split("/");
+            if (parts.length == 2) {
+                return parts[1] + "-" + String.format("%02d", Integer.valueOf(parts[0]));
+            }
+        } catch (NumberFormatException e) {}
+        return "";
+    }
+    
+    private String convertNgayToISO(String ngayVN) {
+        // "25/12/2025" -> "2025-12-25"
+        if (ngayVN == null || ngayVN.isEmpty()) return "";
+        try {
+            String[] parts = ngayVN.split("/");
+            if (parts.length == 3) {
+                return parts[2] + "-" + 
+                       String.format("%02d", Integer.valueOf(parts[1])) + "-" + 
+                       String.format("%02d", Integer.valueOf(parts[0]));
+            }
+        } catch (NumberFormatException e) {}
+        return "";
+    }
+    
+    private String getCellValueAsString(org.apache.poi.ss.usermodel.Cell cell) {
+        if (cell == null) return "";
+        try {
+            switch (cell.getCellType()) {
+                case STRING -> {
+                    return cell.getStringCellValue().trim();
+                }
+                case NUMERIC -> {
+                    if (org.apache.poi.ss.usermodel.DateUtil.isCellDateFormatted(cell)) {
+                        return cell.getLocalDateTimeCellValue().toLocalDate().toString();
+                    }
+                    long longVal = (long) cell.getNumericCellValue();
+                    if (cell.getNumericCellValue() == longVal) {
+                        return String.valueOf(longVal);
+                    }
+                    return String.valueOf(cell.getNumericCellValue());
+                }
+                case BOOLEAN -> {
+                    return String.valueOf(cell.getBooleanCellValue());
+                }
+                case FORMULA -> {
+                    try {
+                        return cell.getStringCellValue();
+                    } catch (Exception e) {
+                        return String.valueOf(cell.getNumericCellValue());
+                    }
+                }
+                default -> {
+                    return "";
+                }
+            }
+        } catch (Exception e) {
+            return "";
+        }
+    }
+    
+    private InvoiceType mapToInvoiceType(String text) {
+        if (text == null) return InvoiceType.khac;
+        String normalized = normalizeString(text);
+        
+        if (normalized.contains("DICH VU") || normalized.contains("DIEN") || 
+            normalized.contains("NUOC") || normalized.contains("GUI XE") || 
+            normalized.contains("VE SINH") || normalized.contains("TIEN PHI")||
+            normalized.contains("PHI") || normalized.contains("DONG")){
+            return InvoiceType.dich_vu;
+        }
+        if (normalized.contains("SUA CHUA") || normalized.contains("SUA")) {
+            return InvoiceType.sua_chua;
+        }
+        if (normalized.contains("PHAT") || normalized.contains("VI PHAM")) {
+            return InvoiceType.phat;
+        }
+        return InvoiceType.khac;
     }
     
     // Wrapper để tương thích ngược
@@ -225,119 +479,6 @@ public class HoaDonService {
     
     public Optional<HoaDon> getHoaDonById(Integer maHoaDon) {
          return hoaDonDAO.findAllWithHoGiaDinh().stream().filter(h -> h.getMaHoaDon().equals(maHoaDon)).findFirst();
-    }
-
-    // =========================================================================
-    // 4. IMPORT EXCEL
-    // =========================================================================
-    
-    @Transactional
-    public String importHoaDonFromExcel(MultipartFile file, DoiTuong nguoiThucHien) throws IOException {
-        int successCount = 0;
-        int errorCount = 0;
-        StringBuilder errorLog = new StringBuilder();
-
-        try (Workbook workbook = new XSSFWorkbook(file.getInputStream())) {
-            Sheet sheet = workbook.getSheetAt(0);
-            Iterator<Row> rows = sheet.iterator();
-            int rowNumber = 0;
-
-            while (rows.hasNext()) {
-                Row currentRow = rows.next();
-                if (rowNumber == 0) { rowNumber++; continue; }
-                if (currentRow.getCell(0) == null || getCellValueAsString(currentRow.getCell(0)).isEmpty()) continue;
-
-                try {
-                    String maHo = getCellValueAsString(currentRow.getCell(0));
-                    String cccdThanhVien = getCellValueAsString(currentRow.getCell(1));
-                    String loaiPhiStr = getCellValueAsString(currentRow.getCell(2));
-                    String ghiChu = getCellValueAsString(currentRow.getCell(5)); // Ghi chú từ Excel (Phải đúng chuẩn)
-                    
-                    BigDecimal soTien = BigDecimal.ZERO;
-                    Cell amountCell = currentRow.getCell(3);
-                    if (amountCell != null && amountCell.getCellType() == CellType.NUMERIC) {
-                        soTien = BigDecimal.valueOf(amountCell.getNumericCellValue());
-                    }
-
-                    LocalDate hanThanhToan = LocalDate.now().plusDays(15);
-                    Cell dateCell = currentRow.getCell(4);
-                    if (dateCell != null && dateCell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(dateCell)) {
-                        hanThanhToan = dateCell.getLocalDateTimeCellValue().toLocalDate();
-                    }
-
-                    if (maHo.isEmpty()) throw new IllegalArgumentException("Mã hộ trống");
-                    if (soTien.compareTo(BigDecimal.ZERO) <= 0) throw new IllegalArgumentException("Số tiền phải > 0");
-
-                    InvoiceType loaiHoaDon = mapToInvoiceType(loaiPhiStr);
-                    HoaDon hoaDon = new HoaDon();
-                    hoaDon.setLoaiHoaDon(loaiHoaDon);
-                    hoaDon.setSoTien(soTien);
-                    hoaDon.setHanThanhToan(hanThanhToan);
-                    hoaDon.setGhiChu(ghiChu); 
-                    
-                    // GỌI HÀM SAVE CHUNG -> Tự động Validate cú pháp & Check trùng
-                    saveOrUpdateHoaDon(hoaDon, maHo, cccdThanhVien, nguoiThucHien, false);
-
-                    successCount++;
-
-                } catch (IllegalArgumentException e) {
-                    errorCount++;
-                    errorLog.append("Dòng ").append(rowNumber + 1).append(": ").append(e.getMessage()).append("\n");
-                } catch (Exception e) {
-                    errorCount++;
-                    errorLog.append("Dòng ").append(rowNumber + 1).append(": Lỗi - ").append(e.getMessage()).append("\n");
-                }
-                rowNumber++;
-            }
-        }
-
-        StringBuilder result = new StringBuilder();
-        result.append("Kết quả Import: Thành công ").append(successCount);
-        if (errorCount > 0) {
-            result.append(", Thất bại ").append(errorCount).append(" dòng.\n");
-            result.append("Chi tiết lỗi:\n").append(errorLog.toString());
-        }
-        return result.toString();
-    }
-
-    // =========================================================================
-    // 5. CÁC HÀM CŨ & THỐNG KÊ (ĐÃ KHÔI PHỤC ĐẦY ĐỦ)
-    // =========================================================================
-
-    private String getCellValueAsString(Cell cell) {
-        if (cell == null) return "";
-        try {
-            switch (cell.getCellType()) {
-                case STRING -> {
-                    return cell.getStringCellValue().trim();
-                }
-                case NUMERIC -> {
-                    if (DateUtil.isCellDateFormatted(cell)) return cell.getLocalDateTimeCellValue().toLocalDate().toString();
-                    long longVal = (long) cell.getNumericCellValue();
-                    if (cell.getNumericCellValue() == longVal) return String.valueOf(longVal);
-                    return String.valueOf(cell.getNumericCellValue());
-                }
-                case BOOLEAN -> {
-                    return String.valueOf(cell.getBooleanCellValue());
-                }
-                case FORMULA -> {
-                    // Thử lấy giá trị String trước, nếu lỗi thì lấy Numeric
-                    try { return cell.getStringCellValue(); } catch (Exception e) { return String.valueOf(cell.getNumericCellValue()); }
-                }
-                default -> {
-                    return "";
-                }
-            }
-        } catch (Exception e) { return ""; }
-    }
-
-    private InvoiceType mapToInvoiceType(String text) {
-        if (text == null) return InvoiceType.khac;
-        String normalized = normalizeString(text);
-        if (normalized.contains("DICH VU") || normalized.contains("DIEN") || normalized.contains("NUOC") || normalized.contains("GUI XE") || normalized.contains("VE SINH")) return InvoiceType.dich_vu;
-        if (normalized.contains("SUA CHUA")) return InvoiceType.sua_chua;
-        if (normalized.contains("PHAT")) return InvoiceType.phat;
-        return InvoiceType.khac;
     }
 
     public HoaDonStatsDTO getHoaDonStats(HoGiaDinh hoGiaDinh) {
@@ -693,14 +834,6 @@ public class HoaDonService {
 
         return stats;
     }
-    // Helper format ngày (Đưa từ Controller vào đây để tái sử dụng)
-    private String formatDateVN(String yyyyMMdd) {
-        try {
-            LocalDate date = LocalDate.parse(yyyyMMdd);
-            return String.format("%02d/%02d/%d", date.getDayOfMonth(), date.getMonthValue(), date.getYear());
-        } catch (Exception e) { return ""; }
-    }
-
     /**
      * [NÂNG CẤP] HÀM TẠO GHI CHÚ CHUẨN - LỌC SẠCH TỪ KHÓA THỪA
      */

@@ -36,8 +36,10 @@ public class DataSeeder implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) throws Exception {
-        System.out.println(">>> ĐANG LÀM SẠCH DATABASE (TRUNCATE CASCADE)...");
-        resetDatabase();
+        if (doiTuongDAO.countResidents() > 0) {
+            System.out.println(">>> Dữ liệu đã tồn tại. Bỏ qua bước seeding.");
+            return;
+        }
 
         System.out.println(">>> BẮT ĐẦU SEEDING DỮ LIỆU MỚI...");
 
