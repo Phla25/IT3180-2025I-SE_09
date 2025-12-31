@@ -433,35 +433,40 @@ private String safeToString(Object obj) {
     // =========================================================================
 
     public byte[] exportEntryExitToPdf(List<LichSuRaVao> logs) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (PdfWriter writer = new PdfWriter(baos);
-             PdfDocument pdfDoc = new PdfDocument(writer);
-             Document document = new Document(pdfDoc, PageSize.A4)) {
-            
-            // [QUAN TRỌNG] Set font tiếng Việt
-            document.setFont(getVietnameseFont());
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    
+    // Sử dụng try-with-resources để tự động đóng tài nguyên
+    try (PdfWriter writer = new PdfWriter(baos);
+         PdfDocument pdfDoc = new PdfDocument(writer);
+         Document document = new Document(pdfDoc, PageSize.A4)) {
+        
+        document.setFont(getVietnameseFont());
 
-            document.add(new Paragraph("BÁO CÁO LỊCH SỬ RA VÀO").setTextAlignment(TextAlignment.CENTER).setFontSize(18).setBold());
-            document.add(new Paragraph("\n"));
-            
-            Table table = new Table(UnitValue.createPercentArray(new float[]{3, 4, 3, 2, 3}));
-            table.setWidth(UnitValue.createPercentValue(100));
-            
-            String[] headers = {"Thời Gian", "Họ Tên", "CCCD", "Hoạt Động", "Cổng"};
-            for (String header : headers) table.addHeaderCell(new Cell().add(new Paragraph(header).setBold()));
-            
-            for (LichSuRaVao log : logs) {
-                table.addCell(formatDateTime(log.getThoiGian()));
-                table.addCell(toString(log.getCuDan() != null ? log.getCuDan().getHoVaTen() : "N/A"));
-                table.addCell(toString(log.getCuDan() != null ? log.getCuDan().getCccd() : "N/A"));
-                table.addCell(toString(log.getLoaiHoatDong()));
-                table.addCell(toString(log.getCongKiemSoat()));
-            }
-            document.add(table);
-            return baos.toByteArray();
+        document.add(new Paragraph("BÁO CÁO LỊCH SỬ RA VÀO")
+                .setTextAlignment(TextAlignment.CENTER)
+                .setFontSize(18).setBold());
+        document.add(new Paragraph("\n"));
+        
+        Table table = new Table(UnitValue.createPercentArray(new float[]{3, 4, 3, 2, 3}));
+        table.setWidth(UnitValue.createPercentValue(100));
+        
+        String[] headers = {"Thời Gian", "Họ Tên", "CCCD", "Hoạt Động", "Cổng"};
+        for (String header : headers) table.addHeaderCell(new Cell().add(new Paragraph(header).setBold()));
+        
+        for (LichSuRaVao log : logs) {
+            table.addCell(formatDateTime(log.getThoiGian()));
+            table.addCell(toString(log.getCuDan() != null ? log.getCuDan().getHoVaTen() : "N/A"));
+            table.addCell(toString(log.getCuDan() != null ? log.getCuDan().getCccd() : "N/A"));
+            table.addCell(toString(log.getLoaiHoatDong()));
+            table.addCell(toString(log.getCongKiemSoat()));
         }
-    }
-
+        document.add(table);
+        
+        // Không return ở đây!
+    } 
+    // Sau khi kết thúc khối try, iText đã đóng Document và ghi đủ dữ liệu vào baos.
+    return baos.toByteArray(); // ✅ ĐÚNG: Trả về dữ liệu hoàn chỉnh
+}
     public byte[] exportApartmentsToPdf(List<ApartmentReportDTO> apartments) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (PdfWriter writer = new PdfWriter(baos);

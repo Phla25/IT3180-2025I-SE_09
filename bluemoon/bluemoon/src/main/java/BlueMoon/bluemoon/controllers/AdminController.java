@@ -11,11 +11,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import BlueMoon.bluemoon.daos.BaoCaoSuCoDAO;
 import BlueMoon.bluemoon.daos.DoiTuongDAO;
 import BlueMoon.bluemoon.daos.HoGiaDinhDAO;
@@ -2439,5 +2441,29 @@ public String showResidentList(Model model,
         }
         
         return "redirect:/admin/entry-exit-logs";
+    }
+    /**
+     * Xuất báo cáo lịch sử ra vào ra file PDF
+     * URL: /admin/export/entry-exit-logs/pdf
+     */
+    @GetMapping("/export/entry-exit-logs/pdf")
+    public ResponseEntity<byte[]> exportEntryExitLogsPdf(@RequestParam(required = false) String keyword,
+                                                         @RequestParam(required = false) LocalDate date,
+                                                         @RequestParam(required = false) String gate) {
+        try {
+            // 1. Lấy dữ liệu thô
+            List<LichSuRaVao> logs = lichSuRaVaoService.getAllLogs(keyword, date, gate);
+            
+            // 2. Gọi ExportService để tạo file PDF
+            byte[] pdfData = exportService.exportEntryExitToPdf(logs);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "BaoCao_RaVao_" + System.currentTimeMillis() + ".pdf");
+            
+            return ResponseEntity.ok().headers(headers).body(pdfData);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }

@@ -28,16 +28,16 @@ import BlueMoon.bluemoon.entities.ThanhVienHo;
 import BlueMoon.bluemoon.models.ApartmentReportDTO;
 import BlueMoon.bluemoon.models.ResidentReportDTO;
 import BlueMoon.bluemoon.services.BaoCaoSuCoService;
+import BlueMoon.bluemoon.services.CuDanService;
 import BlueMoon.bluemoon.services.ExportService;
-import BlueMoon.bluemoon.services.NguoiDungService;
+import BlueMoon.bluemoon.services.HoGiaDinhService;
+import BlueMoon.bluemoon.services.LichSuRaVaoService; // Import TaiSanChungCuService
+import BlueMoon.bluemoon.services.NguoiDungService; // Cần thiết nếu dùng Enum trực tiếp
 import BlueMoon.bluemoon.services.ReportService;
-import BlueMoon.bluemoon.services.TaiSanChungCuService; // Import TaiSanChungCuService
-import BlueMoon.bluemoon.utils.Gender; // Cần thiết nếu dùng Enum trực tiếp
+import BlueMoon.bluemoon.services.TaiSanChungCuService;
+import BlueMoon.bluemoon.utils.Gender;
 import BlueMoon.bluemoon.utils.IncidentStatus;
 import BlueMoon.bluemoon.utils.PriorityLevel;
-import BlueMoon.bluemoon.services.CuDanService;
-import BlueMoon.bluemoon.services.HoGiaDinhService;
-import BlueMoon.bluemoon.services.LichSuRaVaoService;
 
 @Controller
 @RequestMapping("/officer")
@@ -578,5 +578,29 @@ public class OfficerController {
         model.addAttribute("gates", lichSuRaVaoService.getAllGates()); 
 
         return "entry-exit-log-officer"; // File HTML riêng cho Officer
+    }
+    /**
+     * Xuất báo cáo lịch sử ra vào ra file PDF
+     * URL: /admin/export/entry-exit-logs/pdf
+     */
+    @GetMapping("/export/entry-exit-logs/pdf")
+    public ResponseEntity<byte[]> exportEntryExitLogsPdf(@RequestParam(required = false) String keyword,
+                                                         @RequestParam(required = false) LocalDate date,
+                                                         @RequestParam(required = false) String gate) {
+        try {
+            // 1. Lấy dữ liệu thô
+            List<LichSuRaVao> logs = lichSuRaVaoService.getAllLogs(keyword, date, gate);
+            
+            // 2. Gọi ExportService để tạo file PDF
+            byte[] pdfData = exportService.exportEntryExitToPdf(logs);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_PDF);
+            headers.setContentDispositionFormData("attachment", "BaoCao_RaVao_" + System.currentTimeMillis() + ".pdf");
+            
+            return ResponseEntity.ok().headers(headers).body(pdfData);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
     }
 }
